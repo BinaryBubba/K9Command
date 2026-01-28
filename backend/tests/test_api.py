@@ -303,18 +303,17 @@ class TestBookings:
             headers={"Authorization": f"Bearer {customer_with_dog['token']}"}
         )
         price_with = response2.json()["total_price"]
-        separate_fee = response2.json().get("separate_playtime_fee", 0)
         
-        # Verify the fee is $6/day * 3 nights = $18
+        # Verify the fee is $6/day * 3 nights = $18 by checking price difference
         expected_fee = 6 * 3  # $6/day * 3 nights
         price_diff = price_with - price_without
         
         print(f"✓ Price without playtime: ${price_without}")
         print(f"✓ Price with playtime: ${price_with}")
-        print(f"✓ Separate playtime fee: ${separate_fee}")
         print(f"✓ Price difference: ${price_diff}")
         
-        assert separate_fee == expected_fee, f"Expected $18 fee, got ${separate_fee}"
+        # The price difference should be exactly $18 ($6/day * 3 nights)
+        assert price_diff == expected_fee, f"Expected ${expected_fee} difference, got ${price_diff}"
         print(f"✓ VERIFIED: Separate playtime fee is $6/day (${expected_fee} for 3 nights)")
     
     def test_get_bookings(self, customer_with_dog):
