@@ -178,21 +178,45 @@ class DogResponse(BaseDBModel):
     diet_requirements: Optional[str] = None
 
 # Booking Models
+class AccommodationType(str, Enum):
+    ROOM = "room"
+    CRATE = "crate"
+
 class PricingRule(BaseModel):
     base_price_per_night: float
     additional_dog_discount: float = 0.0  # percentage
+    holiday_surcharge: float = 0.0  # percentage
+    separate_playtime_fee: float = 0.0  # flat fee
+
+class ItemChecklist(BaseModel):
+    toys: bool = False
+    bowls: bool = False
+    food: bool = False
+    blanket: bool = False
+    medication: bool = False
+    collar: bool = False
+    leash: bool = False
+    other_items: Optional[str] = None
 
 class Booking(BaseDBModel):
     household_id: str
     dog_ids: List[str]
     location_id: str
+    accommodation_type: AccommodationType
     check_in_date: datetime
     check_out_date: datetime
     status: BookingStatus
     total_price: float
     notes: Optional[str] = None
+    special_request: Optional[str] = None
     payment_status: str = "pending"
-    payment_intent_id: Optional[str] = None  # For Square/Stripe
+    payment_intent_id: Optional[str] = None
+    is_holiday_pricing: bool = False
+    needs_separate_playtime: bool = False
+    separate_playtime_fee: float = 0.0
+    items_checklist: Optional[ItemChecklist] = None
+    checked_in_at: Optional[datetime] = None
+    checked_out_at: Optional[datetime] = None
 
 class BookingCreate(BaseModel):
     dog_ids: List[str]
