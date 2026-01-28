@@ -221,9 +221,12 @@ class Booking(BaseDBModel):
 class BookingCreate(BaseModel):
     dog_ids: List[str]
     location_id: str
+    accommodation_type: str
     check_in_date: datetime
     check_out_date: datetime
     notes: Optional[str] = None
+    special_request: Optional[str] = None
+    needs_separate_playtime: bool = False
 
 class BookingResponse(BaseDBModel):
     household_id: str
