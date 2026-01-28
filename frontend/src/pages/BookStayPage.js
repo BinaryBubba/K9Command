@@ -99,10 +99,10 @@ const BookStayPage = () => {
       total *= 1.20; // 20% surcharge
     }
 
-    // Separate playtime fee
+    // Separate playtime fee - $6 per day (not $25)
     let separatePlaytimeFee = 0;
     if (formData.needs_separate_playtime) {
-      separatePlaytimeFee = 25 * nights;
+      separatePlaytimeFee = 6 * nights;
       total += separatePlaytimeFee;
     }
 
