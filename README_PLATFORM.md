@@ -149,7 +149,7 @@ JWT_EXPIRATION_DAYS=30
 
 ### Frontend (.env)
 ```env
-REACT_APP_BACKEND_URL=https://[your-domain].preview.emergentagent.com
+REACT_APP_BACKEND_URL=https://k9command.preview.emergentagent.com
 ```
 
 ## 🚀 Getting Started
