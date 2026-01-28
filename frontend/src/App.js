@@ -6,11 +6,13 @@ import '@/App.css';
 // Pages
 import LandingPage from './pages/LandingPage';
 import AuthPage from './pages/AuthPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import CustomerDashboard from './pages/CustomerDashboard';
 import StaffDashboard from './pages/StaffDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import AddDogPage from './pages/AddDogPage';
 import BookStayPage from './pages/BookStayPage';
+import DailyUpdatesFeedPage from './pages/DailyUpdatesFeedPage';
 import StaffUploadPage from './pages/StaffUploadPage';
 import StaffBookingsPage from './pages/StaffBookingsPage';
 import StaffApprovePage from './pages/StaffApprovePage';
