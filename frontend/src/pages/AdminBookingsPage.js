@@ -131,8 +131,20 @@ const AdminBookingsPage = () => {
             <ArrowLeftIcon size={18} />
             Back to Dashboard
           </Button>
-          <h1 className="text-3xl font-serif font-bold text-primary">Bookings Management</h1>
-          <p className="text-muted-foreground mt-1">View and manage all reservations</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-serif font-bold text-primary">Bookings Management</h1>
+              <p className="text-muted-foreground mt-1">View and manage all reservations</p>
+            </div>
+            <Button
+              data-testid="create-booking-btn"
+              onClick={openCreateModal}
+              className="flex items-center gap-2 rounded-full"
+            >
+              <PlusIcon size={18} />
+              Create Booking
+            </Button>
+          </div>
         </div>
       </header>
 
