@@ -433,7 +433,33 @@ async def create_daily_update(update_data: DailyUpdateCreate, credentials: HTTPA
     
     return DailyUpdateResponse(**update.model_dump())
 
-@api_router.post("/daily-updates/{update_id}/media")
+@api_router.post("/daily-updates/{update_id}/snippets")
+async def add_staff_snippet(
+    update_id: str,
+    snippet_text: str = Form(...),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    user = await get_current_user(credentials, database)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    snippet = {
+        "staff_id": user.id,
+        "staff_name": user.full_name,
+        "text": snippet_text,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    
+    result = await database.daily_updates.update_one(
+        {"id": update_id},
+        {"$push": {"staff_snippets": snippet}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Update not found")
+    
+    return {"message": "Snippet added", "snippet": snippet}
 async def add_media_to_update(
     update_id: str,
     dog_ids: str = Form(...),
