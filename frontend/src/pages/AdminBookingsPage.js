@@ -204,9 +204,9 @@ const AdminBookingsPage = () => {
             </Card>
           ) : (
             filteredBookings.map((booking) => (
-              <Card key={booking.id} className="bg-white rounded-2xl border border-border/50 shadow-sm hover:shadow-md transition-all">
+              <Card key={booking.id} data-testid={`booking-${booking.id}`} className="bg-white rounded-2xl border border-border/50 shadow-sm hover:shadow-md transition-all">
                 <CardContent className="p-6">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-lg font-semibold">Booking #{booking.id.slice(0, 8)}</h3>
@@ -239,6 +239,43 @@ const AdminBookingsPage = () => {
                           <span className="font-medium">Notes:</span> {booking.notes}
                         </p>
                       )}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Select
+                        value={booking.status}
+                        onValueChange={(value) => handleStatusChange(booking.id, value)}
+                      >
+                        <SelectTrigger data-testid={`status-select-${booking.id}`} className="w-[160px]">
+                          <SelectValue placeholder="Change status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="confirmed">Confirmed</SelectItem>
+                          <SelectItem value="checked_in">Checked In</SelectItem>
+                          <SelectItem value="checked_out">Checked Out</SelectItem>
+                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="flex gap-2">
+                        <Button
+                          data-testid={`edit-booking-${booking.id}`}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEditModal(booking)}
+                          className="flex-1"
+                        >
+                          <EditIcon size={14} className="mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          data-testid={`delete-booking-${booking.id}`}
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleDelete(booking.id)}
+                        >
+                          <TrashIcon size={14} />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
