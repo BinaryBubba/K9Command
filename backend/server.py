@@ -326,9 +326,19 @@ async def update_booking_status(booking_id: str, status: BookingStatus, credenti
     if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
         raise HTTPException(status_code=403, detail="Staff or Admin access required")
     
+    update_data = {"status": status, "updated_at": datetime.now(timezone.utc).isoformat()}
+    
+    # Track check-in/check-out timestamps
+    if status == BookingStatus.CHECKED_IN:
+        update_data["checked_in_at"] = datetime.now(timezone.utc).isoformat()
+        await create_audit_log(user.id, AuditAction.CHECK_IN, "booking", booking_id)
+    elif status == BookingStatus.CHECKED_OUT:
+        update_data["checked_out_at"] = datetime.now(timezone.utc).isoformat()
+        await create_audit_log(user.id, AuditAction.CHECK_OUT, "booking", booking_id)
+    
     result = await database.bookings.update_one(
         {"id": booking_id},
-        {"$set": {"status": status, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        {"$set": update_data}
     )
     
     if result.matched_count == 0:
@@ -337,6 +347,67 @@ async def update_booking_status(booking_id: str, status: BookingStatus, credenti
     await create_audit_log(user.id, AuditAction.UPDATE, "booking", booking_id, {"status": status})
     
     return {"message": "Status updated", "status": status}
+
+@api_router.patch("/bookings/{booking_id}/items")
+async def update_items_checklist(
+    booking_id: str,
+    items: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    user = await get_current_user(credentials, database)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff or Admin access required")
+    
+    result = await database.bookings.update_one(
+        {"id": booking_id},
+        {"$set": {"items_checklist": items, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    await create_audit_log(user.id, AuditAction.UPDATE, "booking", booking_id, {"items_updated": True})
+    
+    return {"message": "Items checklist updated", "items": items}
+
+@api_router.post("/bookings/{booking_id}/confirm-payment")
+async def confirm_payment(
+    booking_id: str,
+    payment_method: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Mock payment confirmation (Square integration mocked)"""
+    user = await get_current_user(credentials, database)
+    
+    # Simulate payment processing
+    import uuid
+    mock_payment_id = f"mock_pay_{str(uuid.uuid4())[:8]}"
+    
+    result = await database.bookings.update_one(
+        {"id": booking_id, "household_id": user.household_id},
+        {"$set": {
+            "payment_status": "completed",
+            "payment_intent_id": mock_payment_id,
+            "status": BookingStatus.CONFIRMED,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    await create_audit_log(user.id, AuditAction.PAYMENT, "booking", booking_id, {
+        "payment_id": mock_payment_id,
+        "method": payment_method
+    })
+    
+    return {
+        "message": "Payment processed successfully",
+        "payment_id": mock_payment_id,
+        "status": "completed"
+    }
 
 # ==================== DAILY UPDATES ROUTES ====================
 
