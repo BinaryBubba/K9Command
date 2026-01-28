@@ -154,6 +154,46 @@ function App() {
             }
           />
           <Route
+            path="/admin/bookings"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminBookingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/staff"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminStaffPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/reports"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminReportsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/incidents"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminIncidentsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/audit"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminAuditPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin/*"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
