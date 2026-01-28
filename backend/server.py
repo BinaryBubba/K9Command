@@ -257,15 +257,35 @@ async def create_booking(booking_data: BookingCreate, credentials: HTTPAuthoriza
     if nights <= 0:
         raise HTTPException(status_code=400, detail="Invalid date range")
     
-    # Simple pricing calculation
+    # Check if dates include holidays (basic check - can be enhanced)
+    is_holiday = False
+    for holiday_date in ["2025-12-25", "2025-12-31", "2025-07-04", "2025-11-28"]:
+        holiday = datetime.fromisoformat(holiday_date)
+        if booking_data.check_in_date <= holiday < booking_data.check_out_date:
+            is_holiday = True
+            break
+    
+    # Pricing calculation
     base_price = 50.0  # per night per dog
     total_price = base_price * nights * len(booking_data.dog_ids)
+    
+    # Holiday surcharge (20%)
+    if is_holiday:
+        total_price *= 1.20
+    
+    # Separate playtime fee
+    separate_playtime_fee = 0.0
+    if booking_data.needs_separate_playtime:
+        separate_playtime_fee = 25.0 * nights  # $25 per day
+        total_price += separate_playtime_fee
     
     booking = Booking(
         **booking_data.model_dump(),
         household_id=user.household_id,
         status=BookingStatus.PENDING,
-        total_price=total_price
+        total_price=total_price,
+        is_holiday_pricing=is_holiday,
+        separate_playtime_fee=separate_playtime_fee
     )
     
     doc = booking.model_dump()
