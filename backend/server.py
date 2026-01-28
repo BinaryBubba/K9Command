@@ -876,6 +876,21 @@ async def complete_task(task_id: str, credentials: HTTPAuthorizationCredentials 
     
     return {"message": "Task completed"}
 
+@api_router.delete("/tasks/{task_id}")
+async def delete_task(task_id: str, credentials: HTTPAuthorizationCredentials = Depends(security), database=Depends(get_db)):
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    result = await database.tasks.delete_one({"id": task_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    await create_audit_log(user.id, AuditAction.DELETE, "task", task_id)
+    
+    return {"message": "Task deleted"}
+
 # ==================== TIME TRACKING ROUTES ====================
 
 @api_router.post("/time-entries/clock-in", response_model=TimeEntryResponse)
