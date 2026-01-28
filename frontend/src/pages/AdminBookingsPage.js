@@ -80,6 +80,37 @@ const AdminBookingsPage = () => {
 
   const statuses = ['all', 'pending', 'confirmed', 'checked_in', 'checked_out', 'cancelled'];
 
+  const handleStatusChange = async (bookingId, newStatus) => {
+    try {
+      await api.patch(`/bookings/${bookingId}/status?status=${newStatus}`);
+      toast.success('Booking status updated');
+      fetchBookings();
+    } catch (error) {
+      toast.error('Failed to update status');
+    }
+  };
+
+  const handleDelete = async (bookingId) => {
+    if (!window.confirm('Are you sure you want to cancel this booking?')) return;
+    try {
+      await api.patch(`/bookings/${bookingId}/status?status=cancelled`);
+      toast.success('Booking cancelled');
+      fetchBookings();
+    } catch (error) {
+      toast.error('Failed to cancel booking');
+    }
+  };
+
+  const openEditModal = (booking) => {
+    setSelectedBooking(booking);
+    setModalOpen(true);
+  };
+
+  const openCreateModal = () => {
+    setSelectedBooking(null);
+    setModalOpen(true);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
