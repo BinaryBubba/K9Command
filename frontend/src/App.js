@@ -9,6 +9,11 @@ import AuthPage from './pages/AuthPage';
 import CustomerDashboard from './pages/CustomerDashboard';
 import StaffDashboard from './pages/StaffDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import AddDogPage from './pages/AddDogPage';
+import BookStayPage from './pages/BookStayPage';
+import StaffUploadPage from './pages/StaffUploadPage';
+import StaffBookingsPage from './pages/StaffBookingsPage';
+import StaffApprovePage from './pages/StaffApprovePage';
 
 // Store
 import useAuthStore from './store/authStore';
