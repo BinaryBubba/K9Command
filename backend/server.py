@@ -164,11 +164,16 @@ async def forgot_password(email: EmailStr, database=Depends(get_db)):
 
 @api_router.post("/auth/reset-password")
 async def reset_password(
-    reset_token: str,
-    new_password: str,
+    request_data: dict,
     database=Depends(get_db)
 ):
     """Reset password using token"""
+    reset_token = request_data.get('reset_token')
+    new_password = request_data.get('new_password')
+    
+    if not reset_token or not new_password:
+        raise HTTPException(status_code=400, detail="reset_token and new_password are required")
+    
     user_doc = await database.users.find_one({
         "reset_token": reset_token
     }, {"_id": 0})
