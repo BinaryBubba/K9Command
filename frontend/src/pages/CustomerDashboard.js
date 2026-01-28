@@ -160,10 +160,22 @@ const CustomerDashboard = () => {
         {/* Recent Updates */}
         <Card data-testid="recent-updates-section" className="bg-white rounded-2xl border border-border/50 shadow-sm mb-8">
           <CardHeader className="border-b border-border/40">
-            <CardTitle className="text-2xl font-serif flex items-center gap-2">
-              <ImageIcon className="text-primary" />
-              Recent Daily Updates
-            </CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-2xl font-serif flex items-center gap-2">
+                <ImageIcon className="text-primary" />
+                Recent Daily Updates
+              </CardTitle>
+              {updates.length > 0 && (
+                <Button
+                  data-testid="view-all-updates-button"
+                  onClick={() => navigate('/customer/updates')}
+                  variant="outline"
+                  className="rounded-full"
+                >
+                  View All
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="p-6">
             {updates.length === 0 ? (
@@ -178,7 +190,7 @@ const CustomerDashboard = () => {
                     key={update.id}
                     data-testid={`update-card-${update.id}`}
                     className="bg-[#F9F7F2] rounded-xl p-4 border border-border/30 hover:border-primary/30 transition-all cursor-pointer"
-                    onClick={() => navigate(`/customer/updates/${update.id}`)}
+                    onClick={() => navigate('/customer/updates')}
                   >
                     <div className="aspect-square bg-primary/5 rounded-lg mb-3 flex items-center justify-center">
                       <ImageIcon size={32} className="text-primary/30" />
