@@ -49,13 +49,32 @@ const AddDogPage = () => {
         birthday: formData.birthday || null,
       };
 
-      await api.post('/dogs', payload);
+      const response = await api.post('/dogs', payload);
+      const dogId = response.data.id;
+      
+      // Upload photo if provided
+      if (photoFile) {
+        const photoFormData = new FormData();
+        photoFormData.append('file', photoFile);
+        await api.post(`/dogs/${dogId}/upload-photo`, photoFormData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      }
+
       toast.success(`${formData.name} has been added successfully!`);
       navigate('/customer/dashboard');
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to add dog');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setPhotoFile(file);
+      setPhotoPreview(URL.createObjectURL(file));
     }
   };
 
