@@ -3,17 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { ArrowLeftIcon, UsersIcon, ClockIcon, CalendarIcon } from 'lucide-react';
+import { ArrowLeftIcon, UsersIcon, ClockIcon, CalendarIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../utils/api';
 import useAuthStore from '../store/authStore';
+import TaskModal from '../components/TaskModal';
 
 const AdminStaffPage = () => {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
-  const [timeEntries, setTimeEntries] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [isRecurring, setIsRecurring] = useState(false);
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
@@ -39,6 +42,39 @@ const AdminStaffPage = () => {
   const completedTasks = tasks.filter(t => t.status === 'completed').length;
   const pendingTasks = tasks.filter(t => t.status === 'pending').length;
 
+  const handleCompleteTask = async (taskId) => {
+    try {
+      await api.patch(`/tasks/${taskId}/complete`);
+      toast.success('Task marked as complete');
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to complete task');
+    }
+  };
+
+  const handleDeleteTask = async (taskId) => {
+    if (!window.confirm('Are you sure you want to delete this task?')) return;
+    try {
+      await api.delete(`/tasks/${taskId}`);
+      toast.success('Task deleted');
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to delete task');
+    }
+  };
+
+  const openCreateModal = (recurring = false) => {
+    setSelectedTask(null);
+    setIsRecurring(recurring);
+    setModalOpen(true);
+  };
+
+  const openEditModal = (task) => {
+    setSelectedTask(task);
+    setIsRecurring(false);
+    setModalOpen(true);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -59,8 +95,31 @@ const AdminStaffPage = () => {
             <ArrowLeftIcon size={18} />
             Back to Dashboard
           </Button>
-          <h1 className="text-3xl font-serif font-bold text-primary">Staff Management</h1>
-          <p className="text-muted-foreground mt-1">View staff activity and schedules</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-serif font-bold text-primary">Staff & Task Management</h1>
+              <p className="text-muted-foreground mt-1">Manage tasks and staff schedules</p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                data-testid="create-task-btn"
+                onClick={() => openCreateModal(false)}
+                className="flex items-center gap-2 rounded-full"
+              >
+                <PlusIcon size={18} />
+                New Task
+              </Button>
+              <Button
+                data-testid="create-recurring-task-btn"
+                onClick={() => openCreateModal(true)}
+                variant="outline"
+                className="flex items-center gap-2 rounded-full"
+              >
+                <CalendarIcon size={18} />
+                Recurring Tasks
+              </Button>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -89,7 +148,7 @@ const AdminStaffPage = () => {
                   <p className="text-3xl font-serif font-bold text-green-600">{completedTasks}</p>
                 </div>
                 <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-                  <ClockIcon className="text-green-600" size={24} />
+                  <CheckIcon className="text-green-600" size={24} />
                 </div>
               </div>
             </CardContent>
@@ -110,31 +169,71 @@ const AdminStaffPage = () => {
           </Card>
         </div>
 
-        {/* Recent Tasks */}
+        {/* Tasks List */}
         <Card className="bg-white rounded-2xl border border-border/50 shadow-sm">
           <CardHeader className="border-b border-border/40">
-            <CardTitle className="text-2xl font-serif">Recent Tasks</CardTitle>
+            <CardTitle className="text-2xl font-serif">All Tasks</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
             {tasks.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">No tasks found</p>
+              <div className="text-center py-12">
+                <CalendarIcon size={48} className="mx-auto text-muted-foreground/50 mb-4" />
+                <p className="text-muted-foreground mb-4">No tasks found</p>
+                <Button onClick={() => openCreateModal(false)}>Create First Task</Button>
+              </div>
             ) : (
               <div className="space-y-3">
-                {tasks.slice(0, 10).map((task) => (
+                {tasks.map((task) => (
                   <div
                     key={task.id}
-                    className="p-4 rounded-xl bg-muted/30 border border-border"
+                    data-testid={`task-${task.id}`}
+                    className="p-4 rounded-xl bg-muted/30 border border-border hover:border-primary/30 transition-all"
                   >
-                    <div className="flex justify-between items-start">
+                    <div className="flex justify-between items-start gap-4">
                       <div className="flex-1">
                         <h4 className="font-semibold">{task.title}</h4>
                         {task.description && (
                           <p className="text-sm text-muted-foreground mt-1">{task.description}</p>
                         )}
+                        {task.due_date && (
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Due: {new Date(task.due_date).toLocaleDateString()}
+                          </p>
+                        )}
                       </div>
-                      <Badge className={task.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
-                        {task.status}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge className={task.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
+                          {task.status}
+                        </Badge>
+                        {task.status !== 'completed' && (
+                          <Button
+                            data-testid={`complete-task-${task.id}`}
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleCompleteTask(task.id)}
+                            className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                          >
+                            <CheckIcon size={16} />
+                          </Button>
+                        )}
+                        <Button
+                          data-testid={`edit-task-${task.id}`}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditModal(task)}
+                        >
+                          <EditIcon size={16} />
+                        </Button>
+                        <Button
+                          data-testid={`delete-task-${task.id}`}
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleDeleteTask(task.id)}
+                        >
+                          <TrashIcon size={16} />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -143,6 +242,14 @@ const AdminStaffPage = () => {
           </CardContent>
         </Card>
       </main>
+
+      <TaskModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        task={selectedTask}
+        onSuccess={fetchData}
+        isRecurring={isRecurring}
+      />
     </div>
   );
 };
