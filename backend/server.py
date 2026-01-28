@@ -155,6 +155,45 @@ async def get_locations(database=Depends(get_db)):
     locations = await database.locations.find({}, {"_id": 0}).to_list(100)
     return [LocationResponse(**loc) for loc in locations]
 
+@api_router.get("/locations/{location_id}/availability")
+async def check_availability(
+    location_id: str,
+    check_in: str,
+    check_out: str,
+    database=Depends(get_db)
+):
+    """Check real-time availability for rooms and crates"""
+    check_in_date = datetime.fromisoformat(check_in)
+    check_out_date = datetime.fromisoformat(check_out)
+    
+    # Get all bookings that overlap with requested dates
+    overlapping_bookings = await database.bookings.find({
+        "location_id": location_id,
+        "status": {"$in": [BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN]},
+        "$or": [
+            {
+                "check_in_date": {"$lt": check_out_date.isoformat()},
+                "check_out_date": {"$gt": check_in_date.isoformat()}
+            }
+        ]
+    }, {"_id": 0}).to_list(1000)
+    
+    # Count occupied rooms and crates
+    rooms_occupied = sum(1 for b in overlapping_bookings if b.get('accommodation_type') == 'room')
+    crates_occupied = sum(1 for b in overlapping_bookings if b.get('accommodation_type') == 'crate')
+    
+    total_rooms = 7
+    total_crates = 4
+    
+    return {
+        "rooms_available": total_rooms - rooms_occupied,
+        "crates_available": total_crates - crates_occupied,
+        "total_rooms": total_rooms,
+        "total_crates": total_crates,
+        "check_in_date": check_in,
+        "check_out_date": check_out
+    }
+
 # ==================== DOG ROUTES ====================
 
 @api_router.post("/dogs", response_model=DogResponse)
