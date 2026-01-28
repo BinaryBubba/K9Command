@@ -306,6 +306,74 @@ async def get_dog(dog_id: str, credentials: HTTPAuthorizationCredentials = Depen
     
     return DogResponse(**dog_doc)
 
+@api_router.post("/dogs/{dog_id}/upload-photo")
+async def upload_dog_photo(
+    dog_id: str,
+    file: UploadFile = File(...),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Upload dog profile photo"""
+    user = await get_current_user(credentials, database)
+    
+    # Verify dog ownership
+    dog_doc = await database.dogs.find_one({"id": dog_id}, {"_id": 0})
+    if not dog_doc:
+        raise HTTPException(status_code=404, detail="Dog not found")
+    
+    if user.role == UserRole.CUSTOMER and dog_doc['household_id'] != user.household_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Read file
+    content = await file.read()
+    
+    # Store as base64 (production: upload to S3)
+    import base64
+    file_data = base64.b64encode(content).decode('utf-8')
+    photo_url = f"data:{file.content_type};base64,{file_data}"
+    
+    # Update dog
+    await database.dogs.update_one(
+        {"id": dog_id},
+        {"$set": {"photo_url": photo_url}}
+    )
+    
+    return {"message": "Photo uploaded successfully", "photo_url": photo_url[:100] + "..."}
+
+@api_router.post("/dogs/{dog_id}/upload-vaccination")
+async def upload_vaccination_file(
+    dog_id: str,
+    file: UploadFile = File(...),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Upload vaccination documents"""
+    user = await get_current_user(credentials, database)
+    
+    # Verify dog ownership
+    dog_doc = await database.dogs.find_one({"id": dog_id}, {"_id": 0})
+    if not dog_doc:
+        raise HTTPException(status_code=404, detail="Dog not found")
+    
+    if user.role == UserRole.CUSTOMER and dog_doc['household_id'] != user.household_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Read file
+    content = await file.read()
+    
+    # Store as base64 (production: upload to S3)
+    import base64
+    file_data = base64.b64encode(content).decode('utf-8')
+    file_url = f"data:{file.content_type};base64,{file_data}"
+    
+    # Update dog
+    await database.dogs.update_one(
+        {"id": dog_id},
+        {"$set": {"vaccination_file_url": file_url}}
+    )
+    
+    return {"message": "Vaccination file uploaded successfully"}
+
 # ==================== BOOKING ROUTES ====================
 
 @api_router.post("/bookings", response_model=BookingResponse)
