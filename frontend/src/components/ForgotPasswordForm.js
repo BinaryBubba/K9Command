@@ -63,7 +63,21 @@ const ForgotPasswordForm = () => {
       toast.success('Password reset successful! You can now login.');
       navigate('/auth');
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to reset password');
+      console.error('Reset error:', error.response?.data);
+      
+      // Handle different error formats
+      let errorMessage = 'Failed to reset password';
+      
+      if (error.response?.data?.detail) {
+        if (typeof error.response.data.detail === 'string') {
+          errorMessage = error.response.data.detail;
+        } else if (Array.isArray(error.response.data.detail)) {
+          // Pydantic validation errors
+          errorMessage = error.response.data.detail.map(err => err.msg).join(', ');
+        }
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
