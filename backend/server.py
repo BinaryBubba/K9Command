@@ -132,6 +132,68 @@ async def get_me(credentials: HTTPAuthorizationCredentials = Depends(security), 
     user = await get_current_user(credentials, database)
     return UserResponse(**user.model_dump())
 
+@api_router.post("/auth/forgot-password")
+async def forgot_password(email: EmailStr, database=Depends(get_db)):
+    """Generate password reset token"""
+    user_doc = await database.users.find_one({"email": email}, {"_id": 0})
+    if not user_doc:
+        # Return success even if user doesn't exist (security best practice)
+        return {"message": "If this email exists, a reset link has been sent"}
+    
+    # Generate reset token
+    import secrets
+    reset_token = secrets.token_urlsafe(32)
+    expiry = datetime.now(timezone.utc) + timedelta(hours=1)
+    
+    await database.users.update_one(
+        {"email": email},
+        {"$set": {
+            "reset_token": reset_token,
+            "reset_token_expiry": expiry.isoformat()
+        }}
+    )
+    
+    # In production, send email with reset link
+    # For now, return the token (ONLY FOR DEMO)
+    return {
+        "message": "Password reset token generated",
+        "reset_token": reset_token,
+        "note": "In production, this would be sent via email"
+    }
+
+@api_router.post("/auth/reset-password")
+async def reset_password(
+    reset_token: str,
+    new_password: str,
+    database=Depends(get_db)
+):
+    """Reset password using token"""
+    user_doc = await database.users.find_one({
+        "reset_token": reset_token
+    }, {"_id": 0})
+    
+    if not user_doc:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+    
+    # Check if token is expired
+    if user_doc.get('reset_token_expiry'):
+        expiry = datetime.fromisoformat(user_doc['reset_token_expiry'])
+        if datetime.now(timezone.utc) > expiry:
+            raise HTTPException(status_code=400, detail="Reset token has expired")
+    
+    # Update password
+    hashed_pwd = hash_password(new_password)
+    await database.users.update_one(
+        {"email": user_doc['email']},
+        {"$set": {
+            "hashed_password": hashed_pwd,
+            "reset_token": None,
+            "reset_token_expiry": None
+        }}
+    )
+    
+    return {"message": "Password reset successful"}
+
 # ==================== LOCATION ROUTES ====================
 
 @api_router.post("/locations", response_model=LocationResponse)
