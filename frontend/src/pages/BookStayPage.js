@@ -150,6 +150,12 @@ const BookStayPage = () => {
       toast.error('Please select check-in and check-out dates');
       return;
     }
+    if (!formData.location_id) {
+      toast.error('Please select a location');
+      return;
+    }
+    
+    calculatePricing();
     checkAvailability();
     setStep(2);
   };
