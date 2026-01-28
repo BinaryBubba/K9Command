@@ -108,6 +108,35 @@ const AddDogPage = () => {
               <CardTitle className="text-2xl font-serif">Basic Information</CardTitle>
             </CardHeader>
             <CardContent className="p-6">
+              {/* Photo Upload */}
+              <div className="mb-6">
+                <Label htmlFor="photo">Dog Photo</Label>
+                <div className="mt-2 flex items-center gap-4">
+                  {photoPreview ? (
+                    <img
+                      src={photoPreview}
+                      alt="Dog preview"
+                      className="w-24 h-24 rounded-full object-cover border-2 border-primary"
+                    />
+                  ) : (
+                    <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center border-2 border-dashed border-border">
+                      <DogIcon size={32} className="text-muted-foreground" />
+                    </div>
+                  )}
+                  <div>
+                    <Input
+                      id="photo"
+                      data-testid="dog-photo-input"
+                      type="file"
+                      accept="image/*"
+                      onChange={handlePhotoChange}
+                      className="max-w-xs"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Upload a photo of your dog</p>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <Label htmlFor="name">Name *</Label>
