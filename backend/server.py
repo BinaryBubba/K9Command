@@ -580,10 +580,14 @@ async def generate_summary(update_id: str, credentials: HTTPAuthorizationCredent
         if dog:
             dog_names.append(dog['name'])
     
-    # Generate AI summary
+    # Generate AI summary from staff snippets
+    staff_snippets = update_doc.get('staff_snippets', [])
+    if not staff_snippets:
+        raise HTTPException(status_code=400, detail="No staff snippets to summarize")
+    
     summary = await generate_daily_summary(
         dog_names=dog_names,
-        staff_notes=update_doc.get('staff_notes', ''),
+        staff_snippets=staff_snippets,
         media_count=len(update_doc.get('media_items', []))
     )
     
@@ -594,6 +598,32 @@ async def generate_summary(update_id: str, credentials: HTTPAuthorizationCredent
     )
     
     return {"message": "Summary generated", "summary": summary}
+
+@api_router.post("/daily-updates/{update_id}/approve")
+async def approve_and_send_update(
+    update_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    user = await get_current_user(credentials, database)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    result = await database.daily_updates.update_one(
+        {"id": update_id},
+        {"$set": {
+            "status": UpdateStatus.SENT,
+            "approved_by": user.id,
+            "sent_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Update not found")
+    
+    await create_audit_log(user.id, AuditAction.UPDATE, "daily_update", update_id, {"action": "approved_and_sent"})
+    
+    return {"message": "Update approved and sent to customer"}
 
 @api_router.get("/daily-updates", response_model=List[DailyUpdateResponse])
 async def get_daily_updates(credentials: HTTPAuthorizationCredentials = Depends(security), database=Depends(get_db)):
