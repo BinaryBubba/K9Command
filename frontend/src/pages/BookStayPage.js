@@ -300,7 +300,7 @@ const BookStayPage = () => {
               <CardContent className="p-6">
                 {dogs.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-muted-foreground mb-4">You haven't added any dogs yet.</p>
+                    <p className="text-muted-foreground mb-4">You have not added any dogs yet.</p>
                     <Button onClick={() => navigate('/customer/dogs/add')}>Add Your First Dog</Button>
                   </div>
                 ) : (
