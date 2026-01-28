@@ -127,6 +127,17 @@ const BookStayPage = () => {
         ...formData,
         dog_ids: [...formData.dog_ids, dogId],
       });
+      
+      // Auto-check separate playtime if dog is aggressive/unfriendly
+      const dog = dogs.find(d => d.id === dogId);
+      if (dog && (dog.friendly_with_dogs === false || dog.incidents_of_aggression)) {
+        setFormData(prev => ({
+          ...prev,
+          dog_ids: [...prev.dog_ids, dogId],
+          needs_separate_playtime: true
+        }));
+        toast.info(`${dog.name} requires separate playtime due to behavior profile`, { duration: 5000 });
+      }
     }
   };
 
