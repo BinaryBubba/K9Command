@@ -53,6 +53,22 @@ function App() {
             }
           />
           <Route
+            path="/customer/dogs/add"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <AddDogPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customer/bookings/new"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <BookStayPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/customer/*"
             element={
               <ProtectedRoute allowedRoles={['customer']}>
@@ -67,6 +83,30 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['staff']}>
                 <StaffDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/upload"
+            element={
+              <ProtectedRoute allowedRoles={['staff']}>
+                <StaffUploadPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/bookings"
+            element={
+              <ProtectedRoute allowedRoles={['staff']}>
+                <StaffBookingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/approve"
+            element={
+              <ProtectedRoute allowedRoles={['staff']}>
+                <StaffApprovePage />
               </ProtectedRoute>
             }
           />
