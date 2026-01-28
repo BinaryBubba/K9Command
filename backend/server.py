@@ -1004,6 +1004,50 @@ async def get_audit_logs(credentials: HTTPAuthorizationCredentials = Depends(sec
     
     return [AuditLogResponse(**log) for log in logs]
 
+# ==================== ADMIN USER MANAGEMENT ====================
+
+@api_router.get("/admin/users", response_model=List[UserResponse])
+async def get_all_users(
+    role: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get all users (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    query = {}
+    if role:
+        query["role"] = role
+    
+    users = await database.users.find(query, {"_id": 0, "hashed_password": 0, "reset_token": 0, "reset_token_expiry": 0}).to_list(1000)
+    return [UserResponse(**u) for u in users]
+
+@api_router.patch("/admin/users/{user_id}/status")
+async def update_user_status(
+    user_id: str,
+    is_active: bool,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Enable/disable user account (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    result = await database.users.update_one(
+        {"id": user_id},
+        {"$set": {"is_active": is_active, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    await create_audit_log(user.id, AuditAction.UPDATE, "user", user_id, {"is_active": is_active})
+    
+    return {"message": f"User {'activated' if is_active else 'deactivated'}"}
+
 # ==================== DASHBOARD STATS ====================
 
 @api_router.get("/dashboard/stats")
