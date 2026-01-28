@@ -4,10 +4,12 @@ import { Button } from '../components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
-import { ArrowLeftIcon, CalendarIcon, SearchIcon, FilterIcon } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { ArrowLeftIcon, CalendarIcon, SearchIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, XIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../utils/api';
 import useAuthStore from '../store/authStore';
+import BookingModal from '../components/BookingModal';
 
 const AdminBookingsPage = () => {
   const navigate = useNavigate();
