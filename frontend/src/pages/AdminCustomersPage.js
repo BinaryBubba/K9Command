@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
-import { ArrowLeftIcon, SearchIcon, DogIcon, MailIcon, PhoneIcon } from 'lucide-react';
+import { ArrowLeftIcon, SearchIcon, DogIcon, MailIcon, PhoneIcon, UserIcon, CheckIcon, XIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../utils/api';
 import useAuthStore from '../store/authStore';
@@ -27,11 +28,10 @@ const AdminCustomersPage = () => {
   const fetchData = async () => {
     try {
       const [usersRes, dogsRes] = await Promise.all([
-        api.get('/auth/me').then(() => api.get('/bookings')),
+        api.get('/admin/users?role=customer'),
         api.get('/dogs'),
       ]);
-      
-      // Get unique customers (would need a proper users endpoint in production)
+      setCustomers(usersRes.data);
       setDogs(dogsRes.data);
     } catch (error) {
       toast.error('Failed to load data');
@@ -40,19 +40,24 @@ const AdminCustomersPage = () => {
     }
   };
 
-  const filteredDogs = dogs.filter((dog) =>
-    dog.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    dog.breed.toLowerCase().includes(searchQuery.toLowerCase())
+  const handleToggleStatus = async (userId, currentStatus) => {
+    try {
+      await api.patch(`/admin/users/${userId}/status?is_active=${!currentStatus}`);
+      toast.success(`Customer ${currentStatus ? 'deactivated' : 'activated'}`);
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to update customer status');
+    }
+  };
+
+  const filteredCustomers = customers.filter((customer) =>
+    customer.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    customer.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Group dogs by household
-  const dogsByHousehold = filteredDogs.reduce((acc, dog) => {
-    if (!acc[dog.household_id]) {
-      acc[dog.household_id] = [];
-    }
-    acc[dog.household_id].push(dog);
-    return acc;
-  }, {});
+  const getDogsByHousehold = (householdId) => {
+    return dogs.filter(dog => dog.household_id === householdId);
+  };
 
   if (loading) {
     return (
@@ -74,8 +79,8 @@ const AdminCustomersPage = () => {
             <ArrowLeftIcon size={18} />
             Back to Dashboard
           </Button>
-          <h1 className="text-3xl font-serif font-bold text-primary">Customer & Dog Management</h1>
-          <p className="text-muted-foreground mt-1">View all customers and their dogs</p>
+          <h1 className="text-3xl font-serif font-bold text-primary">Customer Management</h1>
+          <p className="text-muted-foreground mt-1">View and manage all customers and their dogs</p>
         </div>
       </header>
 
@@ -87,7 +92,7 @@ const AdminCustomersPage = () => {
               <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
               <Input
                 data-testid="search-input"
-                placeholder="Search by dog name or breed..."
+                placeholder="Search by name or email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10"
@@ -100,8 +105,16 @@ const AdminCustomersPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card className="bg-white rounded-2xl border border-border/50 shadow-sm">
             <CardContent className="p-6">
-              <p className="text-sm text-muted-foreground mb-1">Total Households</p>
-              <p className="text-3xl font-serif font-bold text-primary">{Object.keys(dogsByHousehold).length}</p>
+              <p className="text-sm text-muted-foreground mb-1">Total Customers</p>
+              <p className="text-3xl font-serif font-bold text-primary">{customers.length}</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-white rounded-2xl border border-border/50 shadow-sm">
+            <CardContent className="p-6">
+              <p className="text-sm text-muted-foreground mb-1">Active Customers</p>
+              <p className="text-3xl font-serif font-bold text-green-600">
+                {customers.filter(c => c.is_active !== false).length}
+              </p>
             </CardContent>
           </Card>
           <Card className="bg-white rounded-2xl border border-border/50 shadow-sm">
@@ -110,65 +123,97 @@ const AdminCustomersPage = () => {
               <p className="text-3xl font-serif font-bold text-secondary-foreground">{dogs.length}</p>
             </CardContent>
           </Card>
-          <Card className="bg-white rounded-2xl border border-border/50 shadow-sm">
-            <CardContent className="p-6">
-              <p className="text-sm text-muted-foreground mb-1">Avg Dogs/Household</p>
-              <p className="text-3xl font-serif font-bold text-primary">
-                {Object.keys(dogsByHousehold).length > 0 
-                  ? (dogs.length / Object.keys(dogsByHousehold).length).toFixed(1)
-                  : 0}
-              </p>
-            </CardContent>
-          </Card>
         </div>
 
-        {/* Households List */}
-        <div className="space-y-6">
-          {Object.entries(dogsByHousehold).map(([householdId, householdDogs]) => (
-            <Card key={householdId} data-testid={`household-${householdId}`} className="bg-white rounded-2xl border border-border/50 shadow-sm">
-              <CardHeader className="border-b border-border/40">
-                <CardTitle className="text-xl font-serif">Household {householdId.slice(0, 8)}</CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {householdDogs.map((dog) => (
-                    <div
-                      key={dog.id}
-                      className="p-4 rounded-xl border border-border bg-[#F9F7F2] hover:border-primary/50 transition-all"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          {dog.photo_url ? (
-                            <img src={dog.photo_url} alt={dog.name} className="w-full h-full rounded-full object-cover" />
-                          ) : (
-                            <DogIcon className="text-primary" size={24} />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-lg truncate">{dog.name}</h4>
-                          <p className="text-sm text-muted-foreground">{dog.breed}</p>
-                          {dog.age && <p className="text-sm text-muted-foreground">{dog.age} years old</p>}
-                          {dog.friendly_with_dogs === false && (
-                            <p className="text-xs text-orange-600 mt-1">⚠️ Separate playtime needed</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+        {/* Customers List */}
+        <div className="space-y-4">
+          {filteredCustomers.length === 0 ? (
+            <Card className="bg-white rounded-2xl border border-border/50 shadow-sm">
+              <CardContent className="p-12 text-center">
+                <UserIcon size={48} className="mx-auto text-muted-foreground/50 mb-4" />
+                <p className="text-muted-foreground">No customers found</p>
               </CardContent>
             </Card>
-          ))}
+          ) : (
+            filteredCustomers.map((customer) => {
+              const customerDogs = getDogsByHousehold(customer.household_id);
+              return (
+                <Card key={customer.id} data-testid={`customer-${customer.id}`} className="bg-white rounded-2xl border border-border/50 shadow-sm">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                            <UserIcon className="text-primary" size={20} />
+                          </div>
+                          <div>
+                            <h3 className="text-lg font-semibold">{customer.full_name || 'Unknown'}</h3>
+                            <p className="text-sm text-muted-foreground flex items-center gap-1">
+                              <MailIcon size={14} />
+                              {customer.email}
+                            </p>
+                            {customer.phone && (
+                              <p className="text-sm text-muted-foreground flex items-center gap-1">
+                                <PhoneIcon size={14} />
+                                {customer.phone}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Dogs */}
+                        {customerDogs.length > 0 && (
+                          <div className="mt-4 pt-4 border-t border-border">
+                            <p className="text-sm font-medium mb-2">Dogs ({customerDogs.length})</p>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                              {customerDogs.map((dog) => (
+                                <div
+                                  key={dog.id}
+                                  className="p-2 rounded-lg bg-muted/30 border border-border text-sm"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <DogIcon size={14} className="text-muted-foreground" />
+                                    <span className="font-medium">{dog.name}</span>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">{dog.breed}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex flex-col items-end gap-2">
+                        <Badge className={customer.is_active !== false ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                          {customer.is_active !== false ? 'Active' : 'Inactive'}
+                        </Badge>
+                        <Button
+                          data-testid={`toggle-status-${customer.id}`}
+                          variant={customer.is_active !== false ? 'destructive' : 'default'}
+                          size="sm"
+                          onClick={() => handleToggleStatus(customer.id, customer.is_active !== false)}
+                          className="flex items-center gap-1"
+                        >
+                          {customer.is_active !== false ? (
+                            <>
+                              <XIcon size={14} />
+                              Deactivate
+                            </>
+                          ) : (
+                            <>
+                              <CheckIcon size={14} />
+                              Activate
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
         </div>
-
-        {filteredDogs.length === 0 && (
-          <Card className="bg-white rounded-2xl border border-border/50 shadow-sm">
-            <CardContent className="p-12 text-center">
-              <DogIcon size={48} className="mx-auto text-muted-foreground/50 mb-4" />
-              <p className="text-muted-foreground">No dogs found</p>
-            </CardContent>
-          </Card>
-        )}
       </main>
     </div>
   );
