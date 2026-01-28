@@ -44,6 +44,7 @@ function App() {
           {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/auth" element={<AuthPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
           {/* Customer Routes */}
           <Route
@@ -67,6 +68,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['customer']}>
                 <BookStayPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customer/updates"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <DailyUpdatesFeedPage />
               </ProtectedRoute>
             }
           />
