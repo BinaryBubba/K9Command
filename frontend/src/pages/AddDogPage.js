@@ -13,6 +13,8 @@ import api from '../utils/api';
 const AddDogPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     breed: '',
