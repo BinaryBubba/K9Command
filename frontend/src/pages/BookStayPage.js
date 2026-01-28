@@ -141,7 +141,7 @@ const BookStayPage = () => {
     }
   };
 
-  const proceedToReview = () => {
+  const proceedToReview = async () => {
     if (formData.dog_ids.length === 0) {
       toast.error('Please select at least one dog');
       return;
@@ -155,9 +155,63 @@ const BookStayPage = () => {
       return;
     }
     
-    calculatePricing();
-    checkAvailability();
-    setStep(2);
+    // Calculate pricing first (synchronous)
+    const checkIn = new Date(formData.check_in_date);
+    const checkOut = new Date(formData.check_out_date);
+    const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+    
+    if (nights <= 0) {
+      toast.error('Invalid date range');
+      return;
+    }
+
+    // Base pricing calculation
+    const basePrice = 50.0;
+    let total = basePrice * nights * formData.dog_ids.length;
+
+    // Holiday check
+    const holidays = ['2025-12-25', '2025-12-31', '2025-07-04', '2025-11-28'];
+    const isHoliday = holidays.some(h => {
+      const holiday = new Date(h);
+      return checkIn <= holiday && holiday < checkOut;
+    });
+
+    if (isHoliday) {
+      total *= 1.20;
+    }
+
+    // Separate playtime fee - $6 per day
+    let separatePlaytimeFee = 0;
+    if (formData.needs_separate_playtime) {
+      separatePlaytimeFee = 6 * nights;
+      total += separatePlaytimeFee;
+    }
+
+    const pricingData = {
+      nights,
+      basePrice,
+      isHoliday,
+      separatePlaytimeFee,
+      total: total.toFixed(2),
+    };
+    setPricing(pricingData);
+    
+    // Check availability (async - await it)
+    try {
+      setLoading(true);
+      const response = await api.get(`/locations/${formData.location_id}/availability`, {
+        params: {
+          check_in: formData.check_in_date,
+          check_out: formData.check_out_date,
+        },
+      });
+      setAvailability(response.data);
+      setStep(2);
+    } catch (error) {
+      toast.error('Failed to check availability');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const proceedToPayment = () => {
