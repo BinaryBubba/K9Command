@@ -153,6 +153,19 @@ const AuthForm = () => {
         >
           {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
         </button>
+        {isLogin && (
+          <>
+            <span className="mx-3 text-muted-foreground">•</span>
+            <button
+              data-testid="forgot-password-link"
+              type="button"
+              onClick={() => navigate('/forgot-password')}
+              className="text-primary hover:underline font-medium"
+            >
+              Forgot Password?
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
