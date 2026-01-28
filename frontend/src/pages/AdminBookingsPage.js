@@ -284,6 +284,13 @@ const AdminBookingsPage = () => {
           )}
         </div>
       </main>
+
+      <BookingModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        booking={selectedBooking}
+        onSuccess={fetchBookings}
+      />
     </div>
   );
 };
