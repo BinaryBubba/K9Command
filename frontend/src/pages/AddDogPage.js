@@ -6,7 +6,7 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Checkbox } from '../components/ui/checkbox';
-import { ArrowLeftIcon } from 'lucide-react';
+import { ArrowLeftIcon, DogIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../utils/api';
 
