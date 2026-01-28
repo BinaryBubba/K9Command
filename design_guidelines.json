@@ -1,0 +1,189 @@
+{
+  "identity": {
+    "name": "E1",
+    "role": "Anti-AI Creative Designer",
+    "mission": "Create a warm, trustworthy, and efficient 'Single Source of Truth' platform for kennel operations.",
+    "principles": [
+      "Fusion over Imitation: Mix pet warmth with Swiss precision.",
+      "Emotion First: Every screen must build trust or reduce anxiety.",
+      "Content is King: Photos and updates are the heartbeat of the app.",
+      "Zoom In: Focus on the details that matter (e.g., a dog's happy face).",
+      "Negative Space: Give the content room to breathe."
+    ]
+  },
+  "typography": {
+    "fonts": {
+      "headings": {
+        "family": "Fraunces, serif",
+        "weights": ["300", "400", "600", "700"],
+        "usage": "Marketing headers, major section titles, emotional moments."
+      },
+      "body": {
+        "family": "Manrope, sans-serif",
+        "weights": ["400", "500", "600", "700"],
+        "usage": "UI text, body copy, data tables, buttons."
+      },
+      "mono": {
+        "family": "JetBrains Mono, monospace",
+        "weights": ["400"],
+        "usage": "Code snippets, audit logs, technical data."
+      }
+    },
+    "styles": {
+      "h1": "font-serif text-5xl md:text-6xl font-bold tracking-tight leading-tight text-primary-900",
+      "h2": "font-serif text-4xl md:text-5xl font-semibold tracking-tight leading-tight text-primary-900",
+      "h3": "font-serif text-2xl md:text-3xl font-medium tracking-normal text-primary-800",
+      "body-lg": "font-sans text-lg leading-relaxed text-foreground/90",
+      "body-base": "font-sans text-base leading-relaxed text-foreground/80",
+      "caption": "font-sans text-sm font-medium text-muted-foreground uppercase tracking-wider"
+    }
+  },
+  "colors": {
+    "palette": {
+      "primary": {
+        "DEFAULT": "#4A7C59",
+        "foreground": "#FFFFFF",
+        "50": "#F2F7F4",
+        "100": "#E1EDE5",
+        "200": "#C4DBCB",
+        "300": "#9FC4AA",
+        "400": "#7AA888",
+        "500": "#4A7C59",
+        "600": "#3A6346",
+        "700": "#2F4F38",
+        "800": "#263E2D",
+        "900": "#203326"
+      },
+      "secondary": {
+        "DEFAULT": "#F4B942",
+        "foreground": "#1A1A1A",
+        "50": "#FEF9EC",
+        "100": "#FDF2D4",
+        "200": "#FAE3A8",
+        "300": "#F7D47C",
+        "400": "#F4C550",
+        "500": "#F4B942",
+        "600": "#D99A2B",
+        "700": "#AD7A22",
+        "800": "#8C621F",
+        "900": "#73511D"
+      },
+      "background": {
+        "DEFAULT": "#F9F7F2",
+        "paper": "#FFFFFF",
+        "subtle": "#F2F0EB"
+      },
+      "text": {
+        "DEFAULT": "#1A1A1A",
+        "muted": "#6B7280",
+        "inverted": "#FFFFFF"
+      },
+      "status": {
+        "success": "#10B981",
+        "warning": "#F59E0B",
+        "error": "#EF4444",
+        "info": "#3B82F6"
+      }
+    },
+    "usage_rules": {
+      "primary_action": "bg-primary hover:bg-primary/90 text-white shadow-lg hover:shadow-xl transition-all",
+      "secondary_action": "bg-secondary hover:bg-secondary/90 text-secondary-foreground shadow-md hover:shadow-lg transition-all",
+      "surface": "bg-white border border-border/40 shadow-sm",
+      "dashboard_bg": "bg-[#F9F7F2]"
+    }
+  },
+  "layout": {
+    "spacing": {
+      "container_padding": "px-4 md:px-8 lg:px-12",
+      "section_gap": "gap-8 md:gap-12 lg:gap-16",
+      "card_padding": "p-6 md:p-8"
+    },
+    "grids": {
+      "bento": "grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6",
+      "dashboard": "grid grid-cols-1 lg:grid-cols-12 gap-6",
+      "form": "grid grid-cols-1 md:grid-cols-2 gap-6"
+    },
+    "containers": {
+      "main": "max-w-7xl mx-auto w-full",
+      "narrow": "max-w-3xl mx-auto w-full"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "rounded-full px-8 py-3 font-semibold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300",
+      "secondary": "rounded-full px-6 py-2 font-medium border-2 border-primary/20 hover:border-primary/50 hover:bg-primary/5 transition-all duration-300",
+      "ghost": "rounded-lg px-4 py-2 font-medium hover:bg-muted transition-colors"
+    },
+    "cards": {
+      "base": "bg-white rounded-2xl border border-border/50 shadow-sm hover:shadow-md transition-shadow duration-300",
+      "interactive": "cursor-pointer hover:border-primary/30 hover:shadow-lg hover:-translate-y-1 transition-all duration-300",
+      "glass": "bg-white/80 backdrop-blur-md border border-white/20 shadow-lg"
+    },
+    "inputs": {
+      "base": "rounded-xl border-border/60 bg-white/50 focus:bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200"
+    }
+  },
+  "visual_enhancers": {
+    "shadows": {
+      "soft": "0 4px 20px -2px rgba(0, 0, 0, 0.05)",
+      "glow": "0 0 20px -5px rgba(74, 124, 89, 0.3)"
+    },
+    "borders": {
+      "subtle": "1px solid rgba(0,0,0,0.06)",
+      "highlight": "1px solid rgba(74, 124, 89, 0.2)"
+    },
+    "textures": {
+      "grain": "url('/textures/grain.png') opacity-50",
+      "dots": "radial-gradient(#4A7C59 1px, transparent 1px) [background-size:16px_16px]"
+    }
+  },
+  "image_urls": {
+    "hero": {
+      "happy_dog_grass": "https://images.unsplash.com/photo-1560829571-6e9583e4a71a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDN8MHwxfHNlYXJjaHwxfHxoYXBweSUyMGRvZyUyMHBsYXlpbmclMjBncmFzc3xlbnwwfHx8fDE3Njk2MTk2NjV8MA&ixlib=rb-4.1.0&q=85",
+      "dog_running": "https://images.unsplash.com/photo-1716675209010-959f130eda04?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDN8MHwxfHNlYXJjaHwyfHxoYXBweSUyMGRvZyUyMHBsYXlpbmclMjBncmFzc3xlbnwwfHx8fDE3Njk2MTk2NjV8MA&ixlib=rb-4.1.0&q=85"
+    },
+    "facility": {
+      "clean_interior": "https://images.pexels.com/photos/9810640/pexels-photo-9810640.jpeg",
+      "staff_walking_dog": "https://images.pexels.com/photos/13239223/pexels-photo-13239223.jpeg"
+    },
+    "placeholders": {
+      "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix",
+      "dog_avatar": "https://api.dicebear.com/7.x/fun-emoji/svg?seed=Dog"
+    }
+  },
+  "instructions_to_main_agent": {
+    "general": [
+      "Use 'Fraunces' font for all major headings to establish the warm, premium brand voice.",
+      "Use 'Manrope' for all UI text to ensure readability and modern feel.",
+      "Implement the 'Sage Green' (#4A7C59) as the primary brand color, but use it judiciously. Don't overwhelm the user.",
+      "Use 'Goldenrod' (#F4B942) for moments of joy (e.g., success states, 'New' badges, playful accents).",
+      "Ensure all containers with borders have sufficient internal padding (p-6 or p-8).",
+      "Use 'Sonner' for all toast notifications.",
+      "Prioritize mobile responsiveness for the Staff Dashboard.",
+      "Use 'Recharts' for any data visualization in the Admin Panel."
+    ],
+    "customer_portal": [
+      "Focus on emotional connection. Use large images and warm copy.",
+      "Booking flow should be simple and step-by-step (wizard style).",
+      "Daily updates feed should look like a social media feed (Instagram-style)."
+    ],
+    "staff_dashboard": [
+      "Focus on efficiency. Big buttons, clear text, high contrast.",
+      "Task checklists should be easy to tap on mobile.",
+      "Photo upload flow must be seamless."
+    ],
+    "admin_panel": [
+      "Focus on data density and clarity.",
+      "Use data tables with sort/filter capabilities.",
+      "Audit logs should be immutable and easy to search."
+    ]
+  },
+  "universal_guidelines": [
+    "Do not use generic centered layouts.",
+    "Create depth through layered design elements.",
+    "Use glass-morphism effects with backdrop filters where appropriate.",
+    "Every interaction needs micro-animations.",
+    "Use 2-3x more spacing than feels comfortable.",
+    "All interactive elements MUST include a `data-testid` attribute."
+  ]
+}
