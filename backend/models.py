@@ -246,17 +246,39 @@ class MediaItem(BaseModel):
     caption: Optional[str] = None
     uploaded_by: str
     uploaded_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    dog_ids: List[str] = []  # Dogs tagged in this media
+    watermarked: bool = True
+    purchased: bool = False
+
+class StaffSnippet(BaseModel):
+    staff_id: str
+    staff_name: str
+    text: str
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class CustomerReaction(BaseModel):
+    user_id: str
+    reaction: str  # emoji or type
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class CustomerComment(BaseModel):
+    user_id: str
+    user_name: str
+    text: str
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class DailyUpdate(BaseDBModel):
     household_id: str
     booking_id: str
     date: datetime
     media_items: List[MediaItem] = []
+    staff_snippets: List[StaffSnippet] = []
     ai_summary: Optional[str] = None
-    staff_notes: Optional[str] = None
     status: UpdateStatus
     approved_by: Optional[str] = None
     sent_at: Optional[datetime] = None
+    reactions: List[CustomerReaction] = []
+    comments: List[CustomerComment] = []
 
 class DailyUpdateCreate(BaseModel):
     household_id: str
