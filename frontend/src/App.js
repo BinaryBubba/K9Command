@@ -10,6 +10,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import CustomerDashboard from './pages/CustomerDashboard';
 import StaffDashboard from './pages/StaffDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminCustomersPage from './pages/AdminCustomersPage';
 import AddDogPage from './pages/AddDogPage';
 import BookStayPage from './pages/BookStayPage';
 import DailyUpdatesFeedPage from './pages/DailyUpdatesFeedPage';
