@@ -56,6 +56,8 @@ class User(BaseDBModel):
     location_id: Optional[str] = None
     is_active: bool = True
     household_id: Optional[str] = None  # For customers
+    reset_token: Optional[str] = None
+    reset_token_expiry: Optional[datetime] = None
 
 class UserCreate(BaseModel):
     email: EmailStr
