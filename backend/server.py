@@ -412,7 +412,7 @@ async def create_booking(booking_data: BookingCreate, credentials: HTTPAuthoriza
     # Separate playtime fee
     separate_playtime_fee = 0.0
     if booking_data.needs_separate_playtime:
-        separate_playtime_fee = 25.0 * nights  # $25 per day
+        separate_playtime_fee = 6.0 * nights  # $6 per day
         total_price += separate_playtime_fee
     
     booking = Booking(
