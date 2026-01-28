@@ -460,6 +460,8 @@ async def add_staff_snippet(
         raise HTTPException(status_code=404, detail="Update not found")
     
     return {"message": "Snippet added", "snippet": snippet}
+
+@api_router.post("/daily-updates/{update_id}/media")
 async def add_media_to_update(
     update_id: str,
     dog_ids: str = Form(...),
@@ -480,11 +482,17 @@ async def add_media_to_update(
     file_data = base64.b64encode(content).decode('utf-8')
     file_url = f"data:{file.content_type};base64,{file_data[:100]}..."  # Truncated for demo
     
+    # Parse dog IDs
+    tagged_dogs = dog_ids.split(',') if dog_ids else []
+    
     media_item = MediaItem(
         url=file_url,
         type="photo" if file.content_type.startswith("image") else "video",
         caption=caption,
-        uploaded_by=user.id
+        uploaded_by=user.id,
+        dog_ids=tagged_dogs,
+        watermarked=True,
+        purchased=False
     )
     
     media_doc = media_item.model_dump()
@@ -499,6 +507,57 @@ async def add_media_to_update(
         raise HTTPException(status_code=404, detail="Update not found")
     
     return {"message": "Media added successfully", "media": media_doc}
+
+@api_router.post("/daily-updates/{update_id}/reactions")
+async def add_reaction(
+    update_id: str,
+    reaction: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    user = await get_current_user(credentials, database)
+    
+    reaction_doc = {
+        "user_id": user.id,
+        "reaction": reaction,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    
+    result = await database.daily_updates.update_one(
+        {"id": update_id},
+        {"$push": {"reactions": reaction_doc}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Update not found")
+    
+    return {"message": "Reaction added", "reaction": reaction_doc}
+
+@api_router.post("/daily-updates/{update_id}/comments")
+async def add_comment(
+    update_id: str,
+    text: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    user = await get_current_user(credentials, database)
+    
+    comment_doc = {
+        "user_id": user.id,
+        "user_name": user.full_name,
+        "text": text,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    
+    result = await database.daily_updates.update_one(
+        {"id": update_id},
+        {"$push": {"comments": comment_doc}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Update not found")
+    
+    return {"message": "Comment added", "comment": comment_doc}
 
 @api_router.post("/daily-updates/{update_id}/generate-summary")
 async def generate_summary(update_id: str, credentials: HTTPAuthorizationCredentials = Depends(security), database=Depends(get_db)):
