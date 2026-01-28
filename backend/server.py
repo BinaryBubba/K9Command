@@ -689,6 +689,44 @@ async def add_comment(
     
     return {"message": "Comment added", "comment": comment_doc}
 
+@api_router.post("/daily-updates/{update_id}/purchase-photos")
+async def purchase_photos(
+    update_id: str,
+    payment_method: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Purchase photos to remove watermark (mock payment)"""
+    user = await get_current_user(credentials, database)
+    
+    update_doc = await database.daily_updates.find_one({"id": update_id}, {"_id": 0})
+    if not update_doc:
+        raise HTTPException(status_code=404, detail="Update not found")
+    
+    if user.role == UserRole.CUSTOMER and update_doc['household_id'] != user.household_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Mock payment
+    import uuid
+    payment_id = f"photo_purchase_{str(uuid.uuid4())[:8]}"
+    
+    # Mark all media as purchased
+    await database.daily_updates.update_one(
+        {"id": update_id},
+        {"$set": {"media_items.$[].purchased": True, "media_items.$[].watermarked": False}}
+    )
+    
+    await create_audit_log(user.id, AuditAction.PAYMENT, "photo_purchase", update_id, {
+        "payment_id": payment_id,
+        "amount": 9.99
+    })
+    
+    return {
+        "message": "Photos purchased successfully! Watermarks removed.",
+        "payment_id": payment_id,
+        "amount": 9.99
+    }
+
 @api_router.post("/daily-updates/{update_id}/generate-summary")
 async def generate_summary(update_id: str, credentials: HTTPAuthorizationCredentials = Depends(security), database=Depends(get_db)):
     user = await get_current_user(credentials, database)
