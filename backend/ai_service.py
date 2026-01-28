@@ -6,9 +6,10 @@ load_dotenv()
 
 EMERGENT_LLM_KEY = os.environ.get("EMERGENT_LLM_KEY")
 
-async def generate_daily_summary(dog_names: list, staff_notes: str, media_count: int) -> str:
+async def generate_daily_summary(dog_names: list, staff_snippets: list, media_count: int) -> str:
     """
     Generate a warm, friendly daily summary using GPT-5.2
+    Combines multiple staff snippets into one cohesive update
     """
     try:
         chat = LlmChat(
@@ -20,13 +21,17 @@ async def generate_daily_summary(dog_names: list, staff_notes: str, media_count:
         
         dog_list = ", ".join(dog_names[:-1]) + f" and {dog_names[-1]}" if len(dog_names) > 1 else dog_names[0]
         
-        prompt = f"""Write a daily update for {dog_list}. 
+        # Combine all staff snippets
+        all_snippets = "\n\n".join([f"Staff note from {snippet['staff_name']}: {snippet['text']}" for snippet in staff_snippets])
         
-Staff notes: {staff_notes}
-        
-We have {media_count} photos/videos captured today.
-        
-Write a warm, 2-3 sentence summary of their day. Be specific and joyful. Mention activities like playing, resting, treats, or interactions with staff/other dogs based on the notes."""
+        prompt = f"""Write a warm daily update for {dog_list}. 
+
+Staff observations throughout the day:
+{all_snippets}
+
+We captured {media_count} photos/videos today.
+
+Combine all the staff notes into a cohesive, warm 3-4 sentence summary of their day. Be specific and joyful. Highlight the best moments and reassure the parents their pups had a wonderful time."""
         
         user_message = UserMessage(text=prompt)
         response = await chat.send_message(user_message)
