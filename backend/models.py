@@ -148,8 +148,22 @@ class DogCreate(BaseModel):
     age: Optional[int] = None
     weight: Optional[float] = None
     photo_url: Optional[str] = None
-    behavioral_notes: Optional[str] = None
-    diet_requirements: Optional[str] = None
+    vaccination_file_url: Optional[str] = None
+    gender: Optional[str] = None
+    color: Optional[str] = None
+    birthday: Optional[datetime] = None
+    meal_routine: Optional[str] = None
+    medication_requirements: Optional[str] = None
+    allergies: Optional[str] = None
+    friendly_to_cats: Optional[bool] = None
+    friendly_with_dogs: Optional[bool] = None
+    seizure_activity: Optional[bool] = None
+    afraid_of_thunder: Optional[bool] = None
+    afraid_of_fireworks: Optional[bool] = None
+    resource_guarding: Optional[bool] = None
+    fence_aggression: Optional[bool] = None
+    incidents_of_aggression: Optional[str] = None
+    other_notes: Optional[str] = None
 
 class DogResponse(BaseDBModel):
     name: str
