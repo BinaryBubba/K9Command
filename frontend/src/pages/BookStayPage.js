@@ -345,7 +345,7 @@ const BookStayPage = () => {
                   />
                   <div>
                     <Label htmlFor="separate_playtime" className="cursor-pointer">Separate Playtime Needed</Label>
-                    <p className="text-sm text-muted-foreground">Due to dog aggression or special needs (+$25/day)</p>
+                    <p className="text-sm text-muted-foreground">Due to dog aggression or special needs (+$6/day)</p>
                   </div>
                 </div>
                 <div>
@@ -357,19 +357,7 @@ const BookStayPage = () => {
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     placeholder="Any special instructions or requests"
                     className="mt-1"
-                    rows={3}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="special_request">VIP Direct Request (for long-time customers)</Label>
-                  <Textarea
-                    id="special_request"
-                    data-testid="special-request-input"
-                    value={formData.special_request}
-                    onChange={(e) => setFormData({ ...formData, special_request: e.target.value })}
-                    placeholder="Special accommodation requests"
-                    className="mt-1"
-                    rows={2}
+                    rows={4}
                   />
                 </div>
               </CardContent>
