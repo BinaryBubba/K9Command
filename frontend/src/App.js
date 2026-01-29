@@ -139,6 +139,22 @@ function App() {
             }
           />
           <Route
+            path="/staff/timesheet"
+            element={
+              <ProtectedRoute allowedRoles={['staff']}>
+                <StaffTimesheetPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/chat"
+            element={
+              <ProtectedRoute allowedRoles={['staff']}>
+                <ChatPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/staff/*"
             element={
               <ProtectedRoute allowedRoles={['staff']}>
