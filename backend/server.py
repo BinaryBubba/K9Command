@@ -1031,7 +1031,12 @@ async def complete_task(task_id: str, credentials: HTTPAuthorizationCredentials 
     
     result = await database.tasks.update_one(
         {"id": task_id},
-        {"$set": {"status": TaskStatus.COMPLETED, "completed_at": datetime.now(timezone.utc).isoformat()}}
+        {"$set": {
+            "status": TaskStatus.COMPLETED, 
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "completed_by": user.id,
+            "completed_by_name": user.full_name
+        }}
     )
     
     if result.matched_count == 0:
