@@ -893,6 +893,56 @@ async def delete_task(task_id: str, credentials: HTTPAuthorizationCredentials = 
 
 # ==================== TIME TRACKING ROUTES ====================
 
+@api_router.get("/time-entries", response_model=List[TimeEntryResponse])
+async def get_time_entries(
+    staff_id: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get time entries - staff see their own, admins see all"""
+    user = await get_current_user(credentials, database)
+    
+    query = {}
+    if user.role == UserRole.STAFF:
+        query = {"staff_id": user.id}
+    elif user.role == UserRole.ADMIN and staff_id:
+        query = {"staff_id": staff_id}
+    elif user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    entries = await database.time_entries.find(query, {"_id": 0}).sort("clock_in", -1).to_list(1000)
+    
+    # Deserialize dates
+    for entry in entries:
+        if isinstance(entry['clock_in'], str):
+            entry['clock_in'] = datetime.fromisoformat(entry['clock_in'])
+        if entry.get('clock_out') and isinstance(entry['clock_out'], str):
+            entry['clock_out'] = datetime.fromisoformat(entry['clock_out'])
+    
+    return [TimeEntryResponse(**entry) for entry in entries]
+
+@api_router.get("/time-entries/current")
+async def get_current_time_entry(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Check if user is currently clocked in"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.STAFF:
+        raise HTTPException(status_code=403, detail="Staff access only")
+    
+    active_entry = await database.time_entries.find_one({
+        "staff_id": user.id,
+        "clock_out": None
+    }, {"_id": 0})
+    
+    if active_entry:
+        if isinstance(active_entry['clock_in'], str):
+            active_entry['clock_in'] = datetime.fromisoformat(active_entry['clock_in'])
+        return {"clocked_in": True, "entry": TimeEntryResponse(**active_entry)}
+    
+    return {"clocked_in": False, "entry": None}
+
 @api_router.post("/time-entries/clock-in", response_model=TimeEntryResponse)
 async def clock_in(entry_data: TimeEntryCreate, credentials: HTTPAuthorizationCredentials = Depends(security), database=Depends(get_db)):
     user = await get_current_user(credentials, database)
