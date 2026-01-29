@@ -23,18 +23,18 @@ const ForgotPasswordForm = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API}/auth/forgot-password?email=${email}`);
-      toast.success('Reset token generated! Check the response below.');
+      const response = await axios.post(`${API}/auth/forgot-password?email=${encodeURIComponent(email)}`);
+      toast.success('Reset token generated!');
       
       // Show token (in production, this would be sent via email)
       if (response.data.reset_token) {
-        toast.info(`Reset Token: ${response.data.reset_token}`, { duration: 10000 });
         setResetToken(response.data.reset_token);
       }
       
       setStep(2);
     } catch (error) {
-      toast.error('Failed to request reset');
+      const errorMsg = error.response?.data?.detail || 'Failed to request reset';
+      toast.error(typeof errorMsg === 'string' ? errorMsg : 'Failed to request reset');
     } finally {
       setLoading(false);
     }
