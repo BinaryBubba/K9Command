@@ -77,8 +77,8 @@ Build a comprehensive "Kennel Operations 'Single Source of Truth' Platform" - a 
 - [x] Implement Admin CRUD controls for bookings, tasks, customers
 
 ### P1 (High Priority) - Upcoming
-- [ ] Enhance Admin Reports & Analytics with time-based filtering (weekly/monthly)
-- [ ] Add data visualization graphs to reports
+- [x] Enhance Admin Reports & Analytics with time-based filtering (weekly/monthly) - COMPLETED
+- [x] Add data visualization graphs to reports - COMPLETED (Revenue Trend, Accommodation Pie Chart, Daily Bookings Bar Chart)
 - [ ] Implement Timesheet functionality (staff clock in/out viewing)
 
 ### P2 (Medium Priority)
