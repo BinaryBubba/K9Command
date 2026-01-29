@@ -22,6 +22,9 @@ import DailyUpdatesFeedPage from './pages/DailyUpdatesFeedPage';
 import StaffUploadPage from './pages/StaffUploadPage';
 import StaffBookingsPage from './pages/StaffBookingsPage';
 import StaffApprovePage from './pages/StaffApprovePage';
+import StaffTimesheetPage from './pages/StaffTimesheetPage';
+import AdminTimesheetPage from './pages/AdminTimesheetPage';
+import ChatPage from './pages/ChatPage';
 
 // Store
 import useAuthStore from './store/authStore';
