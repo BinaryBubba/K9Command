@@ -5,7 +5,7 @@ import api from '../utils/api';
 import { Button } from '../components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Checkbox } from '../components/ui/checkbox';
-import { CheckCircleIcon, ClockIcon, ListTodoIcon, LogOutIcon, ImageIcon, UploadIcon } from 'lucide-react';
+import { CheckCircleIcon, ClockIcon, ListTodoIcon, LogOutIcon, ImageIcon, UploadIcon, MessageCircleIcon, CalendarClockIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 const StaffDashboard = () => {
