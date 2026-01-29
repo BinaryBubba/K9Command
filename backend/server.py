@@ -511,14 +511,81 @@ async def update_items_checklist(
 async def confirm_payment(
     booking_id: str,
     payment_method: str,
+    source_id: Optional[str] = None,  # Square payment token
     credentials: HTTPAuthorizationCredentials = Depends(security),
     database=Depends(get_db)
 ):
-    """Mock payment confirmation (Square integration mocked)"""
+    """Process payment - uses Square if configured, otherwise mock mode"""
     user = await get_current_user(credentials, database)
-    
-    # Simulate payment processing
     import uuid
+    
+    # Get booking details
+    booking = await database.bookings.find_one({"id": booking_id, "household_id": user.household_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    square_token = os.environ.get('SQUARE_ACCESS_TOKEN', '')
+    
+    if square_token and source_id:
+        # Real Square payment processing
+        try:
+            from square import Square
+            
+            square_client = Square(
+                access_token=square_token,
+                environment=os.environ.get('SQUARE_ENVIRONMENT', 'sandbox')
+            )
+            
+            # Create payment
+            idempotency_key = f"{booking_id}:{str(uuid.uuid4())}"
+            payment_result = square_client.payments.create_payment({
+                "source_id": source_id,
+                "amount_money": {
+                    "amount": int(booking['total_price'] * 100),  # Convert to cents
+                    "currency": "USD"
+                },
+                "idempotency_key": idempotency_key,
+                "reference_id": booking_id,
+            })
+            
+            if payment_result.is_success:
+                payment = payment_result.body.get('payment', {})
+                payment_id = payment.get('id', '')
+                payment_status = payment.get('status', 'COMPLETED')
+                
+                await database.bookings.update_one(
+                    {"id": booking_id},
+                    {"$set": {
+                        "payment_status": "completed" if payment_status == "COMPLETED" else "pending",
+                        "payment_intent_id": payment_id,
+                        "status": BookingStatus.CONFIRMED if payment_status == "COMPLETED" else BookingStatus.PENDING,
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                
+                await create_audit_log(user.id, AuditAction.PAYMENT, "booking", booking_id, {
+                    "payment_id": payment_id,
+                    "method": "square",
+                    "amount": booking['total_price']
+                })
+                
+                return {
+                    "message": "Payment processed successfully via Square",
+                    "payment_id": payment_id,
+                    "status": payment_status.lower()
+                }
+            else:
+                errors = payment_result.errors
+                error_msg = errors[0].get('detail', 'Payment failed') if errors else 'Payment failed'
+                raise HTTPException(status_code=400, detail=error_msg)
+                
+        except ImportError:
+            logging.warning("Square SDK not installed, falling back to mock")
+        except Exception as e:
+            logging.error(f"Square payment error: {str(e)}")
+            raise HTTPException(status_code=400, detail=f"Payment processing failed: {str(e)}")
+    
+    # Mock payment fallback
     mock_payment_id = f"mock_pay_{str(uuid.uuid4())[:8]}"
     
     result = await database.bookings.update_one(
@@ -536,13 +603,15 @@ async def confirm_payment(
     
     await create_audit_log(user.id, AuditAction.PAYMENT, "booking", booking_id, {
         "payment_id": mock_payment_id,
-        "method": payment_method
+        "method": payment_method,
+        "mode": "mock"
     })
     
     return {
-        "message": "Payment processed successfully",
+        "message": "Payment processed successfully (mock mode - configure Square keys for real payments)",
         "payment_id": mock_payment_id,
-        "status": "completed"
+        "status": "completed",
+        "mock": True
     }
 
 # ==================== DAILY UPDATES ROUTES ====================
