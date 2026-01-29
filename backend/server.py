@@ -484,6 +484,102 @@ async def update_booking_status(booking_id: str, status: BookingStatus, credenti
     
     return {"message": "Status updated", "status": status}
 
+@api_router.patch("/bookings/{booking_id}")
+async def update_booking(
+    booking_id: str,
+    update_data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Update booking details (staff/admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff or Admin access required")
+    
+    # Get existing booking
+    booking = await database.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    # Build update document
+    allowed_fields = ['dog_ids', 'location_id', 'accommodation_type', 'check_in_date', 
+                      'check_out_date', 'notes', 'special_request', 'needs_separate_playtime',
+                      'status', 'modification_reason']
+    
+    update_doc = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    
+    for field in allowed_fields:
+        if field in update_data:
+            update_doc[field] = update_data[field]
+    
+    # Recalculate price if dates changed
+    if 'check_in_date' in update_doc or 'check_out_date' in update_doc:
+        check_in = update_doc.get('check_in_date', booking['check_in_date'])
+        check_out = update_doc.get('check_out_date', booking['check_out_date'])
+        
+        if isinstance(check_in, str):
+            check_in = datetime.fromisoformat(check_in.replace('Z', '+00:00'))
+        if isinstance(check_out, str):
+            check_out = datetime.fromisoformat(check_out.replace('Z', '+00:00'))
+        
+        nights = (check_out - check_in).days
+        dog_count = len(update_doc.get('dog_ids', booking.get('dog_ids', [])))
+        base_price = 50.0
+        total = base_price * nights * dog_count
+        
+        # Check for holiday pricing
+        holidays = ['2025-12-25', '2025-12-31', '2025-07-04', '2025-11-28', '2026-12-25', '2026-12-31']
+        is_holiday = any(check_in.date() <= datetime.strptime(h, '%Y-%m-%d').date() < check_out.date() for h in holidays)
+        if is_holiday:
+            total *= 1.20
+            update_doc['is_holiday_pricing'] = True
+        
+        # Separate playtime fee
+        if update_doc.get('needs_separate_playtime', booking.get('needs_separate_playtime', False)):
+            update_doc['separate_playtime_fee'] = 6.0 * nights
+            total += update_doc['separate_playtime_fee']
+        
+        update_doc['total_price'] = round(total, 2)
+    
+    result = await database.bookings.update_one(
+        {"id": booking_id},
+        {"$set": update_doc}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    await create_audit_log(user.id, AuditAction.UPDATE, "booking", booking_id, {
+        "fields_updated": list(update_doc.keys()),
+        "reason": update_data.get('modification_reason', '')
+    })
+    
+    return {"message": "Booking updated successfully"}
+
+@api_router.delete("/bookings/{booking_id}")
+async def delete_booking(
+    booking_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Delete/Cancel a booking (staff/admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff or Admin access required")
+    
+    # Soft delete - mark as cancelled
+    result = await database.bookings.update_one(
+        {"id": booking_id},
+        {"$set": {"status": BookingStatus.CANCELLED, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    await create_audit_log(user.id, AuditAction.DELETE, "booking", booking_id)
+    
+    return {"message": "Booking cancelled"}
+
 @api_router.patch("/bookings/{booking_id}/items")
 async def update_items_checklist(
     booking_id: str,
