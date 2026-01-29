@@ -53,11 +53,19 @@ const ForgotPasswordForm = () => {
       return;
     }
 
+    // Trim whitespace from token
+    const cleanToken = resetToken.trim();
+    
+    if (!cleanToken) {
+      toast.error('Please enter the reset token');
+      return;
+    }
+
     setLoading(true);
 
     try {
       await axios.post(`${API}/auth/reset-password`, {
-        reset_token: resetToken,
+        reset_token: cleanToken,
         new_password: newPassword,
       });
       toast.success('Password reset successful! You can now login.');
