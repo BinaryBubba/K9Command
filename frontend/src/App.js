@@ -221,6 +221,22 @@ function App() {
             }
           />
           <Route
+            path="/admin/timesheet"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminTimesheetPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/chat"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <ChatPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin/*"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
