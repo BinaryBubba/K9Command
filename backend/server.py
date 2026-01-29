@@ -1152,6 +1152,316 @@ async def clock_out(credentials: HTTPAuthorizationCredentials = Depends(security
     
     return {"message": "Clocked out successfully"}
 
+# ==================== TIMESHEET MODIFICATION REQUESTS ====================
+
+from models import TimeModificationRequest, TimeModificationRequestCreate, TimeModificationRequestResponse, TimeModificationStatus, Shift, ShiftCreate, ShiftResponse
+
+@api_router.post("/time-entries/modification-request")
+async def create_modification_request(
+    request_data: TimeModificationRequestCreate,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Staff request modification to a time entry"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.STAFF:
+        raise HTTPException(status_code=403, detail="Staff access only")
+    
+    # Get the original time entry
+    entry = await database.time_entries.find_one({"id": request_data.time_entry_id, "staff_id": user.id}, {"_id": 0})
+    if not entry:
+        raise HTTPException(status_code=404, detail="Time entry not found")
+    
+    mod_request = TimeModificationRequest(
+        time_entry_id=request_data.time_entry_id,
+        staff_id=user.id,
+        staff_name=user.full_name,
+        original_clock_in=datetime.fromisoformat(entry['clock_in']) if isinstance(entry['clock_in'], str) else entry['clock_in'],
+        original_clock_out=datetime.fromisoformat(entry['clock_out']) if entry.get('clock_out') and isinstance(entry['clock_out'], str) else entry.get('clock_out'),
+        requested_clock_in=request_data.requested_clock_in,
+        requested_clock_out=request_data.requested_clock_out,
+        reason=request_data.reason
+    )
+    
+    doc = mod_request.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    doc['original_clock_in'] = doc['original_clock_in'].isoformat()
+    if doc['original_clock_out']:
+        doc['original_clock_out'] = doc['original_clock_out'].isoformat()
+    doc['requested_clock_in'] = doc['requested_clock_in'].isoformat()
+    if doc['requested_clock_out']:
+        doc['requested_clock_out'] = doc['requested_clock_out'].isoformat()
+    
+    await database.time_modification_requests.insert_one(doc)
+    
+    return {"message": "Modification request submitted", "request_id": mod_request.id}
+
+@api_router.get("/time-entries/modification-requests")
+async def get_modification_requests(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get modification requests - staff see their own, admins see all"""
+    user = await get_current_user(credentials, database)
+    
+    query = {}
+    if user.role == UserRole.STAFF:
+        query = {"staff_id": user.id}
+    elif user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    requests = await database.time_modification_requests.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return requests
+
+@api_router.patch("/time-entries/modification-requests/{request_id}")
+async def review_modification_request(
+    request_id: str,
+    action: str,  # approve or reject
+    review_notes: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Admin approve/reject modification request"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    mod_request = await database.time_modification_requests.find_one({"id": request_id}, {"_id": 0})
+    if not mod_request:
+        raise HTTPException(status_code=404, detail="Request not found")
+    
+    new_status = TimeModificationStatus.APPROVED if action == "approve" else TimeModificationStatus.REJECTED
+    
+    # Update the request
+    await database.time_modification_requests.update_one(
+        {"id": request_id},
+        {"$set": {
+            "status": new_status,
+            "reviewed_by": user.id,
+            "reviewed_at": datetime.now(timezone.utc).isoformat(),
+            "review_notes": review_notes
+        }}
+    )
+    
+    # If approved, update the original time entry
+    if action == "approve":
+        update_doc = {
+            "clock_in": mod_request['requested_clock_in'],
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        if mod_request.get('requested_clock_out'):
+            update_doc["clock_out"] = mod_request['requested_clock_out']
+        
+        await database.time_entries.update_one(
+            {"id": mod_request['time_entry_id']},
+            {"$set": update_doc}
+        )
+    
+    await create_audit_log(user.id, AuditAction.UPDATE, "time_modification_request", request_id, {"action": action})
+    
+    return {"message": f"Request {action}d", "status": new_status}
+
+@api_router.post("/time-entries", response_model=TimeEntryResponse)
+async def create_time_entry(
+    entry_data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Admin create time entry"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    entry = TimeEntry(
+        staff_id=entry_data['staff_id'],
+        location_id=entry_data.get('location_id', 'main-kennel'),
+        clock_in=datetime.fromisoformat(entry_data['clock_in']),
+        clock_out=datetime.fromisoformat(entry_data['clock_out']) if entry_data.get('clock_out') else None,
+        notes=entry_data.get('notes')
+    )
+    
+    doc = entry.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    doc['clock_in'] = doc['clock_in'].isoformat()
+    if doc.get('clock_out'):
+        doc['clock_out'] = doc['clock_out'].isoformat()
+    
+    await database.time_entries.insert_one(doc)
+    await create_audit_log(user.id, AuditAction.CREATE, "time_entry", entry.id)
+    
+    return TimeEntryResponse(**entry.model_dump())
+
+@api_router.patch("/time-entries/{entry_id}")
+async def update_time_entry(
+    entry_id: str,
+    update_data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Admin update time entry"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    update_doc = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    
+    if 'clock_in' in update_data:
+        update_doc['clock_in'] = update_data['clock_in']
+    if 'clock_out' in update_data:
+        update_doc['clock_out'] = update_data['clock_out']
+    if 'notes' in update_data:
+        update_doc['notes'] = update_data['notes']
+    
+    result = await database.time_entries.update_one({"id": entry_id}, {"$set": update_doc})
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Time entry not found")
+    
+    await create_audit_log(user.id, AuditAction.UPDATE, "time_entry", entry_id)
+    
+    return {"message": "Time entry updated"}
+
+@api_router.delete("/time-entries/{entry_id}")
+async def delete_time_entry(
+    entry_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Admin delete time entry"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    result = await database.time_entries.delete_one({"id": entry_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Time entry not found")
+    
+    await create_audit_log(user.id, AuditAction.DELETE, "time_entry", entry_id)
+    
+    return {"message": "Time entry deleted"}
+
+# ==================== SHIFT SCHEDULING ====================
+
+@api_router.post("/shifts", response_model=ShiftResponse)
+async def create_shift(
+    shift_data: ShiftCreate,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Create a shift (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Get staff name
+    staff = await database.users.find_one({"id": shift_data.staff_id}, {"_id": 0})
+    staff_name = staff['full_name'] if staff else "Unknown"
+    
+    shift = Shift(**shift_data.model_dump(), staff_name=staff_name)
+    doc = shift.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    doc['start_time'] = doc['start_time'].isoformat()
+    doc['end_time'] = doc['end_time'].isoformat()
+    
+    await database.shifts.insert_one(doc)
+    await create_audit_log(user.id, AuditAction.CREATE, "shift", shift.id)
+    
+    return ShiftResponse(**shift.model_dump())
+
+@api_router.get("/shifts", response_model=List[ShiftResponse])
+async def get_shifts(
+    staff_id: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get shifts - staff see their own, admins see all"""
+    user = await get_current_user(credentials, database)
+    
+    query = {}
+    if user.role == UserRole.STAFF:
+        query["staff_id"] = user.id
+    elif user.role == UserRole.ADMIN and staff_id:
+        query["staff_id"] = staff_id
+    elif user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    if start_date:
+        query["start_time"] = {"$gte": start_date}
+    if end_date:
+        if "start_time" in query:
+            query["start_time"]["$lte"] = end_date
+        else:
+            query["start_time"] = {"$lte": end_date}
+    
+    shifts = await database.shifts.find(query, {"_id": 0}).sort("start_time", 1).to_list(1000)
+    
+    for shift in shifts:
+        if isinstance(shift['start_time'], str):
+            shift['start_time'] = datetime.fromisoformat(shift['start_time'])
+        if isinstance(shift['end_time'], str):
+            shift['end_time'] = datetime.fromisoformat(shift['end_time'])
+    
+    return [ShiftResponse(**s) for s in shifts]
+
+@api_router.patch("/shifts/{shift_id}")
+async def update_shift(
+    shift_id: str,
+    update_data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Update shift (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    update_doc = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    
+    allowed_fields = ['staff_id', 'start_time', 'end_time', 'notes', 'location_id']
+    for field in allowed_fields:
+        if field in update_data:
+            update_doc[field] = update_data[field]
+    
+    # Update staff name if staff_id changed
+    if 'staff_id' in update_doc:
+        staff = await database.users.find_one({"id": update_doc['staff_id']}, {"_id": 0})
+        update_doc['staff_name'] = staff['full_name'] if staff else "Unknown"
+    
+    result = await database.shifts.update_one({"id": shift_id}, {"$set": update_doc})
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Shift not found")
+    
+    await create_audit_log(user.id, AuditAction.UPDATE, "shift", shift_id)
+    
+    return {"message": "Shift updated"}
+
+@api_router.delete("/shifts/{shift_id}")
+async def delete_shift(
+    shift_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Delete shift (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    result = await database.shifts.delete_one({"id": shift_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Shift not found")
+    
+    await create_audit_log(user.id, AuditAction.DELETE, "shift", shift_id)
+    
+    return {"message": "Shift deleted"}
+
 # ==================== INCIDENT ROUTES ====================
 
 @api_router.post("/incidents", response_model=IncidentResponse)
