@@ -176,6 +176,18 @@ class TestTimesheetModificationRequests:
     
     def test_staff_clock_in_out(self, staff_token):
         """Staff can clock in and out"""
+        # First check if already clocked in
+        current_response = requests.get(
+            f"{BASE_URL}/api/time-entries/current",
+            headers={"Authorization": f"Bearer {staff_token}"}
+        )
+        if current_response.status_code == 200 and current_response.json().get("clocked_in"):
+            # Clock out first
+            requests.post(
+                f"{BASE_URL}/api/time-entries/clock-out",
+                headers={"Authorization": f"Bearer {staff_token}"}
+            )
+        
         # Clock in
         response = requests.post(
             f"{BASE_URL}/api/time-entries/clock-in",
@@ -191,7 +203,7 @@ class TestTimesheetModificationRequests:
             f"{BASE_URL}/api/time-entries/clock-out",
             headers={"Authorization": f"Bearer {staff_token}"}
         )
-        assert response.status_code == 200
+        assert response.status_code == 200, f"Clock out failed: {response.text}"
         print("✓ Staff clocked out")
         return entry
     
