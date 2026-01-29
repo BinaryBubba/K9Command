@@ -213,12 +213,16 @@ class Booking(BaseDBModel):
     special_request: Optional[str] = None
     payment_status: str = "pending"
     payment_intent_id: Optional[str] = None
+    payment_type: str = "invoice"  # 'immediate' or 'invoice'
     is_holiday_pricing: bool = False
     needs_separate_playtime: bool = False
     separate_playtime_fee: float = 0.0
     items_checklist: Optional[ItemChecklist] = None
     checked_in_at: Optional[datetime] = None
     checked_out_at: Optional[datetime] = None
+    customer_id: Optional[str] = None
+    created_by: Optional[str] = None
+    modification_reason: Optional[str] = None
 
 class BookingCreate(BaseModel):
     dog_ids: List[str]
@@ -240,6 +244,12 @@ class BookingResponse(BaseDBModel):
     total_price: float
     notes: Optional[str] = None
     payment_status: str
+    payment_type: Optional[str] = "invoice"
+    customer_id: Optional[str] = None
+    accommodation_type: Optional[str] = None
+    is_holiday_pricing: Optional[bool] = False
+    needs_separate_playtime: Optional[bool] = False
+    separate_playtime_fee: Optional[float] = 0.0
 
 # Daily Update Models
 class MediaItem(BaseModel):
