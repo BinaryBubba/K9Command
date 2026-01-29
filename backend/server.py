@@ -1083,6 +1083,172 @@ async def get_dashboard_stats(credentials: HTTPAuthorizationCredentials = Depend
     
     return stats
 
+# ==================== REVENUE ANALYTICS ====================
+
+@api_router.get("/admin/revenue/summary")
+async def get_revenue_summary(
+    period: str = "month",  # week, month, year
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get revenue summary for dashboard"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    now = datetime.now(timezone.utc)
+    
+    # Calculate date ranges
+    if period == "week":
+        start_date = now - timedelta(days=7)
+        prev_start = start_date - timedelta(days=7)
+        prev_end = start_date
+    elif period == "year":
+        start_date = now - timedelta(days=365)
+        prev_start = start_date - timedelta(days=365)
+        prev_end = start_date
+    else:  # month (default)
+        start_date = now - timedelta(days=30)
+        prev_start = start_date - timedelta(days=30)
+        prev_end = start_date
+    
+    # Get confirmed/completed bookings in current period
+    current_bookings = await database.bookings.find({
+        "status": {"$in": [BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN, BookingStatus.CHECKED_OUT]},
+        "created_at": {"$gte": start_date.isoformat()}
+    }, {"_id": 0}).to_list(10000)
+    
+    # Get previous period bookings for comparison
+    prev_bookings = await database.bookings.find({
+        "status": {"$in": [BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN, BookingStatus.CHECKED_OUT]},
+        "created_at": {"$gte": prev_start.isoformat(), "$lt": prev_end.isoformat()}
+    }, {"_id": 0}).to_list(10000)
+    
+    # Calculate totals
+    current_revenue = sum(float(b.get('total_price', 0)) for b in current_bookings)
+    prev_revenue = sum(float(b.get('total_price', 0)) for b in prev_bookings)
+    
+    # Calculate average stay duration
+    total_nights = 0
+    for b in current_bookings:
+        try:
+            check_in = datetime.fromisoformat(b['check_in_date'].replace('Z', '+00:00')) if isinstance(b['check_in_date'], str) else b['check_in_date']
+            check_out = datetime.fromisoformat(b['check_out_date'].replace('Z', '+00:00')) if isinstance(b['check_out_date'], str) else b['check_out_date']
+            total_nights += (check_out - check_in).days
+        except:
+            pass
+    
+    avg_stay = total_nights / len(current_bookings) if current_bookings else 0
+    
+    # Revenue change percentage
+    revenue_change = ((current_revenue - prev_revenue) / prev_revenue * 100) if prev_revenue > 0 else 0
+    
+    return {
+        "current_revenue": round(current_revenue, 2),
+        "prev_revenue": round(prev_revenue, 2),
+        "revenue_change_percent": round(revenue_change, 1),
+        "total_bookings": len(current_bookings),
+        "prev_bookings": len(prev_bookings),
+        "avg_stay_nights": round(avg_stay, 1),
+        "period": period,
+        "period_start": start_date.isoformat(),
+        "period_end": now.isoformat()
+    }
+
+@api_router.get("/admin/revenue/trends")
+async def get_revenue_trends(
+    period: str = "month",  # week, month, year
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get daily/weekly revenue trends for charting"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    now = datetime.now(timezone.utc)
+    
+    # Determine grouping and range
+    if period == "week":
+        days = 7
+        group_by = "day"
+    elif period == "year":
+        days = 365
+        group_by = "month"
+    else:  # month
+        days = 30
+        group_by = "day"
+    
+    start_date = now - timedelta(days=days)
+    
+    # Get all bookings in period
+    bookings = await database.bookings.find({
+        "status": {"$in": [BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN, BookingStatus.CHECKED_OUT]},
+        "created_at": {"$gte": start_date.isoformat()}
+    }, {"_id": 0}).to_list(10000)
+    
+    # Group by date
+    trends = {}
+    for b in bookings:
+        try:
+            created = b.get('created_at', '')
+            if isinstance(created, str):
+                date = datetime.fromisoformat(created.replace('Z', '+00:00'))
+            else:
+                date = created
+            
+            if group_by == "month":
+                key = date.strftime("%Y-%m")
+            else:
+                key = date.strftime("%Y-%m-%d")
+            
+            if key not in trends:
+                trends[key] = {"date": key, "revenue": 0, "bookings": 0}
+            
+            trends[key]["revenue"] += float(b.get('total_price', 0))
+            trends[key]["bookings"] += 1
+        except:
+            pass
+    
+    # Sort by date and return as list
+    sorted_trends = sorted(trends.values(), key=lambda x: x["date"])
+    
+    # Round revenue values
+    for t in sorted_trends:
+        t["revenue"] = round(t["revenue"], 2)
+    
+    return sorted_trends
+
+@api_router.get("/admin/revenue/by-accommodation")
+async def get_revenue_by_accommodation(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get revenue breakdown by accommodation type"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Get all confirmed bookings
+    bookings = await database.bookings.find({
+        "status": {"$in": [BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN, BookingStatus.CHECKED_OUT]}
+    }, {"_id": 0}).to_list(10000)
+    
+    # Group by accommodation type
+    breakdown = {"room": {"count": 0, "revenue": 0}, "crate": {"count": 0, "revenue": 0}}
+    
+    for b in bookings:
+        acc_type = b.get('accommodation_type', 'room')
+        if acc_type in breakdown:
+            breakdown[acc_type]["count"] += 1
+            breakdown[acc_type]["revenue"] += float(b.get('total_price', 0))
+    
+    # Round values
+    for key in breakdown:
+        breakdown[key]["revenue"] = round(breakdown[key]["revenue"], 2)
+    
+    return breakdown
+
 # Include the router in the main app
 app.include_router(api_router)
 
