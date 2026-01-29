@@ -1299,6 +1299,186 @@ async def get_revenue_by_accommodation(
     
     return breakdown
 
+# ==================== CHAT ROUTES ====================
+
+from models import Chat, ChatCreate, ChatResponse, ChatMessage, ChatMessageCreate, ChatMessageResponse, ChatType
+
+@api_router.get("/chats", response_model=List[ChatResponse])
+async def get_chats(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get all chats for current user"""
+    user = await get_current_user(credentials, database)
+    
+    chats = await database.chats.find(
+        {"participants": user.id},
+        {"_id": 0}
+    ).sort("last_message_at", -1).to_list(100)
+    
+    # Deserialize dates
+    for chat in chats:
+        if chat.get('last_message_at') and isinstance(chat['last_message_at'], str):
+            chat['last_message_at'] = datetime.fromisoformat(chat['last_message_at'])
+    
+    return [ChatResponse(**chat) for chat in chats]
+
+@api_router.post("/chats", response_model=ChatResponse)
+async def create_chat(
+    chat_data: ChatCreate,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Create a new chat or return existing one"""
+    user = await get_current_user(credentials, database)
+    
+    # Get other participant
+    other_user = await database.users.find_one({"id": chat_data.participant_id}, {"_id": 0})
+    if not other_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Check if chat already exists
+    existing_chat = await database.chats.find_one({
+        "participants": {"$all": [user.id, chat_data.participant_id]},
+        "chat_type": chat_data.chat_type
+    }, {"_id": 0})
+    
+    if existing_chat:
+        if existing_chat.get('last_message_at') and isinstance(existing_chat['last_message_at'], str):
+            existing_chat['last_message_at'] = datetime.fromisoformat(existing_chat['last_message_at'])
+        return ChatResponse(**existing_chat)
+    
+    # Create new chat
+    chat = Chat(
+        chat_type=chat_data.chat_type,
+        participants=[user.id, chat_data.participant_id],
+        participant_names={user.id: user.full_name, chat_data.participant_id: other_user['full_name']},
+        unread_count={user.id: 0, chat_data.participant_id: 0}
+    )
+    
+    doc = chat.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    
+    await database.chats.insert_one(doc)
+    
+    return ChatResponse(**chat.model_dump())
+
+@api_router.get("/chats/{chat_id}/messages", response_model=List[ChatMessageResponse])
+async def get_chat_messages(
+    chat_id: str,
+    limit: int = 50,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get messages for a chat"""
+    user = await get_current_user(credentials, database)
+    
+    # Verify user is participant
+    chat = await database.chats.find_one({"id": chat_id, "participants": user.id}, {"_id": 0})
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    
+    messages = await database.chat_messages.find(
+        {"chat_id": chat_id},
+        {"_id": 0}
+    ).sort("created_at", 1).limit(limit).to_list(limit)
+    
+    # Mark messages as read
+    await database.chat_messages.update_many(
+        {"chat_id": chat_id, "sender_id": {"$ne": user.id}, "read": False},
+        {"$set": {"read": True}}
+    )
+    
+    # Reset unread count for this user
+    await database.chats.update_one(
+        {"id": chat_id},
+        {"$set": {f"unread_count.{user.id}": 0}}
+    )
+    
+    # Deserialize dates
+    for msg in messages:
+        if isinstance(msg['created_at'], str):
+            msg['created_at'] = datetime.fromisoformat(msg['created_at'])
+    
+    return [ChatMessageResponse(**msg) for msg in messages]
+
+@api_router.post("/chats/{chat_id}/messages", response_model=ChatMessageResponse)
+async def send_message(
+    chat_id: str,
+    message_data: ChatMessageCreate,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Send a message in a chat"""
+    user = await get_current_user(credentials, database)
+    
+    # Verify user is participant
+    chat = await database.chats.find_one({"id": chat_id, "participants": user.id}, {"_id": 0})
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    
+    message = ChatMessage(
+        chat_id=chat_id,
+        sender_id=user.id,
+        sender_name=user.full_name,
+        sender_role=user.role,
+        content=message_data.content
+    )
+    
+    doc = message.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    
+    await database.chat_messages.insert_one(doc)
+    
+    # Update chat with last message and increment unread for other participants
+    other_participant = [p for p in chat['participants'] if p != user.id][0]
+    
+    await database.chats.update_one(
+        {"id": chat_id},
+        {
+            "$set": {
+                "last_message": message.content[:100],
+                "last_message_at": datetime.now(timezone.utc).isoformat()
+            },
+            "$inc": {f"unread_count.{other_participant}": 1}
+        }
+    )
+    
+    return ChatMessageResponse(**message.model_dump())
+
+@api_router.get("/chat/users")
+async def get_chat_users(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get users available for chat based on role"""
+    user = await get_current_user(credentials, database)
+    
+    if user.role == UserRole.ADMIN:
+        # Admins can chat with staff and customers
+        users = await database.users.find(
+            {"role": {"$in": [UserRole.STAFF, UserRole.CUSTOMER]}, "is_active": True},
+            {"_id": 0, "hashed_password": 0}
+        ).to_list(1000)
+    elif user.role == UserRole.STAFF:
+        # Staff can chat with admins
+        users = await database.users.find(
+            {"role": UserRole.ADMIN, "is_active": True},
+            {"_id": 0, "hashed_password": 0}
+        ).to_list(100)
+    elif user.role == UserRole.CUSTOMER:
+        # Customers can chat with admins (kennel)
+        users = await database.users.find(
+            {"role": UserRole.ADMIN, "is_active": True},
+            {"_id": 0, "hashed_password": 0}
+        ).to_list(100)
+    else:
+        users = []
+    
+    return [{"id": u['id'], "full_name": u['full_name'], "role": u['role'], "email": u['email']} for u in users]
+
 # Include the router in the main app
 app.include_router(api_router)
 
