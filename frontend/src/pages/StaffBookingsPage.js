@@ -8,7 +8,7 @@ import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
-import { ArrowLeftIcon, CheckCircleIcon, DogIcon, PlusIcon, EditIcon, TrashIcon, SearchIcon } from 'lucide-react';
+import { ArrowLeftIcon, CheckCircleIcon, DogIcon, PlusIcon, EditIcon, TrashIcon, SearchIcon, UserIcon, CreditCardIcon, MailIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../utils/api';
 import useAuthStore from '../store/authStore';
@@ -22,6 +22,7 @@ const StaffBookingsPage = () => {
   const [allDogs, setAllDogs] = useState([]);
   const [locations, setLocations] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [customerDogs, setCustomerDogs] = useState([]);
   const [items, setItems] = useState({
     toys: false, bowls: false, food: false, blanket: false,
     medication: false, collar: false, leash: false, other_items: '',
@@ -30,10 +31,18 @@ const StaffBookingsPage = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [customerSearch, setCustomerSearch] = useState('');
   const [formData, setFormData] = useState({
-    customer_id: '', dog_ids: [], location_id: '', accommodation_type: 'room',
-    check_in_date: '', check_out_date: '', notes: '', modification_reason: '',
+    customer_id: '',
+    dog_ids: [],
+    location_id: '',
+    accommodation_type: 'room',
+    check_in_date: '',
+    check_out_date: '',
+    notes: '',
+    modification_reason: '',
     needs_separate_playtime: false,
+    payment_type: 'invoice',
   });
 
   useEffect(() => {
@@ -42,16 +51,17 @@ const StaffBookingsPage = () => {
 
   const fetchData = async () => {
     try {
-      const [bookingsRes, dogsRes, locationsRes] = await Promise.all([
+      const [bookingsRes, dogsRes, locationsRes, customersRes] = await Promise.all([
         api.get('/bookings'),
         api.get('/dogs'),
         api.get('/locations'),
+        api.get('/admin/users?role=customer'),
       ]);
       setBookings(bookingsRes.data);
       setAllDogs(dogsRes.data);
       setLocations(locationsRes.data);
+      setCustomers(customersRes.data);
       
-      // Set default location
       if (locationsRes.data.length > 0) {
         setFormData(prev => ({ ...prev, location_id: locationsRes.data[0].id }));
       }
@@ -68,20 +78,48 @@ const StaffBookingsPage = () => {
     if (booking.items_checklist) setItems(booking.items_checklist);
   };
 
+  const handleCustomerSelect = (customerId) => {
+    setFormData({ ...formData, customer_id: customerId, dog_ids: [] });
+    const customer = customers.find(c => c.id === customerId);
+    if (customer) {
+      const dogsForCustomer = allDogs.filter(d => d.household_id === customer.household_id);
+      setCustomerDogs(dogsForCustomer);
+    } else {
+      setCustomerDogs([]);
+    }
+  };
+
+  const toggleDogSelection = (dogId) => {
+    setFormData(prev => ({
+      ...prev,
+      dog_ids: prev.dog_ids.includes(dogId)
+        ? prev.dog_ids.filter(id => id !== dogId)
+        : [...prev.dog_ids, dogId]
+    }));
+  };
+
   const openCreateModal = () => {
     setEditMode(false);
     setFormData({
-      customer_id: '', dog_ids: [], location_id: locations[0]?.id || '',
-      accommodation_type: 'room', check_in_date: '', check_out_date: '',
-      notes: '', modification_reason: '', needs_separate_playtime: false,
+      customer_id: '',
+      dog_ids: [],
+      location_id: locations[0]?.id || '',
+      accommodation_type: 'room',
+      check_in_date: '',
+      check_out_date: '',
+      notes: '',
+      modification_reason: '',
+      needs_separate_playtime: false,
+      payment_type: 'invoice',
     });
+    setCustomerDogs([]);
     setModalOpen(true);
   };
 
   const openEditModal = (booking) => {
     setEditMode(true);
     setFormData({
-      customer_id: booking.customer_id || booking.household_id,
+      customer_id: booking.customer_id || '',
       dog_ids: booking.dog_ids || [],
       location_id: booking.location_id,
       accommodation_type: booking.accommodation_type || 'room',
@@ -90,6 +128,7 @@ const StaffBookingsPage = () => {
       notes: booking.notes || '',
       modification_reason: '',
       needs_separate_playtime: booking.needs_separate_playtime || false,
+      payment_type: booking.payment_type || 'invoice',
     });
     setSelectedBooking(booking);
     setModalOpen(true);
@@ -97,7 +136,18 @@ const StaffBookingsPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.modification_reason && editMode) {
+    
+    if (!editMode && !formData.customer_id) {
+      toast.error('Please select a customer');
+      return;
+    }
+    
+    if (!editMode && formData.dog_ids.length === 0) {
+      toast.error('Please select at least one dog');
+      return;
+    }
+    
+    if (editMode && !formData.modification_reason) {
       toast.error('Please provide a reason for the modification');
       return;
     }
@@ -108,11 +158,12 @@ const StaffBookingsPage = () => {
         await api.patch(`/bookings/${selectedBooking.id}`, formData);
         toast.success('Booking updated successfully');
       } else {
-        await api.post('/bookings', {
+        await api.post('/bookings/admin', {
           ...formData,
-          household_id: formData.customer_id,
+          check_in_date: new Date(formData.check_in_date).toISOString(),
+          check_out_date: new Date(formData.check_out_date).toISOString(),
         });
-        toast.success('Booking created successfully');
+        toast.success(`Booking created! ${formData.payment_type === 'invoice' ? 'Invoice will be sent to customer.' : 'Payment required.'}`);
       }
       setModalOpen(false);
       fetchData();
@@ -194,6 +245,16 @@ const StaffBookingsPage = () => {
     b.status.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const filteredCustomers = customers.filter(c =>
+    c.full_name?.toLowerCase().includes(customerSearch.toLowerCase()) ||
+    c.email?.toLowerCase().includes(customerSearch.toLowerCase())
+  );
+
+  const getCustomerName = (customerId) => {
+    const customer = customers.find(c => c.id === customerId);
+    return customer?.full_name || 'Unknown';
+  };
+
   return (
     <div className="min-h-screen bg-[#F9F7F2]">
       <header className="bg-white border-b border-border/40 shadow-sm">
@@ -204,7 +265,7 @@ const StaffBookingsPage = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-serif font-bold text-primary">Manage Bookings</h1>
-              <p className="text-muted-foreground mt-1">Check in/out dogs and manage reservations</p>
+              <p className="text-muted-foreground mt-1">Create bookings and check in/out dogs</p>
             </div>
             <Button data-testid="create-booking-btn" onClick={openCreateModal} className="rounded-full">
               <PlusIcon size={18} className="mr-2" /> New Booking
@@ -219,12 +280,7 @@ const StaffBookingsPage = () => {
           <CardContent className="p-4">
             <div className="relative">
               <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
-              <Input
-                placeholder="Search bookings..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
+              <Input placeholder="Search bookings..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
             </div>
           </CardContent>
         </Card>
@@ -255,6 +311,11 @@ const StaffBookingsPage = () => {
                           <p className="text-sm text-muted-foreground">
                             {new Date(booking.check_in_date).toLocaleDateString()} - {new Date(booking.check_out_date).toLocaleDateString()}
                           </p>
+                          {booking.customer_id && (
+                            <p className="text-xs text-blue-600 flex items-center gap-1 mt-1">
+                              <UserIcon size={12} /> {getCustomerName(booking.customer_id)}
+                            </p>
+                          )}
                         </div>
                         <Badge className={getStatusColor(booking.status)}>{booking.status.replace('_', ' ')}</Badge>
                       </div>
@@ -350,6 +411,67 @@ const StaffBookingsPage = () => {
             <DialogTitle>{editMode ? 'Edit Booking' : 'Create New Booking'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {!editMode && (
+              <>
+                {/* Customer Selection */}
+                <div>
+                  <Label>Search Customer *</Label>
+                  <Input
+                    placeholder="Search by name or email..."
+                    value={customerSearch}
+                    onChange={(e) => setCustomerSearch(e.target.value)}
+                    className="mb-2"
+                  />
+                  <div className="max-h-40 overflow-y-auto border rounded-lg">
+                    {filteredCustomers.length === 0 ? (
+                      <p className="p-3 text-sm text-muted-foreground">No customers found</p>
+                    ) : (
+                      filteredCustomers.slice(0, 10).map((customer) => (
+                        <div
+                          key={customer.id}
+                          onClick={() => handleCustomerSelect(customer.id)}
+                          className={`p-3 cursor-pointer hover:bg-muted/50 flex items-center gap-3 ${formData.customer_id === customer.id ? 'bg-primary/10 border-l-4 border-primary' : ''}`}
+                        >
+                          <UserIcon size={16} className="text-muted-foreground" />
+                          <div>
+                            <p className="font-medium">{customer.full_name}</p>
+                            <p className="text-xs text-muted-foreground">{customer.email}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Dog Selection */}
+                {formData.customer_id && (
+                  <div>
+                    <Label>Select Dogs *</Label>
+                    {customerDogs.length === 0 ? (
+                      <p className="text-sm text-muted-foreground p-3 border rounded-lg">No dogs registered for this customer</p>
+                    ) : (
+                      <div className="space-y-2 border rounded-lg p-3">
+                        {customerDogs.map((dog) => (
+                          <div
+                            key={dog.id}
+                            onClick={() => toggleDogSelection(dog.id)}
+                            className={`p-3 rounded-lg cursor-pointer flex items-center gap-3 ${formData.dog_ids.includes(dog.id) ? 'bg-primary/10 border border-primary' : 'bg-muted/30 hover:bg-muted/50'}`}
+                          >
+                            <Checkbox checked={formData.dog_ids.includes(dog.id)} />
+                            <DogIcon size={16} />
+                            <div>
+                              <p className="font-medium">{dog.name}</p>
+                              <p className="text-xs text-muted-foreground">{dog.breed}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
             <div>
               <Label>Location</Label>
               <Select value={formData.location_id} onValueChange={(v) => setFormData({ ...formData, location_id: v })}>
@@ -361,16 +483,18 @@ const StaffBookingsPage = () => {
                 </SelectContent>
               </Select>
             </div>
+
             <div>
               <Label>Accommodation</Label>
               <Select value={formData.accommodation_type} onValueChange={(v) => setFormData({ ...formData, accommodation_type: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="room">Room</SelectItem>
-                  <SelectItem value="crate">Crate</SelectItem>
+                  <SelectItem value="room">Room ($50/night)</SelectItem>
+                  <SelectItem value="crate">Crate ($50/night)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Check-in Date</Label>
@@ -381,6 +505,40 @@ const StaffBookingsPage = () => {
                 <Input type="date" value={formData.check_out_date} onChange={(e) => setFormData({ ...formData, check_out_date: e.target.value })} required />
               </div>
             </div>
+
+            <div className="flex items-center space-x-3">
+              <Checkbox
+                id="separate_playtime"
+                checked={formData.needs_separate_playtime}
+                onCheckedChange={(c) => setFormData({ ...formData, needs_separate_playtime: c })}
+              />
+              <Label htmlFor="separate_playtime">Needs Separate Playtime (+$6/day)</Label>
+            </div>
+
+            {!editMode && (
+              <div>
+                <Label>Payment Method</Label>
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <div
+                    onClick={() => setFormData({ ...formData, payment_type: 'immediate' })}
+                    className={`p-4 rounded-lg border-2 cursor-pointer text-center transition-all ${formData.payment_type === 'immediate' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
+                  >
+                    <CreditCardIcon size={24} className="mx-auto mb-2 text-primary" />
+                    <p className="font-medium">Pay Now</p>
+                    <p className="text-xs text-muted-foreground">Immediate payment via Square</p>
+                  </div>
+                  <div
+                    onClick={() => setFormData({ ...formData, payment_type: 'invoice' })}
+                    className={`p-4 rounded-lg border-2 cursor-pointer text-center transition-all ${formData.payment_type === 'invoice' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
+                  >
+                    <MailIcon size={24} className="mx-auto mb-2 text-blue-600" />
+                    <p className="font-medium">Send Invoice</p>
+                    <p className="text-xs text-muted-foreground">Email invoice to customer</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div>
               <Label>Notes</Label>
               <textarea
@@ -390,6 +548,7 @@ const StaffBookingsPage = () => {
                 rows={2}
               />
             </div>
+
             {editMode && (
               <div>
                 <Label className="text-red-600">Reason for Modification *</Label>
@@ -403,9 +562,10 @@ const StaffBookingsPage = () => {
                 />
               </div>
             )}
+
             <div className="flex gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => setModalOpen(false)} className="flex-1">Cancel</Button>
-              <Button type="submit" disabled={loading} className="flex-1">{editMode ? 'Update' : 'Create'}</Button>
+              <Button type="submit" disabled={loading} className="flex-1">{editMode ? 'Update' : 'Create Booking'}</Button>
             </div>
           </form>
         </DialogContent>
