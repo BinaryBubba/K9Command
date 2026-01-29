@@ -306,6 +306,8 @@ class Task(BaseDBModel):
     due_date: Optional[datetime] = None
     status: TaskStatus
     completed_at: Optional[datetime] = None
+    completed_by: Optional[str] = None
+    completed_by_name: Optional[str] = None
     checklist_items: List[Dict[str, Any]] = []
 
 class TaskCreate(BaseModel):
@@ -323,6 +325,8 @@ class TaskResponse(BaseDBModel):
     due_date: Optional[datetime] = None
     status: TaskStatus
     completed_at: Optional[datetime] = None
+    completed_by: Optional[str] = None
+    completed_by_name: Optional[str] = None
 
 # Time Tracking
 class TimeEntry(BaseDBModel):
