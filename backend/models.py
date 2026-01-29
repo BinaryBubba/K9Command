@@ -412,3 +412,49 @@ class ReviewResponse(BaseDBModel):
     rating: int
     comment: Optional[str] = None
     created_at: datetime
+
+# Chat Models
+class ChatType(str, Enum):
+    ADMIN_STAFF = "admin_staff"
+    KENNEL_CUSTOMER = "kennel_customer"
+
+class ChatMessage(BaseDBModel):
+    chat_id: str
+    sender_id: str
+    sender_name: str
+    sender_role: UserRole
+    content: str
+    read: bool = False
+
+class ChatMessageCreate(BaseModel):
+    chat_id: str
+    content: str
+
+class ChatMessageResponse(BaseDBModel):
+    chat_id: str
+    sender_id: str
+    sender_name: str
+    sender_role: str
+    content: str
+    read: bool
+    created_at: datetime
+
+class Chat(BaseDBModel):
+    chat_type: ChatType
+    participants: List[str]  # user IDs
+    participant_names: Dict[str, str] = {}  # user_id -> name mapping
+    last_message: Optional[str] = None
+    last_message_at: Optional[datetime] = None
+    unread_count: Dict[str, int] = {}  # user_id -> unread count
+
+class ChatCreate(BaseModel):
+    chat_type: ChatType
+    participant_id: str  # The other participant
+
+class ChatResponse(BaseDBModel):
+    chat_type: str
+    participants: List[str]
+    participant_names: Dict[str, str]
+    last_message: Optional[str] = None
+    last_message_at: Optional[datetime] = None
+    unread_count: Dict[str, int] = {}
