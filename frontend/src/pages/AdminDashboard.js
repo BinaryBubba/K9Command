@@ -198,10 +198,30 @@ const AdminDashboard = () => {
           <Card data-testid="admin-nav-audit" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/audit')}>
             <CardContent className="p-8">
               <div className="w-16 h-16 rounded-full bg-primary/10 mx-auto mb-4 flex items-center justify-center">
-                <BarChartIcon className="text-primary" size={32} />
+                <ShieldCheckIcon className="text-primary" size={32} />
               </div>
               <h3 className="text-xl font-serif font-semibold text-center mb-2">Audit Logs</h3>
               <p className="text-sm text-muted-foreground text-center">View system activity logs</p>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="admin-nav-timesheet" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/timesheet')}>
+            <CardContent className="p-8">
+              <div className="w-16 h-16 rounded-full bg-blue-100 mx-auto mb-4 flex items-center justify-center">
+                <ClockIcon className="text-blue-600" size={32} />
+              </div>
+              <h3 className="text-xl font-serif font-semibold text-center mb-2">Staff Timesheets</h3>
+              <p className="text-sm text-muted-foreground text-center">View employee work hours</p>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="admin-nav-chat" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/chat')}>
+            <CardContent className="p-8">
+              <div className="w-16 h-16 rounded-full bg-purple-100 mx-auto mb-4 flex items-center justify-center">
+                <MessageCircleIcon className="text-purple-600" size={32} />
+              </div>
+              <h3 className="text-xl font-serif font-semibold text-center mb-2">Messages</h3>
+              <p className="text-sm text-muted-foreground text-center">Chat with staff & customers</p>
             </CardContent>
           </Card>
         </div>
