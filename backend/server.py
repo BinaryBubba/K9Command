@@ -1326,7 +1326,7 @@ async def get_revenue_trends(
             
             trends[key]["revenue"] += float(b.get('total_price', 0))
             trends[key]["bookings"] += 1
-        except:
+        except (ValueError, KeyError, TypeError):
             pass
     
     # Sort by date and return as list
