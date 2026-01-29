@@ -1128,7 +1128,12 @@ async def clock_in(entry_data: TimeEntryCreate, credentials: HTTPAuthorizationCr
     if active_entry:
         raise HTTPException(status_code=400, detail="Already clocked in")
     
-    entry = TimeEntry(**entry_data.model_dump(), clock_in=datetime.now(timezone.utc))
+    # Use authenticated user's ID, not the one from request body
+    entry = TimeEntry(
+        staff_id=user.id,
+        location_id=entry_data.location_id,
+        clock_in=datetime.now(timezone.utc)
+    )
     doc = entry.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
     doc['updated_at'] = doc['updated_at'].isoformat()
