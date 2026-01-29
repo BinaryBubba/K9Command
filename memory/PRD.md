@@ -27,109 +27,96 @@ Build a comprehensive "Kennel Operations 'Single Source of Truth' Platform" - a 
 - Complete auth flow for Customers, Staff, and Admins
 - Registration, login, password reset with JWT tokens
 - Role-based access control
-- Password Reset with proper token trimming and URL encoding
 
 ### Revenue Dashboard ✅
 - Time-based filtering (Last 7 Days, Last 30 Days, Last Year)
 - Revenue summary cards with comparison to previous period
-- Revenue Trend area chart with daily/monthly data points
-- Accommodation breakdown pie chart (Rooms vs Crates)
-- Daily Bookings bar chart
-- Average stay duration and occupancy metrics
+- Revenue Trend area chart, Accommodation pie chart, Daily Bookings bar chart
 
 ### Customer Portal ✅
-- Dashboard with stats (dogs, bookings)
-- Add Dog page with comprehensive form
-- Book a Stay page with date selection, availability check, pricing
-- **P0 Bug Fixed**: Booking review page properly displays availability and pricing
+- Dashboard with stats, Add Dog page, Book a Stay page
+- Chat with kennel staff
 
 ### Staff Portal ✅
-- Dashboard with clock in/out, tasks, quick action cards
-- Upload page, bookings management, approve updates pages
-- **NEW: Timesheet Page** - View work hours, clock in/out history, weekly totals
-- **NEW: Chat Page** - Internal messaging with admins
+- **Dashboard**: Clock in/out, tasks, quick action cards
+- **Bookings CRUD**: Create, edit, delete with modification reason field
+- **Timesheet**: Clock in/out, request modifications to past entries, weekly totals (Mon-Sun)
+- **Chat**: Separate tabs for Staff vs Customer conversations
 
-### Admin Portal ✅ (Full CRUD Controls)
-- **AdminDashboard**: Stats overview with 9 navigation cards
-- **AdminBookingsPage**: Full CRUD - Create, Edit, Status Change, Cancel bookings
-- **AdminStaffPage**: Full CRUD - Create Task, Recurring Tasks, Complete/Edit/Delete tasks
-- **AdminCustomersPage**: List customers with dogs, Activate/Deactivate accounts
-- **AdminReportsPage**: Revenue Dashboard with charts and analytics
-- **AdminIncidentsPage**: Incident reporting
-- **AdminAuditPage**: System activity logs
-- **NEW: AdminTimesheetPage** - View all staff work hours, export to CSV, filter by staff
-- **NEW: Chat Page** - Messaging with staff and customers
+### Admin Portal ✅ (Complete)
+- **Dashboard**: Stats overview with 9 navigation cards
+- **Bookings**: Full CRUD - Create, Edit, Status Change, Cancel (BUG FIXED: edit no longer returns "not found")
+- **Staff Management**: Tasks with completion tracking (who completed), Shift Scheduler CRUD
+- **Customer Management**: Full CRUD - Create, Edit, Delete, Activate/Deactivate
+- **Incidents**: Full CRUD - Create, Edit, Delete, Resolve with notes
+- **Timesheets**: Weekly totals (Mon-Sun), CRUD, Modification Request Approval, CSV Export
+- **Reports**: Revenue Dashboard with charts
+- **Audit Logs**: System activity tracking
+- **Chat**: Tabs for Staff vs Customer conversations
 
-### Internal Chat System ✅ (NEW)
-- Real-time messaging between Admin-Staff and Kennel-Customer
-- Conversation list with unread counts
-- Message history with timestamps
-- New chat modal to start conversations with available users
-- Backend APIs: GET/POST /chats, GET/POST /chats/{id}/messages
+### Internal Chat System ✅
+- Real-time messaging: Admin ↔ Staff, Kennel ↔ Customer
+- **Separate tabs**: All, Staff (internal), Customers
+- Unread counts, message history, new chat modal
 
-### Timesheet Functionality ✅ (NEW)
-- Staff can view their own clock in/out history
-- Weekly hours summary
-- Current session tracking
-- Admin can view all staff timesheets
-- Export to CSV functionality
-- Backend APIs: GET /time-entries, GET /time-entries/current
+### Timesheet System ✅
+- Staff: Clock in/out, request modifications with reason
+- Admin: Approve/reject modification requests, full CRUD, weekly totals Mon-Sun
 
-### Square Payments Integration ✅ (NEW)
-- Real Square SDK integration ready
-- Falls back to mock mode if API keys not configured
-- Supports: Payment processing, idempotency keys, audit logging
-- To enable: Add SQUARE_ACCESS_TOKEN, SQUARE_APPLICATION_ID, SQUARE_LOCATION_ID to backend/.env
+### Shift Scheduler ✅
+- Create/Edit/Delete shifts for staff
+- View shifts grouped by date
+- Staff assignment and location tracking
 
 ---
 
+## Test Data Available
+- **Test Customer**: test_customer@example.com / TestPass123!
+- **Dogs**: Buddy (Golden Retriever), Max (German Shepherd)
+- **Active Booking**: Checked-in status, ready for photo upload testing
+
 ## Pricing Rules
 - Base: $50/night/dog
-- Holiday surcharge: +20% (Dec 25, Dec 31, Jul 4, Nov 28)
-- Separate playtime: +$6/day (for aggressive/unfriendly dogs)
+- Holiday surcharge: +20%
+- Separate playtime: +$6/day
 
 ---
 
 ## Prioritized Backlog
 
-### P0 (Critical) - Completed ✅
-- [x] Fix booking review page blank issue
-- [x] Implement Admin CRUD controls
-- [x] Revenue Dashboard with charts
-- [x] Timesheet functionality
-- [x] Internal Chat System
-- [x] Square Payments integration (ready for keys)
+### P0 (Critical) - All Complete ✅
+- [x] Fix booking review page
+- [x] Admin CRUD controls
+- [x] Revenue Dashboard
+- [x] Timesheet functionality with modification requests
+- [x] Internal Chat System with tabs
+- [x] Square Payments integration
+- [x] Shift Scheduler
+- [x] Task completion tracking
+- [x] Customer CRUD
+- [x] Incident CRUD
+- [x] Time entry CRUD + approval
+- [x] Staff Bookings CRUD with reason field
 
 ### P1 (High Priority) - Future
-- [ ] Enable real Square payments (user needs to add API keys)
-- [ ] Real file storage service (AWS S3) for photo uploads
-- [ ] AI-generated daily summaries (endpoint exists, needs testing)
+- [ ] Enable real Square payments (add API keys)
+- [ ] Real file storage (AWS S3)
+- [ ] AI daily summary testing
 
 ### P2 (Medium Priority)
-- [ ] Photo watermarking and purchase feature
-- [ ] Staff management features (SOP distribution, scheduling)
-- [ ] Email/SMS notifications for booking confirmations
+- [ ] Photo watermarking
+- [ ] Email/SMS notifications
 
-### P3 (Low Priority / Future)
-- [ ] Native Android/iOS applications
-- [ ] Multi-location support UI
-- [ ] Customer review system enhancement
+### P3 (Low Priority)
+- [ ] Native mobile apps
+- [ ] Multi-location UI
 
 ---
 
 ## Current Integration Status
-1. **Square Payments**: SDK installed, integration ready. Add keys to enable real payments:
-   - `SQUARE_ACCESS_TOKEN`
-   - `SQUARE_APPLICATION_ID`  
-   - `SQUARE_LOCATION_ID`
-2. **File Storage**: Uses base64 encoding (local storage)
-3. **AI Summaries**: Uses GPT-5.2 via Emergent LLM Key (functional)
-
----
-
-## Test Credentials
-- Register new users through UI at `/auth`
-- Select role (customer/staff/admin) during registration
+1. **Square Payments**: SDK installed, mock mode (add keys to enable)
+2. **File Storage**: Base64 encoding (local)
+3. **AI Summaries**: GPT-5.2 via Emergent LLM Key
 
 ## Routes
 - **Customer**: /customer/dashboard, /customer/dogs/add, /customer/bookings/new, /customer/chat
