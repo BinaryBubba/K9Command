@@ -612,14 +612,24 @@ class TestIncidentCRUD:
         })
         return response.json()["token"]
     
-    def test_create_incident(self, staff_token):
+    @pytest.fixture(scope="class")
+    def location_id(self):
+        response = requests.get(f"{BASE_URL}/api/locations")
+        locations = response.json()
+        return locations[0]["id"] if locations else None
+    
+    def test_create_incident(self, staff_token, location_id):
         """Staff can create incident"""
+        if not location_id:
+            pytest.skip("No location available")
+        
         response = requests.post(
             f"{BASE_URL}/api/incidents",
             json={
+                "title": "Test Incident",
                 "description": "Test incident - dog escaped from kennel",
                 "severity": "high",
-                "dog_ids": []
+                "location_id": location_id
             },
             headers={"Authorization": f"Bearer {staff_token}"}
         )
@@ -640,14 +650,18 @@ class TestIncidentCRUD:
         assert isinstance(data, list)
         print(f"✓ Got {len(data)} incidents")
     
-    def test_update_incident(self, admin_token, staff_token):
+    def test_update_incident(self, admin_token, staff_token, location_id):
         """Admin can update incident"""
+        if not location_id:
+            pytest.skip("No location available")
+        
         # Create incident first
         create_response = requests.post(
             f"{BASE_URL}/api/incidents",
-            json={"description": "Update test incident", "severity": "medium"},
+            json={"title": "Update Test", "description": "Update test incident", "severity": "medium", "location_id": location_id},
             headers={"Authorization": f"Bearer {staff_token}"}
         )
+        assert create_response.status_code == 200, f"Failed to create incident: {create_response.text}"
         incident_id = create_response.json()["id"]
         
         # Update it
@@ -659,14 +673,18 @@ class TestIncidentCRUD:
         assert response.status_code == 200
         print(f"✓ Updated incident: {incident_id[:8]}...")
     
-    def test_delete_incident(self, admin_token, staff_token):
+    def test_delete_incident(self, admin_token, staff_token, location_id):
         """Admin can delete incident"""
+        if not location_id:
+            pytest.skip("No location available")
+        
         # Create incident first
         create_response = requests.post(
             f"{BASE_URL}/api/incidents",
-            json={"description": "Delete test incident", "severity": "low"},
+            json={"title": "Delete Test", "description": "Delete test incident", "severity": "low", "location_id": location_id},
             headers={"Authorization": f"Bearer {staff_token}"}
         )
+        assert create_response.status_code == 200, f"Failed to create incident: {create_response.text}"
         incident_id = create_response.json()["id"]
         
         # Delete it
