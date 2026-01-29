@@ -35,6 +35,16 @@ Build a comprehensive "Kennel Operations 'Single Source of Truth' Platform" - a 
 - Complete auth flow for Customers, Staff, and Admins
 - Registration, login, password reset with JWT tokens
 - Role-based access control
+- **Password Reset**: Improved token handling with proper trimming and URL encoding
+
+### Revenue Dashboard ✅ (NEW)
+- Time-based filtering (Last 7 Days, Last 30 Days, Last Year)
+- Revenue summary cards with comparison to previous period
+- Revenue Trend area chart with daily/monthly data points
+- Accommodation breakdown pie chart (Rooms vs Crates)
+- Daily Bookings bar chart
+- Average stay duration tracking
+- Current occupancy rate display
 
 ### Customer Portal ✅
 - Dashboard with stats (dogs, bookings)
