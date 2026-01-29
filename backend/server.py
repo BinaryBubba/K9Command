@@ -1254,7 +1254,7 @@ async def get_revenue_summary(
             check_in = datetime.fromisoformat(b['check_in_date'].replace('Z', '+00:00')) if isinstance(b['check_in_date'], str) else b['check_in_date']
             check_out = datetime.fromisoformat(b['check_out_date'].replace('Z', '+00:00')) if isinstance(b['check_out_date'], str) else b['check_out_date']
             total_nights += (check_out - check_in).days
-        except:
+        except (ValueError, KeyError, TypeError):
             pass
     
     avg_stay = total_nights / len(current_bookings) if current_bookings else 0
