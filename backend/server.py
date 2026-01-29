@@ -386,18 +386,19 @@ async def upload_vaccination_file(
 async def create_booking(booking_data: BookingCreate, credentials: HTTPAuthorizationCredentials = Depends(security), database=Depends(get_db)):
     user = await get_current_user(credentials, database)
     if user.role != UserRole.CUSTOMER:
-        raise HTTPException(status_code=403, detail="Only customers can create bookings")
+        raise HTTPException(status_code=403, detail="Only customers can create bookings. Staff should use /bookings/admin endpoint")
     
     # Calculate nights
     nights = (booking_data.check_out_date - booking_data.check_in_date).days
     if nights <= 0:
         raise HTTPException(status_code=400, detail="Invalid date range")
     
-    # Check if dates include holidays (basic check - can be enhanced)
+    # Check if dates include holidays
     is_holiday = False
-    for holiday_date in ["2025-12-25", "2025-12-31", "2025-07-04", "2025-11-28"]:
+    holidays = ["2025-12-25", "2025-12-31", "2025-07-04", "2025-11-28", "2026-12-25", "2026-12-31", "2026-07-04", "2026-11-28"]
+    for holiday_date in holidays:
         holiday = datetime.fromisoformat(holiday_date)
-        if booking_data.check_in_date <= holiday < booking_data.check_out_date:
+        if booking_data.check_in_date.date() <= holiday.date() < booking_data.check_out_date.date():
             is_holiday = True
             break
     
@@ -432,6 +433,106 @@ async def create_booking(booking_data: BookingCreate, credentials: HTTPAuthoriza
     
     await database.bookings.insert_one(doc)
     await create_audit_log(user.id, AuditAction.CREATE, "booking", booking.id)
+    
+    return BookingResponse(**booking.model_dump())
+
+@api_router.post("/bookings/admin", response_model=BookingResponse)
+async def create_booking_admin(
+    booking_data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Create booking on behalf of customer (staff/admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff or Admin access required")
+    
+    # Get customer by ID
+    customer_id = booking_data.get('customer_id')
+    if not customer_id:
+        raise HTTPException(status_code=400, detail="Customer ID is required")
+    
+    customer = await database.users.find_one({"id": customer_id}, {"_id": 0})
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    
+    # Parse dates
+    check_in_date = datetime.fromisoformat(booking_data['check_in_date'].replace('Z', '+00:00')) if isinstance(booking_data['check_in_date'], str) else booking_data['check_in_date']
+    check_out_date = datetime.fromisoformat(booking_data['check_out_date'].replace('Z', '+00:00')) if isinstance(booking_data['check_out_date'], str) else booking_data['check_out_date']
+    
+    # Calculate nights
+    nights = (check_out_date - check_in_date).days
+    if nights <= 0:
+        raise HTTPException(status_code=400, detail="Invalid date range")
+    
+    dog_ids = booking_data.get('dog_ids', [])
+    if not dog_ids:
+        raise HTTPException(status_code=400, detail="At least one dog is required")
+    
+    # Check if dates include holidays
+    is_holiday = False
+    holidays = ["2025-12-25", "2025-12-31", "2025-07-04", "2025-11-28", "2026-12-25", "2026-12-31", "2026-07-04", "2026-11-28"]
+    for holiday_date in holidays:
+        holiday = datetime.fromisoformat(holiday_date)
+        if check_in_date.date() <= holiday.date() < check_out_date.date():
+            is_holiday = True
+            break
+    
+    # Pricing calculation
+    base_price = 50.0
+    total_price = base_price * nights * len(dog_ids)
+    
+    if is_holiday:
+        total_price *= 1.20
+    
+    separate_playtime_fee = 0.0
+    needs_separate_playtime = booking_data.get('needs_separate_playtime', False)
+    if needs_separate_playtime:
+        separate_playtime_fee = 6.0 * nights
+        total_price += separate_playtime_fee
+    
+    # Payment type: immediate or invoice
+    payment_type = booking_data.get('payment_type', 'invoice')  # 'immediate' or 'invoice'
+    payment_status = 'pending'
+    
+    # Get location (default to main kennel)
+    location_id = booking_data.get('location_id')
+    if not location_id:
+        location = await database.locations.find_one({}, {"_id": 0})
+        location_id = location['id'] if location else 'main-kennel'
+    
+    booking = Booking(
+        dog_ids=dog_ids,
+        location_id=location_id,
+        accommodation_type=booking_data.get('accommodation_type', 'room'),
+        check_in_date=check_in_date,
+        check_out_date=check_out_date,
+        notes=booking_data.get('notes', ''),
+        special_request=booking_data.get('special_request', ''),
+        needs_separate_playtime=needs_separate_playtime,
+        household_id=customer['household_id'],
+        customer_id=customer_id,
+        status=BookingStatus.PENDING if payment_type == 'invoice' else BookingStatus.PENDING,
+        payment_status=payment_status,
+        payment_type=payment_type,
+        total_price=round(total_price, 2),
+        is_holiday_pricing=is_holiday,
+        separate_playtime_fee=separate_playtime_fee,
+        created_by=user.id
+    )
+    
+    doc = booking.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    doc['check_in_date'] = doc['check_in_date'].isoformat()
+    doc['check_out_date'] = doc['check_out_date'].isoformat()
+    
+    await database.bookings.insert_one(doc)
+    await create_audit_log(user.id, AuditAction.CREATE, "booking", booking.id, {
+        "customer_id": customer_id,
+        "payment_type": payment_type,
+        "created_by_staff": True
+    })
     
     return BookingResponse(**booking.model_dump())
 
