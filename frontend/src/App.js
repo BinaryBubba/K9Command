@@ -89,6 +89,14 @@ function App() {
             }
           />
           <Route
+            path="/customer/chat"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <ChatPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/customer/*"
             element={
               <ProtectedRoute allowedRoles={['customer']}>
