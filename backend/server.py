@@ -1486,8 +1486,166 @@ async def get_incidents(credentials: HTTPAuthorizationCredentials = Depends(secu
     if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
         raise HTTPException(status_code=403, detail="Staff access required")
     
-    incidents = await database.incidents.find({}, {"_id": 0}).to_list(1000)
+    incidents = await database.incidents.find({}, {"_id": 0}).sort("created_at", -1).to_list(1000)
     return [IncidentResponse(**inc) for inc in incidents]
+
+@api_router.get("/incidents/{incident_id}", response_model=IncidentResponse)
+async def get_incident(
+    incident_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    user = await get_current_user(credentials, database)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    incident = await database.incidents.find_one({"id": incident_id}, {"_id": 0})
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    
+    return IncidentResponse(**incident)
+
+@api_router.patch("/incidents/{incident_id}")
+async def update_incident(
+    incident_id: str,
+    update_data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    user = await get_current_user(credentials, database)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    update_doc = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    
+    allowed_fields = ['description', 'severity', 'dog_ids', 'resolution', 'status']
+    for field in allowed_fields:
+        if field in update_data:
+            update_doc[field] = update_data[field]
+    
+    result = await database.incidents.update_one({"id": incident_id}, {"$set": update_doc})
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    
+    await create_audit_log(user.id, AuditAction.UPDATE, "incident", incident_id)
+    
+    return {"message": "Incident updated"}
+
+@api_router.delete("/incidents/{incident_id}")
+async def delete_incident(
+    incident_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    result = await database.incidents.delete_one({"id": incident_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    
+    await create_audit_log(user.id, AuditAction.DELETE, "incident", incident_id)
+    
+    return {"message": "Incident deleted"}
+
+# ==================== ADMIN CUSTOMER MANAGEMENT ====================
+
+@api_router.post("/admin/customers")
+async def create_customer(
+    customer_data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Admin create a customer"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Check if email exists
+    existing = await database.users.find_one({"email": customer_data['email']}, {"_id": 0})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    import uuid
+    household_id = str(uuid.uuid4())
+    
+    new_user = User(
+        email=customer_data['email'],
+        hashed_password=hash_password(customer_data.get('password', 'TempPass123!')),
+        full_name=customer_data['full_name'],
+        role=UserRole.CUSTOMER,
+        household_id=household_id,
+        phone=customer_data.get('phone'),
+        is_active=customer_data.get('is_active', True)
+    )
+    
+    doc = new_user.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    
+    await database.users.insert_one(doc)
+    await create_audit_log(user.id, AuditAction.CREATE, "customer", new_user.id)
+    
+    return {"message": "Customer created", "id": new_user.id, "temp_password": customer_data.get('password', 'TempPass123!')}
+
+@api_router.patch("/admin/customers/{customer_id}")
+async def update_customer(
+    customer_id: str,
+    update_data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Admin update a customer"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    update_doc = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    
+    allowed_fields = ['full_name', 'email', 'phone', 'is_active', 'notes']
+    for field in allowed_fields:
+        if field in update_data:
+            update_doc[field] = update_data[field]
+    
+    # Handle password update separately
+    if 'password' in update_data and update_data['password']:
+        update_doc['hashed_password'] = hash_password(update_data['password'])
+    
+    result = await database.users.update_one({"id": customer_id, "role": UserRole.CUSTOMER}, {"$set": update_doc})
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    
+    await create_audit_log(user.id, AuditAction.UPDATE, "customer", customer_id)
+    
+    return {"message": "Customer updated"}
+
+@api_router.delete("/admin/customers/{customer_id}")
+async def delete_customer(
+    customer_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Admin delete/deactivate a customer"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Soft delete - deactivate
+    result = await database.users.update_one(
+        {"id": customer_id, "role": UserRole.CUSTOMER},
+        {"$set": {"is_active": False, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    
+    await create_audit_log(user.id, AuditAction.DELETE, "customer", customer_id)
+    
+    return {"message": "Customer deactivated"}
 
 # ==================== REVIEW ROUTES ====================
 
