@@ -338,9 +338,73 @@ class TimeEntryCreate(BaseModel):
 
 class TimeEntryResponse(BaseDBModel):
     staff_id: str
+    staff_name: Optional[str] = None
     clock_in: datetime
     clock_out: Optional[datetime] = None
     location_id: str
+    notes: Optional[str] = None
+
+class TimeModificationStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+class TimeModificationRequest(BaseDBModel):
+    time_entry_id: str
+    staff_id: str
+    staff_name: str
+    original_clock_in: datetime
+    original_clock_out: Optional[datetime] = None
+    requested_clock_in: datetime
+    requested_clock_out: Optional[datetime] = None
+    reason: str
+    status: TimeModificationStatus = TimeModificationStatus.PENDING
+    reviewed_by: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+    review_notes: Optional[str] = None
+
+class TimeModificationRequestCreate(BaseModel):
+    time_entry_id: str
+    requested_clock_in: datetime
+    requested_clock_out: Optional[datetime] = None
+    reason: str
+
+class TimeModificationRequestResponse(BaseDBModel):
+    time_entry_id: str
+    staff_id: str
+    staff_name: str
+    original_clock_in: datetime
+    original_clock_out: Optional[datetime] = None
+    requested_clock_in: datetime
+    requested_clock_out: Optional[datetime] = None
+    reason: str
+    status: str
+    reviewed_by: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+    review_notes: Optional[str] = None
+
+# Shift Scheduling
+class Shift(BaseDBModel):
+    staff_id: str
+    staff_name: Optional[str] = None
+    location_id: str
+    start_time: datetime
+    end_time: datetime
+    notes: Optional[str] = None
+
+class ShiftCreate(BaseModel):
+    staff_id: str
+    location_id: str
+    start_time: datetime
+    end_time: datetime
+    notes: Optional[str] = None
+
+class ShiftResponse(BaseDBModel):
+    staff_id: str
+    staff_name: Optional[str] = None
+    location_id: str
+    start_time: datetime
+    end_time: datetime
     notes: Optional[str] = None
 
 # Audit Log
