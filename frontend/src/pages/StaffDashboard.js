@@ -174,30 +174,58 @@ const StaffDashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card data-testid="action-upload-photos" className="bg-gradient-to-br from-primary to-primary/80 text-white rounded-2xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/staff/upload')}>
-            <CardContent className="p-8">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                  <UploadIcon size={32} />
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <UploadIcon size={24} />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-serif font-bold">Upload Photos</h3>
-                  <p className="opacity-90">Add today's updates</p>
+                  <h3 className="text-lg font-serif font-bold">Upload Photos</h3>
+                  <p className="text-sm opacity-90">Add updates</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card data-testid="action-view-bookings" className="bg-gradient-to-br from-secondary to-secondary/80 text-secondary-foreground rounded-2xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/staff/bookings')}>
-            <CardContent className="p-8">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center">
-                  <ImageIcon size={32} />
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center">
+                  <ImageIcon size={24} />
                 </div>
                 <div>
-                  <h3 className="text-2xl font-serif font-bold">View Bookings</h3>
-                  <p className="opacity-90">Check today's guests</p>
+                  <h3 className="text-lg font-serif font-bold">Bookings</h3>
+                  <p className="text-sm opacity-90">Today's guests</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="action-timesheet" className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/staff/timesheet')}>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <CalendarClockIcon size={24} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-serif font-bold">Timesheet</h3>
+                  <p className="text-sm opacity-90">Work hours</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="action-chat" className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-2xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/staff/chat')}>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <MessageCircleIcon size={24} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-serif font-bold">Messages</h3>
+                  <p className="text-sm opacity-90">Chat with admin</p>
                 </div>
               </div>
             </CardContent>
