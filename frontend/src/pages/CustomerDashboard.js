@@ -6,6 +6,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { PlusIcon, DogIcon, CalendarIcon, ImageIcon, LogOutIcon, CreditCardIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import NotificationBell from '../components/NotificationBell';
 
 const CustomerDashboard = () => {
   const { user, logout } = useAuthStore();
