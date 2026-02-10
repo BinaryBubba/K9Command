@@ -703,6 +703,39 @@ GET /api/time-off/balances - Get time off balances
 
 ---
 
+## ACTION ITEMS IMPLEMENTATION (Feb 2026) ✅ COMPLETE
+
+### Meet & Greet Booking Type ✅
+- New booking type: `meet_greet` added to BookingType enum
+- New customers MUST complete a Meet & Greet before booking stays/daycare
+- Admin can configure Meet & Greet availability (days, times, price) in Settings page
+- Admin can override the requirement using `meet_greet_override` flag
+- Booking flow: Customer books M&G → Completes M&G → Unlocks Stay/Daycare bookings
+
+### Cash Payment Option ✅
+- Payment types now include: `invoice`, `immediate` (card), `cash`
+- Admin/Staff can select cash payment when creating bookings
+- BookingModal UI updated with cash option
+
+### CSV Export for Reports ✅
+- `GET /api/exports/bookings/csv` - Export all bookings with customer/dog details
+- `GET /api/exports/customers/csv` - Export all customers with dog/booking counts
+- Export includes: Timesheets, Schedules, Time Off, Bookings, Customers, Form Submissions
+
+### Automated Staff Onboarding Emails ✅ (MOCKED)
+- Welcome email sent when staff account is approved
+- Email includes: Login instructions, available features, next steps
+- Stored in `email_outbox` collection in mock mode
+
+### Customer Welcome Emails ✅ (MOCKED)
+- Welcome email sent when customer registers
+- Email includes: Meet & Greet requirement info, getting started steps
+- Stored in `email_outbox` collection in mock mode
+
+**Test Report:** `/app/test_reports/iteration_17.json` - 18/18 backend tests passed
+
+---
+
 ## Test Accounts
 - Customer: `customer_test@k9.com` / `Test123!`
 - Staff: `staff_test@k9.com` / `Test123!`
