@@ -324,6 +324,8 @@ class SquarePaymentService:
         # Store authorization
         await self.db.payment_authorizations.insert_one(auth_data)
         
+        # Remove MongoDB _id before returning
+        auth_data.pop('_id', None)
         return auth_data
     
     async def capture_authorization(self, authorization_id: str) -> Dict[str, Any]:
