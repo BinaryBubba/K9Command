@@ -681,7 +681,13 @@ GET  /api/k9/reminders/pending - View pending reminders (admin)
 │   ├── timeclock.py    # GPS clock, breaks, pay periods
 │   ├── forms.py        # Forms engine, task templates
 │   ├── hr.py           # Time off policies, requests, balances
-│   └── communications.py # Announcements, training, knowledge
+│   ├── communications.py # Announcements, training, knowledge
+│   ├── admin.py        # NEW: Email templates, staff management, owner functions
+│   ├── bookings.py     # Smart booking, eligibility, approvals + email sending
+│   └── ...             # 8 other domain routers
+├── services/
+│   ├── email.py        # NEW: Email service (SMTP/mock modes)
+│   └── ...
 ├── pricing_engine.py
 ├── payment_service.py
 ├── automation_service.py
