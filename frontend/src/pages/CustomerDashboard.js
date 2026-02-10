@@ -155,6 +155,34 @@ const CustomerDashboard = () => {
               </div>
             </CardContent>
           </Card>
+
+          <Card data-testid="action-card-calendar" className="bg-white rounded-2xl border border-border/50 shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/customer/calendar')}>
+            <CardContent className="p-8">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                  <CalendarIcon className="text-primary" size={32} />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-serif font-bold text-primary">Calendar</h3>
+                  <p className="text-muted-foreground">View stays by day or week</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="action-card-payments" className="bg-white rounded-2xl border border-border/50 shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/customer/payments')}>
+            <CardContent className="p-8">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-secondary/20 flex items-center justify-center">
+                  <CreditCardIcon className="text-secondary-foreground" size={32} />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-serif font-bold text-primary">Payments</h3>
+                  <p className="text-muted-foreground">Pay invoices (Square) + crypto soon</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Recent Updates */}
