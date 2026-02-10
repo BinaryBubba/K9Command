@@ -2248,6 +2248,1019 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+async def startup_db_client():
+    """Initialize database and seed default data"""
+    # Initialize collections
+    await db.service_types.create_index("id", unique=True)
+    await db.add_ons.create_index("id", unique=True)
+    await db.capacity_rules.create_index("id", unique=True)
+    await db.pricing_rules.create_index("id", unique=True)
+    await db.cancellation_policies.create_index("id", unique=True)
+    await db.system_settings.create_index("key", unique=True)
+    await db.payments.create_index("id", unique=True)
+    await db.invoices.create_index("id", unique=True)
+    
+    # Seed default service types if none exist
+    if await db.service_types.count_documents({}) == 0:
+        default_services = [
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Standard Boarding",
+                "description": "Overnight boarding in private rooms",
+                "base_price": 50.0,
+                "price_type": "per_dog_per_day",
+                "is_overnight": True,
+                "min_duration_days": 1,
+                "requires_vaccination": True,
+                "active": True,
+                "sort_order": 1,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Daycare",
+                "description": "Full-day supervised play and socialization",
+                "base_price": 35.0,
+                "price_type": "per_dog",
+                "is_overnight": False,
+                "min_duration_days": 1,
+                "max_duration_days": 1,
+                "requires_vaccination": True,
+                "active": True,
+                "sort_order": 2,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        ]
+        await db.service_types.insert_many(default_services)
+        logger.info("Seeded default service types")
+    
+    # Seed default add-ons if none exist
+    if await db.add_ons.count_documents({}) == 0:
+        default_addons = [
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Extra Playtime",
+                "description": "30 minutes of one-on-one play with staff",
+                "price": 6.0,
+                "price_type": "per_day",
+                "category": "playtime",
+                "max_quantity": 3,
+                "active": True,
+                "sort_order": 1,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Bath & Grooming",
+                "description": "Full bath and basic grooming before pickup",
+                "price": 40.0,
+                "price_type": "flat",
+                "category": "grooming",
+                "max_quantity": 1,
+                "active": True,
+                "sort_order": 2,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Transportation (Round Trip)",
+                "description": "Pickup and drop-off service",
+                "price": 25.0,
+                "price_type": "flat",
+                "category": "transport",
+                "max_quantity": 1,
+                "active": True,
+                "sort_order": 3,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Feeding Assistance",
+                "description": "Special feeding schedule and portion management",
+                "price": 6.0,
+                "price_type": "per_day",
+                "category": "feeding",
+                "max_quantity": 1,
+                "active": True,
+                "sort_order": 4,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        ]
+        await db.add_ons.insert_many(default_addons)
+        logger.info("Seeded default add-ons")
+    
+    # Seed default system settings if none exist
+    if await db.system_settings.count_documents({}) == 0:
+        default_settings = [
+            {"key": "deposit_percentage", "value": "50", "value_type": "number", "category": "payments", "description": "Default deposit percentage required", "editable": True},
+            {"key": "tax_rate", "value": "0", "value_type": "number", "category": "payments", "description": "Tax rate percentage", "editable": True},
+            {"key": "rooms_capacity", "value": "7", "value_type": "number", "category": "capacity", "description": "Default room capacity", "editable": True},
+            {"key": "crates_capacity", "value": "4", "value_type": "number", "category": "capacity", "description": "Default crate capacity", "editable": True},
+            {"key": "booking_requires_approval", "value": "false", "value_type": "boolean", "category": "bookings", "description": "Require staff approval for all bookings", "editable": True},
+        ]
+        for setting in default_settings:
+            setting["id"] = str(uuid.uuid4())
+            setting["created_at"] = datetime.now(timezone.utc).isoformat()
+            setting["updated_at"] = datetime.now(timezone.utc).isoformat()
+        await db.system_settings.insert_many(default_settings)
+        logger.info("Seeded default system settings")
+    
+    # Seed default cancellation policy if none exists
+    if await db.cancellation_policies.count_documents({}) == 0:
+        default_policies = [
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Standard - 7 Day",
+                "days_before_checkin": 7,
+                "refund_percentage": 100.0,
+                "refund_deposit_only": False,
+                "active": True,
+                "is_default": True,
+                "description": "Full refund if cancelled 7+ days before check-in",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Partial - 3 Day",
+                "days_before_checkin": 3,
+                "refund_percentage": 50.0,
+                "refund_deposit_only": False,
+                "active": True,
+                "is_default": False,
+                "description": "50% refund if cancelled 3-6 days before check-in",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            },
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Last Minute - Under 3 Days",
+                "days_before_checkin": 0,
+                "refund_percentage": 0.0,
+                "refund_deposit_only": False,
+                "active": True,
+                "is_default": False,
+                "description": "No refund if cancelled less than 3 days before check-in",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        ]
+        await db.cancellation_policies.insert_many(default_policies)
+        logger.info("Seeded default cancellation policies")
+    
+    # Seed default pricing rules (weekend surcharge)
+    if await db.pricing_rules.count_documents({}) == 0:
+        default_pricing_rules = [
+            {
+                "id": str(uuid.uuid4()),
+                "name": "Weekend Surcharge",
+                "rule_type": "weekend",
+                "multiplier": 1.15,
+                "flat_adjustment": 0.0,
+                "days_of_week": [5, 6],  # Saturday, Sunday
+                "priority": 1,
+                "active": True,
+                "description": "15% surcharge for weekend stays",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        ]
+        await db.pricing_rules.insert_many(default_pricing_rules)
+        logger.info("Seeded default pricing rules")
+
+
+# ==================== PHASE 1: SERVICE TYPES ====================
+
+@api_router.get("/service-types", response_model=List[ServiceTypeResponse])
+async def get_service_types(database=Depends(get_db)):
+    """Get all active service types"""
+    services = await database.service_types.find({"active": True}, {"_id": 0}).sort("sort_order", 1).to_list(100)
+    return [ServiceTypeResponse(**s) for s in services]
+
+@api_router.get("/service-types/{service_id}", response_model=ServiceTypeResponse)
+async def get_service_type(service_id: str, database=Depends(get_db)):
+    """Get a specific service type"""
+    service = await database.service_types.find_one({"id": service_id}, {"_id": 0})
+    if not service:
+        raise HTTPException(status_code=404, detail="Service type not found")
+    return ServiceTypeResponse(**service)
+
+@api_router.post("/admin/service-types", response_model=ServiceTypeResponse)
+async def create_service_type(
+    service_data: ServiceTypeCreate,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Create a new service type (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    service = ServiceType(**service_data.model_dump())
+    doc = service.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    
+    await database.service_types.insert_one(doc)
+    await create_audit_log(user.id, AuditAction.CREATE, "service_type", service.id)
+    
+    return ServiceTypeResponse(**service.model_dump())
+
+@api_router.patch("/admin/service-types/{service_id}", response_model=ServiceTypeResponse)
+async def update_service_type(
+    service_id: str,
+    update_data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Update a service type (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    result = await database.service_types.update_one(
+        {"id": service_id},
+        {"$set": update_data}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Service type not found")
+    
+    await create_audit_log(user.id, AuditAction.UPDATE, "service_type", service_id, update_data)
+    
+    service = await database.service_types.find_one({"id": service_id}, {"_id": 0})
+    return ServiceTypeResponse(**service)
+
+@api_router.delete("/admin/service-types/{service_id}")
+async def delete_service_type(
+    service_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Soft delete a service type (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    result = await database.service_types.update_one(
+        {"id": service_id},
+        {"$set": {"active": False, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Service type not found")
+    
+    await create_audit_log(user.id, AuditAction.DELETE, "service_type", service_id)
+    
+    return {"message": "Service type deactivated"}
+
+
+# ==================== PHASE 1: ADD-ONS ====================
+
+@api_router.get("/add-ons", response_model=List[AddOnResponse])
+async def get_add_ons(
+    location_id: Optional[str] = None,
+    service_type_id: Optional[str] = None,
+    database=Depends(get_db)
+):
+    """Get all active add-ons, optionally filtered"""
+    query = {"active": True}
+    if location_id:
+        query["$or"] = [{"location_id": None}, {"location_id": location_id}]
+    
+    add_ons = await database.add_ons.find(query, {"_id": 0}).sort("sort_order", 1).to_list(100)
+    
+    # Filter by service type if specified
+    if service_type_id:
+        add_ons = [
+            a for a in add_ons 
+            if not a.get('service_type_ids') or service_type_id in a.get('service_type_ids', [])
+        ]
+    
+    return [AddOnResponse(**a) for a in add_ons]
+
+@api_router.post("/admin/add-ons", response_model=AddOnResponse)
+async def create_add_on(
+    add_on_data: AddOnCreate,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Create a new add-on (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    add_on = AddOn(**add_on_data.model_dump())
+    doc = add_on.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    
+    await database.add_ons.insert_one(doc)
+    await create_audit_log(user.id, AuditAction.CREATE, "add_on", add_on.id)
+    
+    return AddOnResponse(**add_on.model_dump())
+
+@api_router.patch("/admin/add-ons/{add_on_id}", response_model=AddOnResponse)
+async def update_add_on(
+    add_on_id: str,
+    update_data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Update an add-on (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    result = await database.add_ons.update_one(
+        {"id": add_on_id},
+        {"$set": update_data}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Add-on not found")
+    
+    await create_audit_log(user.id, AuditAction.UPDATE, "add_on", add_on_id, update_data)
+    
+    add_on = await database.add_ons.find_one({"id": add_on_id}, {"_id": 0})
+    return AddOnResponse(**add_on)
+
+@api_router.delete("/admin/add-ons/{add_on_id}")
+async def delete_add_on(
+    add_on_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Soft delete an add-on (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    result = await database.add_ons.update_one(
+        {"id": add_on_id},
+        {"$set": {"active": False, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Add-on not found")
+    
+    await create_audit_log(user.id, AuditAction.DELETE, "add_on", add_on_id)
+    
+    return {"message": "Add-on deactivated"}
+
+
+# ==================== PHASE 1: CAPACITY RULES ====================
+
+@api_router.get("/admin/capacity-rules", response_model=List[CapacityRuleResponse])
+async def get_capacity_rules(
+    location_id: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get capacity rules (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    query = {"active": True}
+    if location_id:
+        query["location_id"] = location_id
+    
+    rules = await database.capacity_rules.find(query, {"_id": 0}).to_list(100)
+    return [CapacityRuleResponse(**r) for r in rules]
+
+@api_router.post("/admin/capacity-rules", response_model=CapacityRuleResponse)
+async def create_capacity_rule(
+    rule_data: CapacityRuleCreate,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Create a capacity rule (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    rule = CapacityRule(**rule_data.model_dump())
+    doc = rule.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    if doc.get('effective_date'):
+        doc['effective_date'] = doc['effective_date'].isoformat()
+    if doc.get('expiry_date'):
+        doc['expiry_date'] = doc['expiry_date'].isoformat()
+    
+    await database.capacity_rules.insert_one(doc)
+    await create_audit_log(user.id, AuditAction.CREATE, "capacity_rule", rule.id)
+    
+    return CapacityRuleResponse(**rule.model_dump())
+
+@api_router.patch("/admin/capacity-rules/{rule_id}", response_model=CapacityRuleResponse)
+async def update_capacity_rule(
+    rule_id: str,
+    update_data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Update a capacity rule (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    result = await database.capacity_rules.update_one(
+        {"id": rule_id},
+        {"$set": update_data}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Capacity rule not found")
+    
+    await create_audit_log(user.id, AuditAction.UPDATE, "capacity_rule", rule_id, update_data)
+    
+    rule = await database.capacity_rules.find_one({"id": rule_id}, {"_id": 0})
+    return CapacityRuleResponse(**rule)
+
+@api_router.delete("/admin/capacity-rules/{rule_id}")
+async def delete_capacity_rule(
+    rule_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Delete a capacity rule (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    result = await database.capacity_rules.delete_one({"id": rule_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Capacity rule not found")
+    
+    await create_audit_log(user.id, AuditAction.DELETE, "capacity_rule", rule_id)
+    
+    return {"message": "Capacity rule deleted"}
+
+
+# ==================== PHASE 1: PRICING RULES ====================
+
+@api_router.get("/admin/pricing-rules", response_model=List[PricingRuleResponse])
+async def get_pricing_rules(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get all pricing rules (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    rules = await database.pricing_rules.find({"active": True}, {"_id": 0}).sort("priority", 1).to_list(100)
+    return [PricingRuleResponse(**r) for r in rules]
+
+@api_router.post("/admin/pricing-rules", response_model=PricingRuleResponse)
+async def create_pricing_rule(
+    rule_data: PricingRuleCreate,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Create a pricing rule (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    rule = PricingRule(**rule_data.model_dump())
+    doc = rule.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    if doc.get('start_date'):
+        doc['start_date'] = doc['start_date'].isoformat()
+    if doc.get('end_date'):
+        doc['end_date'] = doc['end_date'].isoformat()
+    
+    await database.pricing_rules.insert_one(doc)
+    await create_audit_log(user.id, AuditAction.CREATE, "pricing_rule", rule.id)
+    
+    return PricingRuleResponse(**rule.model_dump())
+
+@api_router.patch("/admin/pricing-rules/{rule_id}", response_model=PricingRuleResponse)
+async def update_pricing_rule(
+    rule_id: str,
+    update_data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Update a pricing rule (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    result = await database.pricing_rules.update_one(
+        {"id": rule_id},
+        {"$set": update_data}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Pricing rule not found")
+    
+    await create_audit_log(user.id, AuditAction.UPDATE, "pricing_rule", rule_id, update_data)
+    
+    rule = await database.pricing_rules.find_one({"id": rule_id}, {"_id": 0})
+    return PricingRuleResponse(**rule)
+
+@api_router.delete("/admin/pricing-rules/{rule_id}")
+async def delete_pricing_rule(
+    rule_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Soft delete a pricing rule (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    result = await database.pricing_rules.update_one(
+        {"id": rule_id},
+        {"$set": {"active": False, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Pricing rule not found")
+    
+    await create_audit_log(user.id, AuditAction.DELETE, "pricing_rule", rule_id)
+    
+    return {"message": "Pricing rule deactivated"}
+
+
+# ==================== PHASE 1: CANCELLATION POLICIES ====================
+
+@api_router.get("/cancellation-policies", response_model=List[CancellationPolicyResponse])
+async def get_cancellation_policies(database=Depends(get_db)):
+    """Get all active cancellation policies (public)"""
+    policies = await database.cancellation_policies.find({"active": True}, {"_id": 0}).sort("days_before_checkin", -1).to_list(100)
+    return [CancellationPolicyResponse(**p) for p in policies]
+
+@api_router.post("/admin/cancellation-policies", response_model=CancellationPolicyResponse)
+async def create_cancellation_policy(
+    policy_data: CancellationPolicyCreate,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Create a cancellation policy (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    policy = CancellationPolicy(**policy_data.model_dump())
+    doc = policy.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    
+    await database.cancellation_policies.insert_one(doc)
+    await create_audit_log(user.id, AuditAction.CREATE, "cancellation_policy", policy.id)
+    
+    return CancellationPolicyResponse(**policy.model_dump())
+
+@api_router.patch("/admin/cancellation-policies/{policy_id}", response_model=CancellationPolicyResponse)
+async def update_cancellation_policy(
+    policy_id: str,
+    update_data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Update a cancellation policy (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    result = await database.cancellation_policies.update_one(
+        {"id": policy_id},
+        {"$set": update_data}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Cancellation policy not found")
+    
+    await create_audit_log(user.id, AuditAction.UPDATE, "cancellation_policy", policy_id, update_data)
+    
+    policy = await database.cancellation_policies.find_one({"id": policy_id}, {"_id": 0})
+    return CancellationPolicyResponse(**policy)
+
+@api_router.delete("/admin/cancellation-policies/{policy_id}")
+async def delete_cancellation_policy(
+    policy_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Soft delete a cancellation policy (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    result = await database.cancellation_policies.update_one(
+        {"id": policy_id},
+        {"$set": {"active": False, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Cancellation policy not found")
+    
+    await create_audit_log(user.id, AuditAction.DELETE, "cancellation_policy", policy_id)
+    
+    return {"message": "Cancellation policy deactivated"}
+
+
+# ==================== PHASE 1: SYSTEM SETTINGS ====================
+
+@api_router.get("/admin/settings")
+async def get_system_settings(
+    category: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get system settings (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    query = {}
+    if category:
+        query["category"] = category
+    
+    settings = await database.system_settings.find(query, {"_id": 0}).to_list(100)
+    
+    # Convert to dict for easier use
+    return {s['key']: {
+        "value": s['value'],
+        "value_type": s.get('value_type', 'string'),
+        "category": s.get('category', 'general'),
+        "description": s.get('description', ''),
+        "editable": s.get('editable', True)
+    } for s in settings}
+
+@api_router.patch("/admin/settings/{key}")
+async def update_system_setting(
+    key: str,
+    value: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Update a system setting (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    setting = await database.system_settings.find_one({"key": key}, {"_id": 0})
+    if not setting:
+        raise HTTPException(status_code=404, detail="Setting not found")
+    
+    if not setting.get('editable', True):
+        raise HTTPException(status_code=403, detail="This setting cannot be modified")
+    
+    result = await database.system_settings.update_one(
+        {"key": key},
+        {"$set": {"value": str(value), "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    await create_audit_log(user.id, AuditAction.UPDATE, "system_setting", key, {"old_value": setting['value'], "new_value": value})
+    
+    return {"message": "Setting updated", "key": key, "value": value}
+
+
+# ==================== PHASE 1: PRICE CALCULATION ====================
+
+@api_router.post("/pricing/calculate", response_model=PriceBreakdown)
+async def calculate_price(
+    request: PriceCalculationRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Calculate price breakdown for a booking (authenticated)"""
+    user = await get_current_user(credentials, database)
+    
+    pricing_engine = PricingEngine(database)
+    
+    try:
+        breakdown = await pricing_engine.calculate_price(
+            service_type_id=request.service_type_id,
+            location_id=request.location_id,
+            dog_ids=request.dog_ids,
+            check_in=request.check_in_date,
+            check_out=request.check_out_date,
+            accommodation_type=request.accommodation_type,
+            add_on_ids=request.add_on_ids,
+            add_on_quantities=request.add_on_quantities,
+            promo_code=request.promo_code
+        )
+        return PriceBreakdown(**breakdown)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Price calculation error: {e}")
+        raise HTTPException(status_code=500, detail="Error calculating price")
+
+
+# ==================== PHASE 1: PAYMENT ENDPOINTS ====================
+
+@api_router.get("/payments/providers")
+async def get_payment_providers(database=Depends(get_db)):
+    """Get available payment providers"""
+    payment_service = PaymentService(database)
+    providers = payment_service.get_available_providers()
+    
+    return {
+        "providers": [
+            {"name": "square", "available": providers.get("square", False), "display_name": "Card Payment (Square)"},
+            {"name": "crypto", "available": providers.get("crypto", False), "display_name": "Crypto (USDC) - Coming Soon"},
+        ],
+        "default": "square"
+    }
+
+@api_router.post("/payments/deposit")
+async def pay_deposit(
+    booking_id: str,
+    provider: str = "square",
+    source_id: Optional[str] = None,  # Required for Square
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Pay deposit for a booking"""
+    user = await get_current_user(credentials, database)
+    
+    # Get booking
+    booking = await database.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    # Verify ownership
+    if user.role == UserRole.CUSTOMER and booking.get('household_id') != user.household_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Check if deposit already paid
+    if booking.get('deposit_paid'):
+        raise HTTPException(status_code=400, detail="Deposit already paid")
+    
+    deposit_amount = booking.get('deposit_amount', 0)
+    if deposit_amount <= 0:
+        raise HTTPException(status_code=400, detail="No deposit required")
+    
+    # Process payment
+    payment_service = PaymentService(database)
+    result = await payment_service.process_payment(
+        provider_name=provider,
+        amount=deposit_amount,
+        currency="USD",
+        booking_id=booking_id,
+        payment_type="deposit",
+        source_id=source_id,
+        metadata={"household_id": booking.get('household_id')}
+    )
+    
+    if result.get('success'):
+        # Update booking
+        await database.bookings.update_one(
+            {"id": booking_id},
+            {"$set": {
+                "deposit_paid": True,
+                "deposit_paid_at": datetime.now(timezone.utc).isoformat(),
+                "payment_status": "deposit_paid",
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        
+        await create_audit_log(user.id, AuditAction.PAYMENT, "booking", booking_id, {
+            "payment_type": "deposit",
+            "amount": deposit_amount,
+            "provider": provider
+        })
+        
+        return {
+            "success": True,
+            "message": "Deposit paid successfully",
+            "amount": deposit_amount,
+            "payment_id": result.get('payment_id'),
+            "receipt_url": result.get('receipt_url')
+        }
+    else:
+        raise HTTPException(status_code=400, detail=result.get('error', 'Payment failed'))
+
+@api_router.post("/payments/balance")
+async def pay_balance(
+    booking_id: str,
+    provider: str = "square",
+    source_id: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Pay remaining balance for a booking"""
+    user = await get_current_user(credentials, database)
+    
+    # Get booking
+    booking = await database.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    # Verify ownership
+    if user.role == UserRole.CUSTOMER and booking.get('household_id') != user.household_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Check if balance already paid
+    if booking.get('balance_paid'):
+        raise HTTPException(status_code=400, detail="Balance already paid")
+    
+    balance_due = booking.get('balance_due', 0)
+    if balance_due <= 0:
+        raise HTTPException(status_code=400, detail="No balance due")
+    
+    # Process payment
+    payment_service = PaymentService(database)
+    result = await payment_service.process_payment(
+        provider_name=provider,
+        amount=balance_due,
+        currency="USD",
+        booking_id=booking_id,
+        payment_type="balance",
+        source_id=source_id,
+        metadata={"household_id": booking.get('household_id')}
+    )
+    
+    if result.get('success'):
+        # Update booking
+        await database.bookings.update_one(
+            {"id": booking_id},
+            {"$set": {
+                "balance_paid": True,
+                "balance_paid_at": datetime.now(timezone.utc).isoformat(),
+                "payment_status": "paid",
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        
+        await create_audit_log(user.id, AuditAction.PAYMENT, "booking", booking_id, {
+            "payment_type": "balance",
+            "amount": balance_due,
+            "provider": provider
+        })
+        
+        return {
+            "success": True,
+            "message": "Balance paid successfully",
+            "amount": balance_due,
+            "payment_id": result.get('payment_id'),
+            "receipt_url": result.get('receipt_url')
+        }
+    else:
+        raise HTTPException(status_code=400, detail=result.get('error', 'Payment failed'))
+
+@api_router.get("/payments/history", response_model=List[PaymentResponse])
+async def get_payment_history(
+    booking_id: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get payment history for customer or all (admin)"""
+    user = await get_current_user(credentials, database)
+    
+    query = {}
+    if user.role == UserRole.CUSTOMER:
+        query["household_id"] = user.household_id
+    
+    if booking_id:
+        query["booking_id"] = booking_id
+    
+    payments = await database.payments.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return [PaymentResponse(**p) for p in payments]
+
+
+# ==================== PHASE 1: BOOKING CANCELLATION ====================
+
+@api_router.post("/bookings/{booking_id}/cancel")
+async def cancel_booking(
+    booking_id: str,
+    reason: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Cancel a booking with policy-aware refund calculation"""
+    user = await get_current_user(credentials, database)
+    
+    # Get booking
+    booking = await database.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    # Verify ownership (customers can only cancel their own)
+    if user.role == UserRole.CUSTOMER and booking.get('household_id') != user.household_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Check if already cancelled
+    if booking.get('status') == 'cancelled':
+        raise HTTPException(status_code=400, detail="Booking already cancelled")
+    
+    # Calculate refund
+    pricing_engine = PricingEngine(database)
+    refund_info = await pricing_engine.calculate_refund(booking)
+    
+    # Update booking status
+    await database.bookings.update_one(
+        {"id": booking_id},
+        {"$set": {
+            "status": "cancelled",
+            "modification_reason": reason or "Customer requested cancellation",
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Process refund if applicable
+    refund_result = None
+    if refund_info['refund_amount'] > 0 and refund_info['total_paid'] > 0:
+        # TODO: Process actual refund through payment provider
+        # For now, just record it
+        refund_record = {
+            "id": str(uuid.uuid4()),
+            "booking_id": booking_id,
+            "household_id": booking.get('household_id'),
+            "amount": refund_info['refund_amount'],
+            "currency": "USD",
+            "payment_type": "refund",
+            "provider": "pending",  # Will be updated when processed
+            "status": "pending",
+            "metadata": {
+                "policy_applied": refund_info['policy_applied'],
+                "refund_percentage": refund_info['refund_percentage'],
+                "reason": reason
+            },
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        await database.payments.insert_one(refund_record)
+        refund_result = refund_record
+    
+    await create_audit_log(user.id, AuditAction.UPDATE, "booking", booking_id, {
+        "action": "cancelled",
+        "reason": reason,
+        "refund_amount": refund_info['refund_amount'],
+        "policy_applied": refund_info['policy_applied']
+    })
+    
+    return {
+        "success": True,
+        "message": "Booking cancelled",
+        "refund_info": refund_info,
+        "refund_status": "pending" if refund_result else "none"
+    }
+
+
+# ==================== PHASE 1: INVOICES ====================
+
+@api_router.get("/invoices", response_model=List[InvoiceResponse])
+async def get_invoices(
+    booking_id: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get invoices for customer or all (admin)"""
+    user = await get_current_user(credentials, database)
+    
+    query = {}
+    if user.role == UserRole.CUSTOMER:
+        query["household_id"] = user.household_id
+    
+    if booking_id:
+        query["booking_id"] = booking_id
+    
+    invoices = await database.invoices.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return [InvoiceResponse(**inv) for inv in invoices]
+
+@api_router.get("/invoices/{invoice_id}", response_model=InvoiceResponse)
+async def get_invoice(
+    invoice_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get a specific invoice"""
+    user = await get_current_user(credentials, database)
+    
+    invoice = await database.invoices.find_one({"id": invoice_id}, {"_id": 0})
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    # Verify access
+    if user.role == UserRole.CUSTOMER and invoice.get('household_id') != user.household_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    return InvoiceResponse(**invoice)
+
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
