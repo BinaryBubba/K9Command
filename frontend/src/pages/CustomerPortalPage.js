@@ -22,10 +22,13 @@ import {
   ClockIcon,
   AlertCircleIcon,
   ChevronRightIcon,
-  DownloadIcon
+  DownloadIcon,
+  BellIcon,
+  BellRingIcon
 } from 'lucide-react';
 import api from '../utils/api';
 import SavedCardsManager from '../components/SavedCardsManager';
+import { Switch } from '../components/ui/switch';
 
 const STATUS_COLORS = {
   confirmed: 'bg-green-500',
