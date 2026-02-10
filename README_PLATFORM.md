@@ -149,7 +149,7 @@ JWT_EXPIRATION_DAYS=30
 
 ### Frontend (.env)
 ```env
-REACT_APP_BACKEND_URL=https://petbook-7.preview.emergentagent.com
+REACT_APP_BACKEND_URL=https://paws-point.preview.emergentagent.com
 ```
 
 ## 🚀 Getting Started
