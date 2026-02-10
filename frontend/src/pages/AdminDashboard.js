@@ -215,6 +215,26 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
 
+          <Card data-testid="admin-nav-time-management" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/time-management')}>
+            <CardContent className="p-8">
+              <div className="w-16 h-16 rounded-full bg-green-100 mx-auto mb-4 flex items-center justify-center">
+                <ClockIcon className="text-green-600" size={32} />
+              </div>
+              <h3 className="text-xl font-serif font-semibold text-center mb-2">Time Management</h3>
+              <p className="text-sm text-muted-foreground text-center">Pay periods & approvals</p>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="admin-nav-schedule" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/schedule')}>
+            <CardContent className="p-8">
+              <div className="w-16 h-16 rounded-full bg-indigo-100 mx-auto mb-4 flex items-center justify-center">
+                <CalendarDaysIcon className="text-indigo-600" size={32} />
+              </div>
+              <h3 className="text-xl font-serif font-semibold text-center mb-2">Staff Schedule</h3>
+              <p className="text-sm text-muted-foreground text-center">Shifts & swap requests</p>
+            </CardContent>
+          </Card>
+
           <Card data-testid="admin-nav-chat" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/chat')}>
             <CardContent className="p-8">
               <div className="w-16 h-16 rounded-full bg-purple-100 mx-auto mb-4 flex items-center justify-center">
