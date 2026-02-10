@@ -204,6 +204,46 @@ function App() {
             }
           />
           <Route
+            path="/staff/forms"
+            element={
+              <ProtectedRoute allowedRoles={['staff']}>
+                <StaffFormsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/forms/submit/:templateId"
+            element={
+              <ProtectedRoute allowedRoles={['staff']}>
+                <FormSubmissionPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/forms/submit/:templateId/:submissionId"
+            element={
+              <ProtectedRoute allowedRoles={['staff']}>
+                <FormSubmissionPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/tasks"
+            element={
+              <ProtectedRoute allowedRoles={['staff']}>
+                <TaskDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/time-off"
+            element={
+              <ProtectedRoute allowedRoles={['staff']}>
+                <TimeOffPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/staff/*"
             element={
               <ProtectedRoute allowedRoles={['staff']}>
