@@ -508,9 +508,38 @@ async def create_booking(booking_data: BookingCreate, credentials: HTTPAuthoriza
     if user.role != UserRole.CUSTOMER:
         raise HTTPException(status_code=403, detail="Only customers can create bookings. Staff should use /bookings/admin endpoint")
     
+    booking_type = booking_data.booking_type or "stay"
+    
+    # Check Meet & Greet requirement for stay/daycare bookings
+    if booking_type in ["stay", "daycare"]:
+        # Get meet & greet settings
+        mg_setting = await database.system_settings.find_one({"key": "meet_greet_settings"}, {"_id": 0})
+        mg_required = True  # Default to required
+        if mg_setting:
+            try:
+                import json
+                mg_config = json.loads(mg_setting.get("value", "{}"))
+                mg_required = mg_config.get("required_for_new_customers", True)
+            except:
+                pass
+        
+        if mg_required:
+            # Check if customer has completed a meet & greet
+            completed_mg = await database.bookings.find_one({
+                "household_id": user.household_id,
+                "booking_type": "meet_greet",
+                "status": {"$in": ["checked_out", "completed"]}
+            }, {"_id": 0})
+            
+            if not completed_mg:
+                raise HTTPException(
+                    status_code=400, 
+                    detail="New customers must complete a Meet & Greet before booking stays or daycare. Please book a Meet & Greet first."
+                )
+    
     # Calculate nights
     nights = (booking_data.check_out_date - booking_data.check_in_date).days
-    if nights <= 0:
+    if nights <= 0 and booking_type != "meet_greet":
         raise HTTPException(status_code=400, detail="Invalid date range")
     
     # Check if dates include holidays
