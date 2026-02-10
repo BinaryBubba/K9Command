@@ -230,6 +230,7 @@ class Booking(BaseDBModel):
     check_out_date: datetime
     status: BookingStatus
     total_price: float
+    booking_type: str = "stay"  # stay, daycare, meet_greet
     notes: Optional[str] = None
     special_request: Optional[str] = None
     payment_status: str = "pending"
