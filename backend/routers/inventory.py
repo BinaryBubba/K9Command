@@ -54,7 +54,7 @@ async def list_products(
         raise HTTPException(status_code=403, detail="Staff access required")
     
     service = InventoryService(db)
-    products = await service.get_products(category, active_only)
+    products = await service.list_products(category, active_only)
     
     return {"products": products, "count": len(products)}
 
