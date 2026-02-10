@@ -33,7 +33,7 @@ async def create_lead(
         raise HTTPException(status_code=403, detail="Staff access required")
     
     service = CRMService(db)
-    lead = await service.create_lead(data)
+    lead = await service.create_lead(data, user.id)
     
     return {"message": "Lead created", "lead": lead}
 
