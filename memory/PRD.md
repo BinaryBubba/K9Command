@@ -7,7 +7,7 @@ K9Command is a single-facility, staff-operated dog boarding/daycare platform wit
 - **Frontend:** React 18, Tailwind CSS, Shadcn/UI, Zustand
 - **Backend:** FastAPI with Pydantic, MongoDB (Motor async)
 - **Auth:** JWT multi-role (Customer, Staff, Admin)
-- **Payments:** Square SDK (primary), Crypto infrastructure (USDC - deferred)
+- **Payments:** Square SDK (MOCKED), Crypto infrastructure (USDC - deferred)
 
 ---
 
@@ -69,54 +69,101 @@ GET  /api/invoices
 GET  /api/invoices/{id}
 ```
 
-### Default Data Seeded
-- 2 Service Types: Standard Boarding ($50/dog/day), Daycare ($35/dog)
-- 4 Add-Ons: Extra Playtime, Bath, Transport, Feeding
-- 3 Cancellation Policies: 7-day, 3-day, last-minute
-- 1 Pricing Rule: Weekend surcharge (15%)
-- System Settings: deposit_percentage=50, tax_rate=0, etc.
+---
 
-### Backend Files
-- `/app/backend/pricing_engine.py` - Authoritative pricing calculation
-- `/app/backend/payment_service.py` - Payment abstraction (Square + Crypto infrastructure)
-- `/app/backend/models.py` - All Phase 1 models
-- `/app/backend/server.py` - All Phase 1 endpoints
+## PHASE 2 - STAFF OPERATIONS ✅ COMPLETE (Backend)
+
+### Features Implemented
+1. ✅ Daily capacity dashboard (`GET /api/ops/dashboard`)
+2. ✅ Upcoming arrivals/departures view (included in dashboard)
+3. ✅ Booking approval queue (`GET /api/ops/approval-queue`)
+4. ✅ Approve/Reject bookings (`POST /api/ops/bookings/{id}/approve|reject`)
+5. ✅ Dog ↔ Staff assignment (`/api/ops/staff-assignments`)
+6. ✅ Play groups / compatibility (`/api/ops/play-groups`)
+7. ✅ Feeding schedule management (`/api/ops/feeding-schedules`)
+
+### Models Implemented
+- `StaffAssignment` (staff_id, dog_id, booking_id, assignment_date, assignment_type)
+- `PlayGroup` (name, dog_ids, scheduled_date, scheduled_time, supervisor_id, compatibility_level)
+- `FeedingSchedule` (dog_id, booking_id, frequency, feeding_times, food_type, portion_size)
+
+### Endpoints
+```
+GET  /api/ops/dashboard - Dogs on site, arrivals, departures, capacity
+GET  /api/ops/approval-queue - Bookings requiring approval
+POST /api/ops/bookings/{id}/approve
+POST /api/ops/bookings/{id}/reject
+
+GET/POST /api/ops/staff-assignments
+DELETE /api/ops/staff-assignments/{id}
+
+GET/POST /api/ops/play-groups
+PATCH /api/ops/play-groups/{id}
+POST /api/ops/play-groups/{id}/add-dog
+
+GET/POST /api/ops/feeding-schedules
+PATCH /api/ops/feeding-schedules/{id}
+POST /api/ops/feeding-schedules/{id}/log-feeding
+```
 
 ---
 
-## PHASE 2 - STAFF OPERATIONS 🔜 NEXT
+## PHASE 3 - CUSTOMER UX COMPLETION ✅ COMPLETE (Backend)
 
-### Required Features
-1. Daily capacity dashboard ("Dogs on site today")
-2. Upcoming arrivals/departures view
-3. Booking approval queue
-4. Dog ↔ Staff assignment
-5. Play groups / compatibility
-6. Feeding schedule display
+### Features Implemented
+1. ✅ Enhanced booking v2 with pricing engine (`POST /api/bookings/v2`)
+2. ✅ Booking modification (`PATCH /api/bookings/{id}/modify`)
+3. ✅ Get single booking (`GET /api/bookings/{id}`)
+4. ✅ Payment history & invoices (`GET /api/payments/history`, `/api/invoices`)
+5. ✅ Customer booking confirmation (`POST /api/bookings/{id}/confirm-payment` - FIXED)
 
-### Required Models
-- StaffAssignment (dog_id, staff_id, date)
-- PlayGroup (dogs[], compatibility_notes)
-- FeedingSchedule (dog_id, times[], instructions)
-
----
-
-## PHASE 3 - CUSTOMER UX COMPLETION
-
-### Required Features
-1. Multi-step booking with add-ons selection
-2. Booking modification (policy-aware)
-3. Payment history & downloadable receipts
-4. Calendar polish
+### Endpoints
+```
+POST /api/bookings/v2 - Enhanced booking with pricing engine, creates invoice
+PATCH /api/bookings/{id}/modify - Policy-aware modification
+GET /api/bookings/{id} - Get single booking
+POST /api/bookings/{id}/confirm-payment - Customer payment confirmation (FIXED)
+```
 
 ---
 
-## PHASE 4 - AUTOMATION
+## PHASE 4 - AUTOMATION ✅ COMPLETE (Backend)
 
-### Required Features
-1. Notification triggers
-2. Task scaffolding
-3. Event logging for automation
+### Features Implemented
+1. ✅ Notification triggers (event-driven)
+2. ✅ Notification templates
+3. ✅ Automation rules engine
+4. ✅ Event logging for automation
+5. ✅ Manual notification sending
+
+### Models Implemented
+- `NotificationTemplate` (name, notification_type, channel, subject, body, trigger_event)
+- `Notification` (user_id, notification_type, channel, subject, body, status)
+- `AutomationRule` (name, trigger_event, conditions, actions, active)
+- `EventLog` (event_type, event_source, source_id, data, triggered_automations)
+
+### Endpoints
+```
+GET  /api/notifications
+GET  /api/notifications/unread-count
+POST /api/notifications/{id}/read
+POST /api/notifications/mark-all-read
+
+GET/POST /api/admin/notification-templates
+PATCH /api/admin/notification-templates/{id}
+
+GET/POST /api/admin/automation-rules
+PATCH/DELETE /api/admin/automation-rules/{id}
+
+GET /api/admin/event-logs
+POST /api/admin/send-notification
+```
+
+### Default Automation Rules
+- Booking Confirmation → In-app notification
+- Check-in Reminder (1 day before) → In-app notification
+- Payment Received → In-app notification
+- Booking Requires Approval → Create task for staff
 
 ---
 
@@ -124,11 +171,108 @@ GET  /api/invoices/{id}
 
 ---
 
+## BUG FIXES COMPLETED
+
+### Customer Booking Flow ✅ FIXED
+- **Issue:** `POST /api/bookings/{id}/confirm-payment` expected query params but frontend sent JSON body
+- **Fix:** Changed endpoint to accept `ConfirmPaymentRequest` body model
+- **Status:** Verified working via API testing and customer dashboard
+
+### Staff Booking Flow ✅ VERIFIED WORKING
+- `POST /api/bookings/admin` endpoint works correctly for staff/admin users
+
+### Send Notification ✅ FIXED
+- **Issue:** `POST /api/admin/send-notification` expected query params but should accept JSON body
+- **Fix:** Changed endpoint to accept `SendNotificationRequest` body model
+
+### Get Single Booking ✅ ADDED
+- **Issue:** Missing endpoint for `GET /api/bookings/{id}`
+- **Fix:** Added new endpoint with proper access control
+
+---
+
 ## Test Accounts
-- Customer: `testcustomer@example.com` / `Test123!`
+- Customer: `customer_test@k9.com` / `Test123!`
+- Staff: `staff_test@k9.com` / `Test123!`
+- Admin: `admin_test@k9.com` / `Test123!`
 
 ## Key Business Rules
 - SOFT CAPACITY: Over-capacity bookings allowed but require approval
 - 50% DEPOSIT default (admin-configurable)
 - Weekend surcharge: 15%
 - All pricing server-side (never trust frontend)
+
+---
+
+## Testing Status
+- **Test Report:** `/app/test_reports/iteration_4.json`
+- **Backend Tests:** 47/47 passed (100%)
+- **Test File:** `/app/backend/tests/test_phase2_4.py`
+
+---
+
+## MOCKED INTEGRATIONS
+- **Square Payments:** MOCKED - Returns mock payment IDs
+- **Email Notifications:** MOCKED - Logged only, not actually sent
+- **SMS Notifications:** MOCKED - Logged only, not actually sent
+
+---
+
+## UPCOMING TASKS (Frontend Implementation)
+
+### P1: Staff Ops Frontend (Phase 2 UI)
+- Build Daily Capacity Dashboard view
+- Arrivals/Departures list
+- Booking Approval Queue UI
+- Staff Assignment management
+- Play Groups management
+- Feeding Schedule display
+
+### P2: Customer UX Frontend (Phase 3 UI)
+- Multi-step booking with add-ons selection
+- Booking modification/cancellation UI
+- Payment history page with receipts
+- Calendar improvements
+
+### P3: Admin Features Frontend
+- Pricing Rules management UI
+- Capacity Rules management UI
+- Service Definitions management
+- Add-Ons configuration
+- Policy management
+
+---
+
+## FUTURE/BACKLOG
+
+- Square payments integration (live mode with real API keys)
+- Crypto (USDC) payments implementation
+- Photo watermarking and purchasing feature
+- Native Android and iOS applications
+- Phase 5: In-app messaging system
+- Email/SMS notification delivery integration
+
+---
+
+## Architecture Notes
+
+### Backend Files
+- `/app/backend/server.py` - All API endpoints (4500+ lines - needs refactoring)
+- `/app/backend/models.py` - All Pydantic data models
+- `/app/backend/pricing_engine.py` - Business logic for cost calculation
+- `/app/backend/payment_service.py` - Payment abstraction layer
+- `/app/backend/automation_service.py` - Event-driven automation engine
+- `/app/backend/auth.py` - JWT authentication
+
+### Frontend Structure
+- `/app/frontend/src/pages/` - Page components
+- `/app/frontend/src/components/ui/` - Shadcn UI components
+- `/app/frontend/src/data/client.js` - Mock data adapter (currently active)
+
+### Refactoring Needed
+- Break down `server.py` (4500+ lines) into multiple router files:
+  - `routers/auth.py`
+  - `routers/bookings.py`
+  - `routers/admin.py`
+  - `routers/ops.py`
+  - `routers/automation.py`
