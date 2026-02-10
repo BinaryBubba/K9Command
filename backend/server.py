@@ -3272,6 +3272,1162 @@ async def get_invoice(
     return InvoiceResponse(**invoice)
 
 
+# ==================== PHASE 2: STAFF OPERATIONS DASHBOARD ====================
+
+@api_router.get("/ops/dashboard")
+async def get_ops_dashboard(
+    date: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get staff operations dashboard data"""
+    user = await get_current_user(credentials, database)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    # Parse date or use today
+    if date:
+        target_date = datetime.fromisoformat(date.replace('Z', '+00:00'))
+    else:
+        target_date = datetime.now(timezone.utc)
+    
+    target_date_start = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    target_date_end = target_date_start + timedelta(days=1)
+    
+    # Get dogs currently on site
+    dogs_on_site_bookings = await database.bookings.find({
+        "status": {"$in": ["confirmed", "checked_in"]},
+        "check_in_date": {"$lte": target_date_end.isoformat()},
+        "check_out_date": {"$gt": target_date_start.isoformat()}
+    }, {"_id": 0}).to_list(500)
+    
+    dogs_on_site = []
+    for booking in dogs_on_site_bookings:
+        # Get dog details
+        for dog_id in booking.get('dog_ids', []):
+            dog = await database.dogs.find_one({"id": dog_id}, {"_id": 0})
+            if dog:
+                # Get owner info
+                owner = await database.users.find_one({"household_id": booking.get('household_id')}, {"_id": 0})
+                
+                check_out = datetime.fromisoformat(booking['check_out_date'].replace('Z', '+00:00')) if isinstance(booking['check_out_date'], str) else booking['check_out_date']
+                days_remaining = (check_out - target_date).days
+                
+                dogs_on_site.append({
+                    "dog_id": dog['id'],
+                    "dog_name": dog.get('name', 'Unknown'),
+                    "breed": dog.get('breed', 'Unknown'),
+                    "photo_url": dog.get('photo_url'),
+                    "household_id": booking.get('household_id'),
+                    "owner_name": owner.get('full_name', 'Unknown') if owner else 'Unknown',
+                    "booking_id": booking['id'],
+                    "check_in_date": booking['check_in_date'],
+                    "check_out_date": booking['check_out_date'],
+                    "accommodation_type": booking.get('accommodation_type', 'room'),
+                    "special_needs": dog.get('medical_flags', []),
+                    "days_remaining": max(0, days_remaining),
+                    "notes": dog.get('behavioral_notes')
+                })
+    
+    # Get today's arrivals
+    arrivals = await database.bookings.find({
+        "status": {"$in": ["confirmed", "pending"]},
+        "check_in_date": {"$gte": target_date_start.isoformat(), "$lt": target_date_end.isoformat()}
+    }, {"_id": 0}).to_list(100)
+    
+    arrivals_list = []
+    for booking in arrivals:
+        dog_names = []
+        for dog_id in booking.get('dog_ids', []):
+            dog = await database.dogs.find_one({"id": dog_id}, {"_id": 0, "name": 1})
+            if dog:
+                dog_names.append(dog.get('name', 'Unknown'))
+        
+        owner = await database.users.find_one({"household_id": booking.get('household_id')}, {"_id": 0})
+        
+        arrivals_list.append({
+            "booking_id": booking['id'],
+            "dog_ids": booking.get('dog_ids', []),
+            "dog_names": dog_names,
+            "owner_name": owner.get('full_name', 'Unknown') if owner else 'Unknown',
+            "owner_phone": owner.get('phone') if owner else None,
+            "scheduled_time": booking['check_in_date'],
+            "accommodation_type": booking.get('accommodation_type', 'room'),
+            "type": "arrival",
+            "status": "pending" if booking['status'] != 'checked_in' else "completed",
+            "special_instructions": booking.get('special_request')
+        })
+    
+    # Get today's departures
+    departures = await database.bookings.find({
+        "status": {"$in": ["checked_in", "confirmed"]},
+        "check_out_date": {"$gte": target_date_start.isoformat(), "$lt": target_date_end.isoformat()}
+    }, {"_id": 0}).to_list(100)
+    
+    departures_list = []
+    for booking in departures:
+        dog_names = []
+        for dog_id in booking.get('dog_ids', []):
+            dog = await database.dogs.find_one({"id": dog_id}, {"_id": 0, "name": 1})
+            if dog:
+                dog_names.append(dog.get('name', 'Unknown'))
+        
+        owner = await database.users.find_one({"household_id": booking.get('household_id')}, {"_id": 0})
+        
+        departures_list.append({
+            "booking_id": booking['id'],
+            "dog_ids": booking.get('dog_ids', []),
+            "dog_names": dog_names,
+            "owner_name": owner.get('full_name', 'Unknown') if owner else 'Unknown',
+            "owner_phone": owner.get('phone') if owner else None,
+            "scheduled_time": booking['check_out_date'],
+            "accommodation_type": booking.get('accommodation_type', 'room'),
+            "type": "departure",
+            "status": "pending" if booking['status'] != 'checked_out' else "completed",
+            "items_checklist": booking.get('items_checklist')
+        })
+    
+    # Capacity snapshot
+    rooms_capacity = 7
+    crates_capacity = 4
+    
+    # Get capacity from settings
+    rooms_setting = await database.system_settings.find_one({"key": "rooms_capacity"}, {"_id": 0})
+    crates_setting = await database.system_settings.find_one({"key": "crates_capacity"}, {"_id": 0})
+    if rooms_setting:
+        rooms_capacity = int(rooms_setting.get('value', 7))
+    if crates_setting:
+        crates_capacity = int(crates_setting.get('value', 4))
+    
+    rooms_occupied = len([d for d in dogs_on_site if d.get('accommodation_type') == 'room'])
+    crates_occupied = len([d for d in dogs_on_site if d.get('accommodation_type') == 'crate'])
+    
+    # Approval queue count
+    approval_count = await database.bookings.count_documents({
+        "status": "pending",
+        "requires_approval": True
+    })
+    
+    capacity_snapshot = {
+        "date": target_date_start.strftime('%Y-%m-%d'),
+        "total_capacity": rooms_capacity + crates_capacity,
+        "rooms_capacity": rooms_capacity,
+        "crates_capacity": crates_capacity,
+        "total_occupied": len(dogs_on_site),
+        "rooms_occupied": rooms_occupied,
+        "crates_occupied": crates_occupied,
+        "total_available": (rooms_capacity + crates_capacity) - len(dogs_on_site),
+        "rooms_available": rooms_capacity - rooms_occupied,
+        "crates_available": crates_capacity - crates_occupied,
+        "arrivals_today": len(arrivals_list),
+        "departures_today": len(departures_list),
+        "requires_approval_count": approval_count
+    }
+    
+    return {
+        "date": target_date_start.strftime('%Y-%m-%d'),
+        "dogs_on_site": dogs_on_site,
+        "arrivals": arrivals_list,
+        "departures": departures_list,
+        "capacity": capacity_snapshot
+    }
+
+
+@api_router.get("/ops/approval-queue", response_model=List[ApprovalQueueItem])
+async def get_approval_queue(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get bookings requiring approval"""
+    user = await get_current_user(credentials, database)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    bookings = await database.bookings.find({
+        "status": "pending",
+        "requires_approval": True
+    }, {"_id": 0}).sort("created_at", 1).to_list(100)
+    
+    queue = []
+    for booking in bookings:
+        # Get customer info
+        customer = await database.users.find_one({"household_id": booking.get('household_id')}, {"_id": 0})
+        
+        # Get dog names
+        dog_names = []
+        for dog_id in booking.get('dog_ids', []):
+            dog = await database.dogs.find_one({"id": dog_id}, {"_id": 0, "name": 1})
+            if dog:
+                dog_names.append(dog.get('name', 'Unknown'))
+        
+        queue.append(ApprovalQueueItem(
+            booking_id=booking['id'],
+            household_id=booking.get('household_id', ''),
+            customer_name=customer.get('full_name', 'Unknown') if customer else 'Unknown',
+            customer_email=customer.get('email', '') if customer else '',
+            dog_names=dog_names,
+            check_in_date=booking['check_in_date'],
+            check_out_date=booking['check_out_date'],
+            accommodation_type=booking.get('accommodation_type', 'room'),
+            total_price=booking.get('total_price', 0),
+            reason="over_capacity",  # TODO: Store actual reason
+            submitted_at=booking.get('created_at', datetime.now(timezone.utc).isoformat()),
+            notes=booking.get('notes')
+        ))
+    
+    return queue
+
+
+@api_router.post("/ops/bookings/{booking_id}/approve")
+async def approve_booking(
+    booking_id: str,
+    notes: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Approve a pending booking"""
+    user = await get_current_user(credentials, database)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    booking = await database.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    if booking.get('status') != 'pending':
+        raise HTTPException(status_code=400, detail="Booking is not pending approval")
+    
+    await database.bookings.update_one(
+        {"id": booking_id},
+        {"$set": {
+            "status": "confirmed",
+            "requires_approval": False,
+            "approved_by": user.id,
+            "approved_at": datetime.now(timezone.utc).isoformat(),
+            "modification_reason": notes,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    await create_audit_log(user.id, AuditAction.UPDATE, "booking", booking_id, {
+        "action": "approved",
+        "notes": notes
+    })
+    
+    # Trigger automation
+    automation = AutomationService(database)
+    await automation.log_event(
+        "booking.confirmed",
+        "booking",
+        booking_id,
+        booking.get('customer_id'),
+        {
+            "booking_id": booking_id,
+            "household_id": booking.get('household_id'),
+            "dog_names": ", ".join(booking.get('dog_ids', [])),
+            "check_in_date": booking.get('check_in_date'),
+            "check_out_date": booking.get('check_out_date')
+        }
+    )
+    
+    return {"message": "Booking approved", "status": "confirmed"}
+
+
+@api_router.post("/ops/bookings/{booking_id}/reject")
+async def reject_booking(
+    booking_id: str,
+    reason: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Reject a pending booking"""
+    user = await get_current_user(credentials, database)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    booking = await database.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    await database.bookings.update_one(
+        {"id": booking_id},
+        {"$set": {
+            "status": "cancelled",
+            "requires_approval": False,
+            "modification_reason": f"Rejected: {reason}",
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    await create_audit_log(user.id, AuditAction.UPDATE, "booking", booking_id, {
+        "action": "rejected",
+        "reason": reason
+    })
+    
+    return {"message": "Booking rejected", "status": "cancelled"}
+
+
+# ==================== PHASE 2: STAFF ASSIGNMENTS ====================
+
+@api_router.get("/ops/staff-assignments", response_model=List[StaffAssignmentResponse])
+async def get_staff_assignments(
+    date: Optional[str] = None,
+    staff_id: Optional[str] = None,
+    dog_id: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get staff assignments"""
+    user = await get_current_user(credentials, database)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    query = {"active": True}
+    
+    if date:
+        target_date = datetime.fromisoformat(date.replace('Z', '+00:00'))
+        date_start = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        date_end = date_start + timedelta(days=1)
+        query["assignment_date"] = {"$gte": date_start.isoformat(), "$lt": date_end.isoformat()}
+    
+    if staff_id:
+        query["staff_id"] = staff_id
+    
+    if dog_id:
+        query["dog_id"] = dog_id
+    
+    assignments = await database.staff_assignments.find(query, {"_id": 0}).to_list(500)
+    return [StaffAssignmentResponse(**a) for a in assignments]
+
+
+@api_router.post("/ops/staff-assignments", response_model=StaffAssignmentResponse)
+async def create_staff_assignment(
+    assignment_data: StaffAssignmentCreate,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Create a staff assignment"""
+    user = await get_current_user(credentials, database)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    # Get staff and dog names
+    staff = await database.users.find_one({"id": assignment_data.staff_id}, {"_id": 0})
+    dog = await database.dogs.find_one({"id": assignment_data.dog_id}, {"_id": 0})
+    
+    if not staff:
+        raise HTTPException(status_code=404, detail="Staff member not found")
+    if not dog:
+        raise HTTPException(status_code=404, detail="Dog not found")
+    
+    assignment = StaffAssignment(
+        **assignment_data.model_dump(),
+        staff_name=staff.get('full_name', 'Unknown'),
+        dog_name=dog.get('name', 'Unknown')
+    )
+    
+    doc = assignment.model_dump()
+    doc['assignment_date'] = doc['assignment_date'].isoformat()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    
+    await database.staff_assignments.insert_one(doc)
+    
+    await create_audit_log(user.id, AuditAction.CREATE, "staff_assignment", assignment.id)
+    
+    return StaffAssignmentResponse(**assignment.model_dump())
+
+
+@api_router.delete("/ops/staff-assignments/{assignment_id}")
+async def delete_staff_assignment(
+    assignment_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Remove a staff assignment"""
+    user = await get_current_user(credentials, database)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    result = await database.staff_assignments.update_one(
+        {"id": assignment_id},
+        {"$set": {"active": False, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    
+    return {"message": "Assignment removed"}
+
+
+# ==================== PHASE 2: PLAY GROUPS ====================
+
+@api_router.get("/ops/play-groups", response_model=List[PlayGroupResponse])
+async def get_play_groups(
+    date: Optional[str] = None,
+    status: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get play groups"""
+    user = await get_current_user(credentials, database)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    query = {}
+    
+    if date:
+        target_date = datetime.fromisoformat(date.replace('Z', '+00:00'))
+        date_start = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        date_end = date_start + timedelta(days=1)
+        query["scheduled_date"] = {"$gte": date_start.isoformat(), "$lt": date_end.isoformat()}
+    
+    if status:
+        query["status"] = status
+    
+    groups = await database.play_groups.find(query, {"_id": 0}).sort("scheduled_time", 1).to_list(100)
+    return [PlayGroupResponse(**g) for g in groups]
+
+
+@api_router.post("/ops/play-groups", response_model=PlayGroupResponse)
+async def create_play_group(
+    group_data: PlayGroupCreate,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Create a play group"""
+    user = await get_current_user(credentials, database)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    # Get dog names
+    dog_names = []
+    for dog_id in group_data.dog_ids:
+        dog = await database.dogs.find_one({"id": dog_id}, {"_id": 0, "name": 1})
+        if dog:
+            dog_names.append(dog.get('name', 'Unknown'))
+    
+    # Get supervisor name
+    supervisor_name = None
+    if group_data.supervisor_id:
+        supervisor = await database.users.find_one({"id": group_data.supervisor_id}, {"_id": 0})
+        if supervisor:
+            supervisor_name = supervisor.get('full_name')
+    
+    group = PlayGroup(
+        **group_data.model_dump(),
+        dog_names=dog_names,
+        supervisor_name=supervisor_name
+    )
+    
+    doc = group.model_dump()
+    doc['scheduled_date'] = doc['scheduled_date'].isoformat()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    
+    await database.play_groups.insert_one(doc)
+    
+    await create_audit_log(user.id, AuditAction.CREATE, "play_group", group.id)
+    
+    return PlayGroupResponse(**group.model_dump())
+
+
+@api_router.patch("/ops/play-groups/{group_id}")
+async def update_play_group(
+    group_id: str,
+    update_data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Update a play group"""
+    user = await get_current_user(credentials, database)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    # If status is being set to completed
+    if update_data.get('status') == 'completed':
+        update_data['completed_at'] = datetime.now(timezone.utc).isoformat()
+    
+    # Update dog_names if dog_ids changed
+    if 'dog_ids' in update_data:
+        dog_names = []
+        for dog_id in update_data['dog_ids']:
+            dog = await database.dogs.find_one({"id": dog_id}, {"_id": 0, "name": 1})
+            if dog:
+                dog_names.append(dog.get('name', 'Unknown'))
+        update_data['dog_names'] = dog_names
+    
+    result = await database.play_groups.update_one(
+        {"id": group_id},
+        {"$set": update_data}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Play group not found")
+    
+    return {"message": "Play group updated"}
+
+
+@api_router.post("/ops/play-groups/{group_id}/add-dog")
+async def add_dog_to_play_group(
+    group_id: str,
+    dog_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Add a dog to a play group"""
+    user = await get_current_user(credentials, database)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    group = await database.play_groups.find_one({"id": group_id}, {"_id": 0})
+    if not group:
+        raise HTTPException(status_code=404, detail="Play group not found")
+    
+    if len(group.get('dog_ids', [])) >= group.get('max_dogs', 6):
+        raise HTTPException(status_code=400, detail="Play group is full")
+    
+    if dog_id in group.get('dog_ids', []):
+        raise HTTPException(status_code=400, detail="Dog already in group")
+    
+    # Get dog name
+    dog = await database.dogs.find_one({"id": dog_id}, {"_id": 0, "name": 1})
+    if not dog:
+        raise HTTPException(status_code=404, detail="Dog not found")
+    
+    await database.play_groups.update_one(
+        {"id": group_id},
+        {
+            "$push": {"dog_ids": dog_id, "dog_names": dog.get('name', 'Unknown')},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+        }
+    )
+    
+    return {"message": "Dog added to play group"}
+
+
+# ==================== PHASE 2: FEEDING SCHEDULES ====================
+
+@api_router.get("/ops/feeding-schedules", response_model=List[FeedingScheduleResponse])
+async def get_feeding_schedules(
+    booking_id: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get feeding schedules for current bookings"""
+    user = await get_current_user(credentials, database)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    query = {}
+    if booking_id:
+        query["booking_id"] = booking_id
+    
+    schedules = await database.feeding_schedules.find(query, {"_id": 0}).to_list(500)
+    return [FeedingScheduleResponse(**s) for s in schedules]
+
+
+@api_router.post("/ops/feeding-schedules", response_model=FeedingScheduleResponse)
+async def create_feeding_schedule(
+    schedule_data: FeedingScheduleCreate,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Create a feeding schedule for a dog"""
+    user = await get_current_user(credentials, database)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    # Get dog name
+    dog = await database.dogs.find_one({"id": schedule_data.dog_id}, {"_id": 0})
+    if not dog:
+        raise HTTPException(status_code=404, detail="Dog not found")
+    
+    schedule = FeedingSchedule(
+        **schedule_data.model_dump(),
+        dog_name=dog.get('name', 'Unknown')
+    )
+    
+    doc = schedule.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    
+    await database.feeding_schedules.insert_one(doc)
+    
+    return FeedingScheduleResponse(**schedule.model_dump())
+
+
+@api_router.patch("/ops/feeding-schedules/{schedule_id}")
+async def update_feeding_schedule(
+    schedule_id: str,
+    update_data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Update a feeding schedule"""
+    user = await get_current_user(credentials, database)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    result = await database.feeding_schedules.update_one(
+        {"id": schedule_id},
+        {"$set": update_data}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Feeding schedule not found")
+    
+    return {"message": "Feeding schedule updated"}
+
+
+@api_router.post("/ops/feeding-schedules/{schedule_id}/log-feeding")
+async def log_feeding(
+    schedule_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Log that a dog has been fed"""
+    user = await get_current_user(credentials, database)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    result = await database.feeding_schedules.update_one(
+        {"id": schedule_id},
+        {"$set": {
+            "last_fed_at": datetime.now(timezone.utc).isoformat(),
+            "last_fed_by": user.id,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Feeding schedule not found")
+    
+    return {"message": "Feeding logged", "fed_at": datetime.now(timezone.utc).isoformat()}
+
+
+# ==================== PHASE 3: ENHANCED BOOKING ====================
+
+@api_router.post("/bookings/v2", response_model=BookingResponse)
+async def create_booking_v2(
+    booking_data: BookingCreate,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """
+    Enhanced booking creation with full pricing engine support.
+    Phase 3 implementation with add-ons and policy awareness.
+    """
+    user = await get_current_user(credentials, database)
+    
+    # Determine service type
+    service_type_id = booking_data.service_type_id
+    if not service_type_id:
+        # Get default service type
+        default_service = await database.service_types.find_one({"active": True}, {"_id": 0})
+        service_type_id = default_service['id'] if default_service else None
+    
+    # Calculate price using pricing engine
+    pricing_engine = PricingEngine(database)
+    
+    try:
+        price_breakdown = await pricing_engine.calculate_price(
+            service_type_id=service_type_id,
+            location_id=booking_data.location_id,
+            dog_ids=booking_data.dog_ids,
+            check_in=booking_data.check_in_date,
+            check_out=booking_data.check_out_date,
+            accommodation_type=booking_data.accommodation_type,
+            add_on_ids=booking_data.add_on_ids,
+            add_on_quantities=booking_data.add_on_quantities
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+    # Determine if approval is required
+    requires_approval = price_breakdown.get('requires_approval', False)
+    status = BookingStatus.PENDING if requires_approval else BookingStatus.PENDING
+    
+    # Get default cancellation policy
+    default_policy = await database.cancellation_policies.find_one(
+        {"active": True, "is_default": True}, {"_id": 0}
+    )
+    
+    # Create booking with full details
+    booking = Booking(
+        dog_ids=booking_data.dog_ids,
+        location_id=booking_data.location_id,
+        accommodation_type=booking_data.accommodation_type,
+        check_in_date=booking_data.check_in_date,
+        check_out_date=booking_data.check_out_date,
+        notes=booking_data.notes,
+        special_request=booking_data.special_request,
+        needs_separate_playtime=booking_data.needs_separate_playtime,
+        household_id=user.household_id if user.role == UserRole.CUSTOMER else None,
+        customer_id=user.id if user.role == UserRole.CUSTOMER else None,
+        status=status,
+        # Pricing details
+        service_type_id=service_type_id,
+        add_ons=price_breakdown.get('add_ons_detail', []),
+        subtotal=price_breakdown.get('subtotal', 0),
+        tax_amount=price_breakdown.get('tax_amount', 0),
+        total_price=price_breakdown.get('total', 0),
+        deposit_percentage=price_breakdown.get('deposit_percentage', 50),
+        deposit_amount=price_breakdown.get('deposit_amount', 0),
+        balance_due=price_breakdown.get('balance_due', 0),
+        is_holiday_pricing=any(adj.get('rule_type') == 'holiday' for adj in price_breakdown.get('pricing_adjustments', [])),
+        pricing_rules_applied=[adj.get('rule_id') for adj in price_breakdown.get('pricing_adjustments', [])],
+        requires_approval=requires_approval,
+        cancellation_policy_id=default_policy['id'] if default_policy else None
+    )
+    
+    doc = booking.model_dump()
+    doc['check_in_date'] = doc['check_in_date'].isoformat()
+    doc['check_out_date'] = doc['check_out_date'].isoformat()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    
+    await database.bookings.insert_one(doc)
+    
+    await create_audit_log(user.id, AuditAction.CREATE, "booking", booking.id, {
+        "total_price": booking.total_price,
+        "requires_approval": requires_approval
+    })
+    
+    # Create invoice
+    invoice = {
+        "id": str(uuid.uuid4()),
+        "booking_id": booking.id,
+        "household_id": booking.household_id,
+        "invoice_number": f"INV-{booking.id[:8].upper()}",
+        "subtotal": price_breakdown.get('subtotal', 0),
+        "tax_amount": price_breakdown.get('tax_amount', 0),
+        "discount_amount": price_breakdown.get('discount_amount', 0),
+        "total_amount": price_breakdown.get('total', 0),
+        "deposit_required": price_breakdown.get('deposit_amount', 0),
+        "deposit_paid": 0,
+        "balance_due": price_breakdown.get('balance_due', 0),
+        "balance_paid": 0,
+        "currency": "USD",
+        "status": "draft",
+        "line_items": [
+            {
+                "description": f"Boarding - {(booking_data.check_out_date - booking_data.check_in_date).days} night(s) x {len(booking_data.dog_ids)} dog(s)",
+                "amount": price_breakdown.get('service_subtotal', 0)
+            }
+        ] + [
+            {"description": addon['name'], "amount": addon['total']}
+            for addon in price_breakdown.get('add_ons_detail', [])
+        ],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await database.invoices.insert_one(invoice)
+    
+    # Update booking with invoice ID
+    await database.bookings.update_one(
+        {"id": booking.id},
+        {"$set": {"invoice_id": invoice["id"]}}
+    )
+    
+    # Trigger automation
+    automation = AutomationService(database)
+    if requires_approval:
+        await automation.log_event(
+            "booking.requires_approval",
+            "booking",
+            booking.id,
+            user.id,
+            {
+                "booking_id": booking.id,
+                "customer_name": user.full_name,
+                "approval_reason": "Over capacity" if price_breakdown.get('is_over_capacity') else "Manual review required",
+                "check_in_date": booking_data.check_in_date.strftime('%Y-%m-%d')
+            }
+        )
+    else:
+        await automation.log_event(
+            "booking.created",
+            "booking",
+            booking.id,
+            user.id,
+            {
+                "booking_id": booking.id,
+                "household_id": booking.household_id,
+                "total_price": booking.total_price
+            }
+        )
+    
+    return BookingResponse(**booking.model_dump())
+
+
+@api_router.patch("/bookings/{booking_id}/modify")
+async def modify_booking(
+    booking_id: str,
+    update_data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """
+    Modify a booking with policy awareness.
+    Customers can only modify their own bookings within policy limits.
+    """
+    user = await get_current_user(credentials, database)
+    
+    booking = await database.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    # Check ownership for customers
+    if user.role == UserRole.CUSTOMER:
+        if booking.get('household_id') != user.household_id:
+            raise HTTPException(status_code=403, detail="Access denied")
+        
+        # Check if modification is allowed (not checked in, not in the past)
+        if booking.get('status') == 'checked_in':
+            raise HTTPException(status_code=400, detail="Cannot modify a booking after check-in")
+    
+    # Recalculate price if dates or add-ons changed
+    needs_recalc = any(k in update_data for k in ['check_in_date', 'check_out_date', 'dog_ids', 'add_on_ids'])
+    
+    if needs_recalc:
+        check_in = update_data.get('check_in_date', booking.get('check_in_date'))
+        check_out = update_data.get('check_out_date', booking.get('check_out_date'))
+        dog_ids = update_data.get('dog_ids', booking.get('dog_ids', []))
+        add_on_ids = update_data.get('add_on_ids', [])
+        
+        if isinstance(check_in, str):
+            check_in = datetime.fromisoformat(check_in.replace('Z', '+00:00'))
+        if isinstance(check_out, str):
+            check_out = datetime.fromisoformat(check_out.replace('Z', '+00:00'))
+        
+        pricing_engine = PricingEngine(database)
+        price_breakdown = await pricing_engine.calculate_price(
+            service_type_id=booking.get('service_type_id'),
+            location_id=booking.get('location_id'),
+            dog_ids=dog_ids,
+            check_in=check_in,
+            check_out=check_out,
+            accommodation_type=booking.get('accommodation_type', 'room'),
+            add_on_ids=add_on_ids,
+            exclude_booking_id=booking_id
+        )
+        
+        update_data.update({
+            'subtotal': price_breakdown.get('subtotal', 0),
+            'tax_amount': price_breakdown.get('tax_amount', 0),
+            'total_price': price_breakdown.get('total', 0),
+            'deposit_amount': price_breakdown.get('deposit_amount', 0),
+            'balance_due': price_breakdown.get('balance_due', 0) - (booking.get('deposit_amount', 0) if booking.get('deposit_paid') else 0),
+            'add_ons': price_breakdown.get('add_ons_detail', []),
+            'pricing_rules_applied': [adj.get('rule_id') for adj in price_breakdown.get('pricing_adjustments', [])]
+        })
+    
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    update_data['modification_reason'] = update_data.get('modification_reason', 'Customer modification')
+    
+    # Handle date conversions
+    for date_field in ['check_in_date', 'check_out_date']:
+        if date_field in update_data and isinstance(update_data[date_field], datetime):
+            update_data[date_field] = update_data[date_field].isoformat()
+    
+    result = await database.bookings.update_one(
+        {"id": booking_id},
+        {"$set": update_data}
+    )
+    
+    await create_audit_log(user.id, AuditAction.UPDATE, "booking", booking_id, {
+        "modifications": list(update_data.keys()),
+        "by_role": user.role.value
+    })
+    
+    return {"message": "Booking modified successfully", "price_recalculated": needs_recalc}
+
+
+# ==================== PHASE 4: NOTIFICATIONS ====================
+
+@api_router.get("/notifications", response_model=List[NotificationResponse])
+async def get_notifications(
+    unread_only: bool = False,
+    limit: int = 50,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get notifications for current user"""
+    user = await get_current_user(credentials, database)
+    
+    automation = AutomationService(database)
+    notifications = await automation.get_user_notifications(user.id, unread_only, limit)
+    
+    return [NotificationResponse(**n) for n in notifications]
+
+
+@api_router.get("/notifications/unread-count")
+async def get_unread_notification_count(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get count of unread notifications"""
+    user = await get_current_user(credentials, database)
+    
+    automation = AutomationService(database)
+    count = await automation.get_unread_count(user.id)
+    
+    return {"unread_count": count}
+
+
+@api_router.post("/notifications/{notification_id}/read")
+async def mark_notification_read(
+    notification_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Mark a notification as read"""
+    user = await get_current_user(credentials, database)
+    
+    automation = AutomationService(database)
+    success = await automation.mark_notification_read(notification_id, user.id)
+    
+    if not success:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    
+    return {"message": "Notification marked as read"}
+
+
+@api_router.post("/notifications/mark-all-read")
+async def mark_all_notifications_read(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Mark all notifications as read"""
+    user = await get_current_user(credentials, database)
+    
+    result = await database.notifications.update_many(
+        {"user_id": user.id, "read_at": None},
+        {"$set": {
+            "status": "read",
+            "read_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"message": f"Marked {result.modified_count} notifications as read"}
+
+
+# ==================== PHASE 4: NOTIFICATION TEMPLATES (Admin) ====================
+
+@api_router.get("/admin/notification-templates", response_model=List[NotificationTemplateResponse])
+async def get_notification_templates(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get all notification templates (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    templates = await database.notification_templates.find({}, {"_id": 0}).to_list(100)
+    return [NotificationTemplateResponse(**t) for t in templates]
+
+
+@api_router.post("/admin/notification-templates", response_model=NotificationTemplateResponse)
+async def create_notification_template(
+    template_data: NotificationTemplateCreate,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Create a notification template (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    template = NotificationTemplate(**template_data.model_dump())
+    doc = template.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    
+    await database.notification_templates.insert_one(doc)
+    
+    return NotificationTemplateResponse(**template.model_dump())
+
+
+@api_router.patch("/admin/notification-templates/{template_id}")
+async def update_notification_template(
+    template_id: str,
+    update_data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Update a notification template (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    result = await database.notification_templates.update_one(
+        {"id": template_id},
+        {"$set": update_data}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    return {"message": "Template updated"}
+
+
+# ==================== PHASE 4: AUTOMATION RULES (Admin) ====================
+
+@api_router.get("/admin/automation-rules", response_model=List[AutomationRuleResponse])
+async def get_automation_rules(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get all automation rules (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    rules = await database.automation_rules.find({}, {"_id": 0}).sort("priority", 1).to_list(100)
+    return [AutomationRuleResponse(**r) for r in rules]
+
+
+@api_router.post("/admin/automation-rules", response_model=AutomationRuleResponse)
+async def create_automation_rule(
+    rule_data: AutomationRuleCreate,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Create an automation rule (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    rule = AutomationRule(**rule_data.model_dump())
+    doc = rule.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    
+    await database.automation_rules.insert_one(doc)
+    
+    await create_audit_log(user.id, AuditAction.CREATE, "automation_rule", rule.id)
+    
+    return AutomationRuleResponse(**rule.model_dump())
+
+
+@api_router.patch("/admin/automation-rules/{rule_id}")
+async def update_automation_rule(
+    rule_id: str,
+    update_data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Update an automation rule (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    result = await database.automation_rules.update_one(
+        {"id": rule_id},
+        {"$set": update_data}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Automation rule not found")
+    
+    await create_audit_log(user.id, AuditAction.UPDATE, "automation_rule", rule_id, update_data)
+    
+    return {"message": "Automation rule updated"}
+
+
+@api_router.delete("/admin/automation-rules/{rule_id}")
+async def delete_automation_rule(
+    rule_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Delete an automation rule (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    result = await database.automation_rules.delete_one({"id": rule_id})
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Automation rule not found")
+    
+    await create_audit_log(user.id, AuditAction.DELETE, "automation_rule", rule_id)
+    
+    return {"message": "Automation rule deleted"}
+
+
+# ==================== PHASE 4: EVENT LOGS (Admin) ====================
+
+@api_router.get("/admin/event-logs", response_model=List[EventLogResponse])
+async def get_event_logs(
+    event_type: Optional[str] = None,
+    limit: int = 100,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get system event logs (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    query = {}
+    if event_type:
+        query["event_type"] = event_type
+    
+    logs = await database.event_logs.find(query, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+    return [EventLogResponse(**log) for log in logs]
+
+
+# ==================== PHASE 4: MANUAL NOTIFICATION SEND ====================
+
+@api_router.post("/admin/send-notification")
+async def send_manual_notification(
+    user_id: str,
+    subject: str,
+    body: str,
+    channel: str = "in_app",
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Send a manual notification to a user (admin only)"""
+    admin = await get_current_user(credentials, database)
+    if admin.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Verify user exists
+    target_user = await database.users.find_one({"id": user_id}, {"_id": 0})
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    automation = AutomationService(database)
+    notification_id = await automation.send_notification(
+        user_id=user_id,
+        notification_type="custom",
+        channel=channel,
+        subject=subject,
+        body=body,
+        metadata={"sent_by": admin.id}
+    )
+    
+    await create_audit_log(admin.id, AuditAction.CREATE, "notification", notification_id, {
+        "recipient": user_id,
+        "subject": subject
+    })
+    
+    return {"message": "Notification sent", "notification_id": notification_id}
+
+
 # ==================== INCLUDE ROUTER (MUST BE AFTER ALL ROUTES) ====================
 app.include_router(api_router)
 
