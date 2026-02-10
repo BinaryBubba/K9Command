@@ -4485,6 +4485,7 @@ from routers.portal import router as portal_router
 from routers.inventory import router as inventory_router
 from routers.crm import router as crm_router
 from routers.reminders import router as reminders_router
+from routers.admin import router as admin_router
 
 app.include_router(kennels_router)
 app.include_router(bookings_router)
@@ -4495,6 +4496,7 @@ app.include_router(portal_router)
 app.include_router(inventory_router)
 app.include_router(crm_router)
 app.include_router(reminders_router)
+app.include_router(admin_router)
 
 
 @app.on_event("shutdown")
