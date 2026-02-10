@@ -536,3 +536,397 @@ class ChatResponse(BaseDBModel):
     last_message: Optional[str] = None
     last_message_at: Optional[datetime] = None
     unread_count: Dict[str, int] = {}
+
+
+
+# ==================== PHASE 1: DATA & RULES FOUNDATION ====================
+
+# Enums for new models
+class PriceType(str, Enum):
+    FLAT = "flat"  # One-time fee
+    PER_DAY = "per_day"  # Per day of stay
+    PER_DOG = "per_dog"  # Per dog
+    PER_DOG_PER_DAY = "per_dog_per_day"  # Per dog per day
+
+class PricingRuleType(str, Enum):
+    WEEKEND = "weekend"
+    HOLIDAY = "holiday"
+    SEASONAL = "seasonal"
+    BLACKOUT = "blackout"  # No bookings allowed
+
+class PaymentProvider(str, Enum):
+    SQUARE = "square"
+    CRYPTO = "crypto"
+    MANUAL = "manual"  # Cash, check, etc.
+
+class PaymentType(str, Enum):
+    DEPOSIT = "deposit"
+    BALANCE = "balance"
+    FULL = "full"
+    REFUND = "refund"
+
+class RefundStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    PROCESSED = "processed"
+    DENIED = "denied"
+
+
+# ==================== SERVICE TYPES ====================
+
+class ServiceType(BaseDBModel):
+    """Defines types of services (Boarding, Daycare, etc.)"""
+    name: str
+    description: Optional[str] = None
+    base_price: float  # Base price per unit
+    price_type: PriceType = PriceType.PER_DOG_PER_DAY
+    is_overnight: bool = True  # True for boarding, False for daycare
+    min_duration_days: int = 1
+    max_duration_days: Optional[int] = None
+    requires_vaccination: bool = True
+    active: bool = True
+    location_id: Optional[str] = None  # None = all locations
+    sort_order: int = 0
+
+class ServiceTypeCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    base_price: float
+    price_type: PriceType = PriceType.PER_DOG_PER_DAY
+    is_overnight: bool = True
+    min_duration_days: int = 1
+    max_duration_days: Optional[int] = None
+    requires_vaccination: bool = True
+    active: bool = True
+    location_id: Optional[str] = None
+    sort_order: int = 0
+
+class ServiceTypeResponse(BaseDBModel):
+    name: str
+    description: Optional[str] = None
+    base_price: float
+    price_type: PriceType
+    is_overnight: bool
+    min_duration_days: int
+    max_duration_days: Optional[int] = None
+    requires_vaccination: bool
+    active: bool
+    location_id: Optional[str] = None
+    sort_order: int
+
+
+# ==================== ADD-ONS ====================
+
+class AddOn(BaseDBModel):
+    """Add-on services customers can select during booking"""
+    name: str
+    description: Optional[str] = None
+    price: float
+    price_type: PriceType = PriceType.FLAT
+    category: str = "general"  # bath, transport, playtime, feeding, etc.
+    requires_staff_assignment: bool = False
+    max_quantity: int = 1  # Max per booking
+    active: bool = True
+    location_id: Optional[str] = None  # None = all locations
+    service_type_ids: List[str] = []  # Empty = applies to all service types
+    sort_order: int = 0
+
+class AddOnCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    price: float
+    price_type: PriceType = PriceType.FLAT
+    category: str = "general"
+    requires_staff_assignment: bool = False
+    max_quantity: int = 1
+    active: bool = True
+    location_id: Optional[str] = None
+    service_type_ids: List[str] = []
+    sort_order: int = 0
+
+class AddOnResponse(BaseDBModel):
+    name: str
+    description: Optional[str] = None
+    price: float
+    price_type: PriceType
+    category: str
+    requires_staff_assignment: bool
+    max_quantity: int
+    active: bool
+    location_id: Optional[str] = None
+    service_type_ids: List[str] = []
+    sort_order: int
+
+
+# ==================== BOOKING ADD-ON (Junction) ====================
+
+class BookingAddOn(BaseModel):
+    """Add-on attached to a specific booking"""
+    add_on_id: str
+    add_on_name: str
+    quantity: int = 1
+    unit_price: float
+    total_price: float
+    notes: Optional[str] = None
+
+
+# ==================== CAPACITY RULES ====================
+
+class CapacityRule(BaseDBModel):
+    """Configurable capacity limits per location/service"""
+    location_id: str
+    service_type_id: Optional[str] = None  # None = applies to all services
+    accommodation_type: Optional[str] = None  # room, crate, or None for total
+    max_capacity: int
+    buffer_capacity: int = 0  # Extra capacity for admin override
+    effective_date: Optional[datetime] = None  # None = always active
+    expiry_date: Optional[datetime] = None
+    notes: Optional[str] = None
+    active: bool = True
+
+class CapacityRuleCreate(BaseModel):
+    location_id: str
+    service_type_id: Optional[str] = None
+    accommodation_type: Optional[str] = None
+    max_capacity: int
+    buffer_capacity: int = 0
+    effective_date: Optional[datetime] = None
+    expiry_date: Optional[datetime] = None
+    notes: Optional[str] = None
+    active: bool = True
+
+class CapacityRuleResponse(BaseDBModel):
+    location_id: str
+    service_type_id: Optional[str] = None
+    accommodation_type: Optional[str] = None
+    max_capacity: int
+    buffer_capacity: int
+    effective_date: Optional[datetime] = None
+    expiry_date: Optional[datetime] = None
+    notes: Optional[str] = None
+    active: bool
+
+
+# ==================== PRICING RULES ====================
+
+class PricingRule(BaseDBModel):
+    """Dynamic pricing rules (weekends, holidays, seasonal, blackouts)"""
+    name: str
+    rule_type: PricingRuleType
+    multiplier: float = 1.0  # 1.2 = 20% increase, 0.8 = 20% discount
+    flat_adjustment: float = 0.0  # Added/subtracted from total
+    start_date: Optional[datetime] = None  # For seasonal/specific dates
+    end_date: Optional[datetime] = None
+    recurring_yearly: bool = False  # True for holidays
+    days_of_week: List[int] = []  # 0=Monday, 6=Sunday (for weekend rules)
+    service_type_ids: List[str] = []  # Empty = applies to all
+    location_id: Optional[str] = None  # None = all locations
+    priority: int = 0  # Higher priority rules applied last
+    active: bool = True
+    description: Optional[str] = None
+
+class PricingRuleCreate(BaseModel):
+    name: str
+    rule_type: PricingRuleType
+    multiplier: float = 1.0
+    flat_adjustment: float = 0.0
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    recurring_yearly: bool = False
+    days_of_week: List[int] = []
+    service_type_ids: List[str] = []
+    location_id: Optional[str] = None
+    priority: int = 0
+    active: bool = True
+    description: Optional[str] = None
+
+class PricingRuleResponse(BaseDBModel):
+    name: str
+    rule_type: PricingRuleType
+    multiplier: float
+    flat_adjustment: float
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    recurring_yearly: bool
+    days_of_week: List[int]
+    service_type_ids: List[str]
+    location_id: Optional[str] = None
+    priority: int
+    active: bool
+    description: Optional[str] = None
+
+
+# ==================== CANCELLATION POLICY ====================
+
+class CancellationPolicy(BaseDBModel):
+    """Cancellation and refund policies"""
+    name: str
+    days_before_checkin: int  # Cancel X days before for this refund
+    refund_percentage: float  # 100 = full refund, 50 = half, 0 = no refund
+    refund_deposit_only: bool = False  # True = only refund deposit, not full amount
+    applies_to_deposit: bool = True
+    applies_to_balance: bool = True
+    service_type_ids: List[str] = []  # Empty = applies to all
+    location_id: Optional[str] = None
+    active: bool = True
+    is_default: bool = False
+    description: Optional[str] = None
+
+class CancellationPolicyCreate(BaseModel):
+    name: str
+    days_before_checkin: int
+    refund_percentage: float
+    refund_deposit_only: bool = False
+    applies_to_deposit: bool = True
+    applies_to_balance: bool = True
+    service_type_ids: List[str] = []
+    location_id: Optional[str] = None
+    active: bool = True
+    is_default: bool = False
+    description: Optional[str] = None
+
+class CancellationPolicyResponse(BaseDBModel):
+    name: str
+    days_before_checkin: int
+    refund_percentage: float
+    refund_deposit_only: bool
+    applies_to_deposit: bool
+    applies_to_balance: bool
+    service_type_ids: List[str]
+    location_id: Optional[str] = None
+    active: bool
+    is_default: bool
+    description: Optional[str] = None
+
+
+# ==================== SYSTEM SETTINGS ====================
+
+class SystemSetting(BaseDBModel):
+    """Key-value store for system configuration"""
+    key: str
+    value: str  # JSON-serialized for complex values
+    value_type: str = "string"  # string, number, boolean, json
+    category: str = "general"
+    description: Optional[str] = None
+    editable: bool = True
+
+
+# ==================== PAYMENT RECORDS ====================
+
+class Payment(BaseDBModel):
+    """Payment transaction record"""
+    booking_id: str
+    household_id: str
+    amount: float
+    currency: str = "USD"
+    payment_type: PaymentType
+    provider: PaymentProvider
+    provider_transaction_id: Optional[str] = None
+    provider_receipt_url: Optional[str] = None
+    status: str = "pending"  # pending, completed, failed, refunded
+    refund_of: Optional[str] = None  # If this is a refund, reference original payment
+    metadata: Dict[str, Any] = {}
+    notes: Optional[str] = None
+    processed_by: Optional[str] = None  # Staff ID if manual
+    processed_at: Optional[datetime] = None
+
+class PaymentCreate(BaseModel):
+    booking_id: str
+    amount: float
+    currency: str = "USD"
+    payment_type: PaymentType
+    provider: PaymentProvider
+    provider_transaction_id: Optional[str] = None
+    notes: Optional[str] = None
+
+class PaymentResponse(BaseDBModel):
+    booking_id: str
+    household_id: str
+    amount: float
+    currency: str
+    payment_type: PaymentType
+    provider: PaymentProvider
+    provider_transaction_id: Optional[str] = None
+    provider_receipt_url: Optional[str] = None
+    status: str
+    refund_of: Optional[str] = None
+    processed_at: Optional[datetime] = None
+
+
+# ==================== INVOICE ====================
+
+class Invoice(BaseDBModel):
+    """Invoice for booking payments"""
+    booking_id: str
+    household_id: str
+    invoice_number: str
+    subtotal: float
+    tax_amount: float = 0.0
+    discount_amount: float = 0.0
+    total_amount: float
+    deposit_required: float
+    deposit_paid: float = 0.0
+    balance_due: float
+    balance_paid: float = 0.0
+    currency: str = "USD"
+    status: str = "draft"  # draft, sent, partial, paid, overdue, cancelled
+    due_date: Optional[datetime] = None
+    paid_at: Optional[datetime] = None
+    line_items: List[Dict[str, Any]] = []  # Itemized breakdown
+    notes: Optional[str] = None
+    sent_at: Optional[datetime] = None
+
+class InvoiceResponse(BaseDBModel):
+    booking_id: str
+    household_id: str
+    invoice_number: str
+    subtotal: float
+    tax_amount: float
+    discount_amount: float
+    total_amount: float
+    deposit_required: float
+    deposit_paid: float
+    balance_due: float
+    balance_paid: float
+    currency: str
+    status: str
+    due_date: Optional[datetime] = None
+    paid_at: Optional[datetime] = None
+    line_items: List[Dict[str, Any]]
+
+
+# ==================== PRICE CALCULATION REQUEST/RESPONSE ====================
+
+class PriceCalculationRequest(BaseModel):
+    """Request to calculate booking price"""
+    service_type_id: str
+    location_id: str
+    dog_ids: List[str]
+    check_in_date: datetime
+    check_out_date: datetime
+    accommodation_type: str = "room"
+    add_on_ids: List[str] = []
+    add_on_quantities: Dict[str, int] = {}  # add_on_id -> quantity
+    promo_code: Optional[str] = None
+
+class PriceBreakdown(BaseModel):
+    """Detailed price breakdown"""
+    base_price: float
+    nights: int
+    dog_count: int
+    service_subtotal: float
+    add_ons_subtotal: float
+    add_ons_detail: List[Dict[str, Any]] = []
+    pricing_adjustments: List[Dict[str, Any]] = []  # Applied rules
+    subtotal: float
+    tax_rate: float = 0.0
+    tax_amount: float = 0.0
+    discount_amount: float = 0.0
+    total: float
+    deposit_percentage: float
+    deposit_amount: float
+    balance_due: float
+    is_over_capacity: bool = False
+    requires_approval: bool = False
+    blocked_dates: List[str] = []  # Blackout dates in range
+    warnings: List[str] = []
