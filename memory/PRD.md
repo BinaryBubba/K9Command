@@ -583,7 +583,7 @@ GET  /api/k9/reminders/pending - View pending reminders (admin)
 ## Testing
 - **Phase 1 K9Command:** `/app/test_reports/iteration_4.json` - 47/47 passed
 - **Phase 1 HR System:** `/app/test_reports/iteration_5.json` - 53/53 passed
-- **Test Files:** `/app/backend/tests/test_connecteam_phase1.py`
+- **Test Files:** `/app/backend/tests/test_hr_phase1.py`
 
 ---
 
