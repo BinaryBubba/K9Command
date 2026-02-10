@@ -18,7 +18,7 @@ import {
   AlertCircleIcon
 } from 'lucide-react';
 import api from '../utils/api';
-import useAuthStore from '../stores/authStore';
+import useAuthStore from '../store/authStore';
 
 export default function StaffFormsPage() {
   const navigate = useNavigate();
