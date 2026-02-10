@@ -273,16 +273,16 @@ class TestSmartBookingEligibilityBlocking:
         self.session = requests.Session()
         self.session.headers.update({"Content-Type": "application/json"})
         
-        # Login as admin
+        # Login as customer
         login_response = self.session.post(f"{BASE_URL}/api/auth/login", json={
-            "email": ADMIN_EMAIL,
-            "password": ADMIN_PASSWORD
+            "email": CUSTOMER_EMAIL,
+            "password": CUSTOMER_PASSWORD
         })
-        assert login_response.status_code == 200, f"Admin login failed: {login_response.text}"
+        assert login_response.status_code == 200, f"Customer login failed: {login_response.text}"
         
         token = login_response.json().get("token")
         self.session.headers.update({"Authorization": f"Bearer {token}"})
-        self.admin_user = login_response.json().get("user")
+        self.customer_user = login_response.json().get("user")
         
     def test_booking_with_aggressive_dog_triggers_block(self):
         """Test that booking with aggressive dog triggers auto-block"""
