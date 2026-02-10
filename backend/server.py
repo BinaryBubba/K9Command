@@ -1293,6 +1293,41 @@ async def complete_task(task_id: str, credentials: HTTPAuthorizationCredentials 
     
     return {"message": "Task completed"}
 
+@api_router.patch("/tasks/{task_id}", response_model=TaskResponse)
+async def update_task(
+    task_id: str,
+    update_data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Update a task - Admin only"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    task = await database.tasks.find_one({"id": task_id}, {"_id": 0})
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    update_doc = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    
+    allowed_fields = ['title', 'description', 'priority', 'status', 'assigned_to', 'location_id', 'due_date', 'notes']
+    for field in allowed_fields:
+        if field in update_data and update_data[field] is not None:
+            if field == 'due_date' and update_data[field]:
+                update_doc[field] = update_data[field] if isinstance(update_data[field], str) else update_data[field].isoformat()
+            else:
+                update_doc[field] = update_data[field]
+    
+    await database.tasks.update_one({"id": task_id}, {"$set": update_doc})
+    await create_audit_log(user.id, AuditAction.UPDATE, "task", task_id, update_doc)
+    
+    updated_task = await database.tasks.find_one({"id": task_id}, {"_id": 0})
+    if updated_task.get('due_date') and isinstance(updated_task['due_date'], str):
+        updated_task['due_date'] = datetime.fromisoformat(updated_task['due_date'])
+    
+    return TaskResponse(**updated_task)
+
 @api_router.delete("/tasks/{task_id}")
 async def delete_task(task_id: str, credentials: HTTPAuthorizationCredentials = Depends(security), database=Depends(get_db)):
     user = await get_current_user(credentials, database)
