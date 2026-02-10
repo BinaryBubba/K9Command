@@ -28,6 +28,12 @@ import ChatPage from './pages/ChatPage';
 import CustomerCalendarPage from './pages/CustomerCalendarPage';
 import CustomerPaymentsPage from './pages/CustomerPaymentsPage';
 
+// Phase 2 - Time Clock & Scheduling Pages
+import StaffTimeClockPage from './pages/StaffTimeClockPage';
+import ScheduleViewPage from './pages/ScheduleViewPage';
+import KioskModePage from './pages/KioskModePage';
+import AdminTimesheetDashboard from './pages/AdminTimesheetDashboard';
+
 // Store
 import useAuthStore from './store/authStore';
 
