@@ -1,124 +1,131 @@
-# K9 Command - Kennel Operations Platform
+# Kennel Operations Platform - PRD
 
 ## Original Problem Statement
-Build a comprehensive "Kennel Operations 'Single Source of Truth' Platform" - a web-first application to replace existing tools like Rover and Connecteam by consolidating all business operations into one system.
+Build a comprehensive "Kennel Operations 'Single Source of Truth' Platform". This web-first application aims to replace existing tools like Rover and Connecteam by consolidating all business operations into one system.
 
-## Core Requirements
-1. **Customer & Dog Management**: Profiles with vaccination records, behavioral notes, medical flags
-2. **Booking, Billing & Payments**: Reservation system with capacity awareness, pricing rules, Square integration
-3. **Daily Automated Updates**: Staff upload media, AI-generated daily summaries for customers
-4. **Staff & Operations Management**: Employee scheduling, task checklists, time tracking, internal messaging
-5. **Reviews & Reputation**: Internal feedback collection, public review encouragement
-6. **Multi-Location Architecture**: Support for multiple kennel locations
-7. **Security & Auditability**: Immutable logs for all critical actions
+## Current Tech Stack
+- **Frontend:** React 18, Tailwind CSS, Shadcn/UI, Zustand, react-router-dom, recharts
+- **Backend:** FastAPI with Pydantic
+- **Database:** MongoDB (Motor async driver)
+- **Auth:** JWT-based multi-role authentication (Customer, Staff, Admin)
+- **Payments:** Square SDK (with mock fallback)
 
-## Tech Stack
-- **Frontend**: React, Tailwind CSS, Shadcn/UI, Zustand, react-router-dom, Recharts
-- **Backend**: FastAPI, Pydantic, Motor (async MongoDB driver), Square SDK
-- **Database**: MongoDB
-- **Authentication**: JWT-based token auth
-- **Integrations**: OpenAI GPT-5.2 for AI summaries, Square Payments (ready for production keys)
+## Migration Plan (PENDING)
+The user requested migration to a self-hosted stack:
+- PostgreSQL (replacing MongoDB)
+- Redis (for caching/sessions)
+- Alembic (schema migrations)
 
----
+**Note:** This migration was started but not completed due to environment constraints. The PostgreSQL files are created but the backend currently runs on MongoDB.
 
-## What's Been Implemented (January 2026)
+## Core Modules
 
-### Authentication System ✅
-- Complete auth flow for Customers, Staff, and Admins
-- Registration, login, password reset with JWT tokens
-- Role-based access control
+### 1. Authentication & Authorization ✅
+- Multi-role JWT auth (Customer, Staff, Admin)
+- Role-based route protection
+- Password reset flow
 
-### Revenue Dashboard ✅
-- Time-based filtering (Last 7 Days, Last 30 Days, Last Year)
-- Revenue summary cards with comparison to previous period
-- Revenue Trend area chart, Accommodation pie chart, Daily Bookings bar chart
+### 2. Customer Portal ✅
+- Dashboard with stats
+- Dog management (add/edit dogs)
+- Booking creation flow
+- **NEW:** Calendar page (mock data client)
+- **NEW:** Payments page (Square + Crypto coming soon)
+- Daily updates viewing
 
-### Customer Portal ✅
-- Dashboard with stats, Add Dog page, Book a Stay page
-- Chat with kennel staff
+### 3. Staff Portal ✅
+- Dashboard with bookings
+- Task management
+- Timesheet (clock in/out)
+- Internal chat
 
-### Staff Portal ✅
-- **Dashboard**: Clock in/out, tasks, quick action cards
-- **Bookings CRUD**: Create, edit, delete with modification reason field
-- **Timesheet**: Clock in/out, request modifications to past entries, weekly totals (Mon-Sun)
-- **Chat**: Separate tabs for Staff vs Customer conversations
+### 4. Admin Portal ✅
+- Customer/Staff management
+- Booking CRUD
+- Timesheet oversight
+- Revenue analytics dashboard
+- Incident tracking
 
-### Admin Portal ✅ (Complete)
-- **Dashboard**: Stats overview with 9 navigation cards
-- **Bookings**: Full CRUD - Create, Edit, Status Change, Cancel (BUG FIXED: edit no longer returns "not found")
-- **Staff Management**: Tasks with completion tracking (who completed), Shift Scheduler CRUD
-- **Customer Management**: Full CRUD - Create, Edit, Delete, Activate/Deactivate
-- **Incidents**: Full CRUD - Create, Edit, Delete, Resolve with notes
-- **Timesheets**: Weekly totals (Mon-Sun), CRUD, Modification Request Approval, CSV Export
-- **Reports**: Revenue Dashboard with charts
-- **Audit Logs**: System activity tracking
-- **Chat**: Tabs for Staff vs Customer conversations
+## What's Been Implemented
 
-### Internal Chat System ✅
-- Real-time messaging: Admin ↔ Staff, Kennel ↔ Customer
-- **Separate tabs**: All, Staff (internal), Customers
-- Unread counts, message history, new chat modal
+### February 10, 2026
+- Added frontend data adapter (`/data/client.js`) with mock mode for frontend development
+- Created Customer Calendar page (`/customer/calendar`) with day/week views
+- Created Customer Payments page (`/customer/payments`) with Square and Crypto (coming soon) options
+- Added Calendar and Payments quick action cards to Customer Dashboard
 
-### Timesheet System ✅
-- Staff: Clock in/out, request modifications with reason
-- Admin: Approve/reject modification requests, full CRUD, weekly totals Mon-Sun
+### Previous Sessions
+- Full authentication system
+- All three portals (Customer, Staff, Admin)
+- Revenue analytics dashboard
+- Timesheet system with modification requests
+- Internal chat system
+- Square SDK integration
 
-### Shift Scheduler ✅
-- Create/Edit/Delete shifts for staff
-- View shifts grouped by date
-- Staff assignment and location tracking
+## Known Issues
 
----
+### P0 - Critical
+1. **Customer Booking Flow** - May fail under certain conditions. Needs verification.
 
-## Test Data Available
-- **Test Customer**: test_customer@example.com / TestPass123!
-- **Dogs**: Buddy (Golden Retriever), Max (German Shepherd)
-- **Active Booking**: Checked-in status, ready for photo upload testing
+### P1 - Important
+1. **Staff Booking Creation** - Needs new flow: search customer → select dogs → create booking → email invoice
 
-## Pricing Rules
-- Base: $50/night/dog
-- Holiday surcharge: +20%
-- Separate playtime: +$6/day
+## File Structure
+```
+/app/
+├── backend/
+│   ├── server.py         # FastAPI endpoints (MongoDB)
+│   ├── auth.py           # JWT authentication
+│   ├── models.py         # Pydantic models
+│   ├── database.py       # PostgreSQL config (for future migration)
+│   ├── db_models.py      # SQLAlchemy models (for future migration)
+│   ├── schemas.py        # Pydantic schemas (for future migration)
+│   └── cache_service.py  # Redis cache service (for future migration)
+├── frontend/
+│   ├── src/
+│   │   ├── data/
+│   │   │   └── client.js         # NEW: Mock/API data adapter
+│   │   ├── pages/
+│   │   │   ├── CustomerCalendarPage.js  # NEW
+│   │   │   ├── CustomerPaymentsPage.js  # NEW
+│   │   │   ├── CustomerDashboard.js     # Updated with new cards
+│   │   │   └── ... (other pages)
+│   │   └── App.js               # Updated with new routes
+│   └── package.json
+└── memory/
+    └── PRD.md
+```
 
----
+## Environment Variables
+### Backend (.env)
+- `MONGO_URL` - MongoDB connection
+- `DB_NAME` - Database name
+- `JWT_SECRET` - JWT secret key
+- `SQUARE_ACCESS_TOKEN` - Square API (optional)
+- `DATABASE_URL` - PostgreSQL (for future migration)
+- `REDIS_URL` - Redis (for future migration)
 
-## Prioritized Backlog
+### Frontend (.env)
+- `REACT_APP_BACKEND_URL` - API endpoint
+- `REACT_APP_DATA_MODE` - "mock" or "api" (default: mock)
 
-### P0 (Critical) - All Complete ✅
-- [x] Fix booking review page
-- [x] Admin CRUD controls
-- [x] Revenue Dashboard
-- [x] Timesheet functionality with modification requests
-- [x] Internal Chat System with tabs
-- [x] Square Payments integration
-- [x] Shift Scheduler
-- [x] Task completion tracking
-- [x] Customer CRUD
-- [x] Incident CRUD
-- [x] Time entry CRUD + approval
-- [x] Staff Bookings CRUD with reason field
+## Upcoming Tasks
 
-### P1 (High Priority) - Future
-- [ ] Enable real Square payments (add API keys)
-- [ ] Real file storage (AWS S3)
-- [ ] AI daily summary testing
+### P1 - High Priority
+1. Verify/fix customer booking flow
+2. Implement staff booking creation with customer search
+3. Complete PostgreSQL migration when proper environment available
 
-### P2 (Medium Priority)
-- [ ] Photo watermarking
-- [ ] Email/SMS notifications
+### P2 - Medium Priority
+1. Staff shift scheduler UI
+2. Photo upload feature
+3. AI-generated daily summaries (GPT-5.2)
 
-### P3 (Low Priority)
-- [ ] Native mobile apps
-- [ ] Multi-location UI
+### P3 - Future
+- Crypto payments (USDC integration)
+- Native mobile apps
+- Photo watermarking and purchase system
 
----
-
-## Current Integration Status
-1. **Square Payments**: SDK installed, mock mode (add keys to enable)
-2. **File Storage**: Base64 encoding (local)
-3. **AI Summaries**: GPT-5.2 via Emergent LLM Key
-
-## Routes
-- **Customer**: /customer/dashboard, /customer/dogs/add, /customer/bookings/new, /customer/chat
-- **Staff**: /staff/dashboard, /staff/upload, /staff/bookings, /staff/timesheet, /staff/chat
-- **Admin**: /admin/dashboard, /admin/bookings, /admin/staff, /admin/customers, /admin/reports, /admin/incidents, /admin/audit, /admin/timesheet, /admin/chat
+## Test Accounts
+- Customer: `testcustomer@example.com` / `Test123!`
+- Register new accounts via `/auth`
