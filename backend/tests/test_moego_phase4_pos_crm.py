@@ -362,10 +362,11 @@ class TestPOSCheckout:
         sale_res = self.session.post(f"{BASE_URL}/api/moego/pos/transaction", json=transaction_data)
         assert sale_res.status_code == 200
         
-        # Check inventory was deducted
+        # Check inventory was deducted - API returns product directly
         product_res = self.session.get(f"{BASE_URL}/api/moego/inventory/products/{product_id}")
         assert product_res.status_code == 200
-        updated_quantity = product_res.json()["product"]["quantity"]
+        product_data = product_res.json()
+        updated_quantity = product_data["quantity"]
         assert updated_quantity == 7, f"Expected 7, got {updated_quantity}"
         print(f"✓ Inventory deducted correctly: 10 -> 7")
 
