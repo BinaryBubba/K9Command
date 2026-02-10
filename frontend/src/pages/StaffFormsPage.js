@@ -38,8 +38,8 @@ export default function StaffFormsPage() {
     setLoading(true);
     try {
       const [templatesRes, submissionsRes] = await Promise.all([
-        api.get('/api/forms/templates'),
-        api.get('/api/forms/submissions')
+        api.get('/forms/templates'),
+        api.get('/forms/submissions')
       ]);
       setTemplates(templatesRes.data || []);
       setSubmissions(submissionsRes.data || []);

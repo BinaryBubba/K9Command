@@ -44,9 +44,9 @@ export default function FormsManagementPage() {
     setLoading(true);
     try {
       const [templatesRes, submissionsRes, analyticsRes] = await Promise.all([
-        api.get('/api/forms/templates'),
-        api.get('/api/forms/submissions'),
-        api.get('/api/forms/analytics/submissions')
+        api.get('/forms/templates'),
+        api.get('/forms/submissions'),
+        api.get('/forms/analytics/submissions')
       ]);
       setTemplates(templatesRes.data);
       setSubmissions(submissionsRes.data);
@@ -62,7 +62,7 @@ export default function FormsManagementPage() {
   const handleDeleteTemplate = async (templateId) => {
     if (!window.confirm('Are you sure you want to deactivate this form template?')) return;
     try {
-      await api.delete(`/api/forms/templates/${templateId}`);
+      await api.delete(`/forms/templates/${templateId}`);
       toast.success('Form template deactivated');
       loadData();
     } catch (error) {
@@ -72,7 +72,7 @@ export default function FormsManagementPage() {
 
   const handleReviewSubmission = async (submissionId, status) => {
     try {
-      await api.post(`/api/forms/submissions/${submissionId}/review?status=${status}`);
+      await api.post(`/forms/submissions/${submissionId}/review?status=${status}`);
       toast.success(`Submission ${status}`);
       loadData();
     } catch (error) {
