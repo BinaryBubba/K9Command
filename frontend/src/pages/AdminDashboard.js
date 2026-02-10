@@ -4,7 +4,7 @@ import useAuthStore from '../store/authStore';
 import api from '../utils/api';
 import { Button } from '../components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
-import { UsersIcon, DogIcon, CalendarIcon, AlertCircleIcon, LogOutIcon, BarChartIcon, ClockIcon, MessageCircleIcon, ClipboardListIcon, ShieldCheckIcon, CalendarDaysIcon } from 'lucide-react';
+import { UsersIcon, DogIcon, CalendarIcon, AlertCircleIcon, LogOutIcon, BarChartIcon, ClockIcon, MessageCircleIcon, ClipboardListIcon, ShieldCheckIcon, CalendarDaysIcon, FileTextIcon, ListTodoIcon, UmbrellaIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 const AdminDashboard = () => {
