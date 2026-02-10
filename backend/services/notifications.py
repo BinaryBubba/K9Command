@@ -152,7 +152,35 @@ class NotificationService:
             query, {"_id": 0}
         ).sort("created_at", -1).limit(limit).to_list(limit)
         
-        return [NotificationResponse(**n) for n in notifications]
+        # Normalize notifications to handle both old and new schema
+        result = []
+        for n in notifications:
+            # Handle old schema (notification_type, channel, subject, body)
+            if 'notification_type' in n and 'type' not in n:
+                n['type'] = n.get('notification_type', 'custom')
+            if 'channel' in n and 'channels' not in n:
+                n['channels'] = [n.get('channel', 'in_app')]
+            if 'subject' in n and 'title' not in n:
+                n['title'] = n.get('subject', 'Notification')
+            if 'body' in n and 'message' not in n:
+                n['message'] = n.get('body', '')
+            if 'priority' not in n:
+                n['priority'] = 'medium'
+            if 'is_read' not in n:
+                n['is_read'] = n.get('status') == 'read'
+            if 'data' not in n:
+                n['data'] = n.get('metadata')
+            if 'action_url' not in n:
+                n['action_url'] = None
+            
+            try:
+                result.append(NotificationResponse(**n))
+            except Exception as e:
+                # Skip malformed notifications
+                print(f"Skipping malformed notification: {e}")
+                continue
+        
+        return result
     
     async def mark_as_read(self, notification_id: str, user_id: str) -> bool:
         """Mark a notification as read"""
