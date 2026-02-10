@@ -2765,3 +2765,157 @@ class Acknowledgement(BaseDBModel):
     
     # Optional confirmation text
     confirmation_text: Optional[str] = None  # "I have read and understood..."
+
+
+# ==================== KIOSK MODE ====================
+
+class KioskDevice(BaseDBModel):
+    """Registered kiosk device for shared clock in/out"""
+    name: str
+    location_id: str
+    device_code: str  # Unique code to identify the kiosk
+    is_active: bool = True
+    last_activity: Optional[datetime] = None
+    settings: Dict[str, Any] = {}  # Kiosk-specific settings
+
+
+class KioskDeviceCreate(BaseModel):
+    name: str
+    location_id: str
+
+
+class KioskDeviceResponse(BaseDBModel):
+    name: str
+    location_id: str
+    device_code: str
+    is_active: bool
+    last_activity: Optional[datetime] = None
+
+
+class StaffKioskPin(BaseDBModel):
+    """Staff PIN for kiosk clock in/out"""
+    staff_id: str
+    pin_hash: str  # Hashed 4-6 digit PIN
+    is_active: bool = True
+    failed_attempts: int = 0
+    locked_until: Optional[datetime] = None
+
+
+class KioskClockRequest(BaseModel):
+    """Request for kiosk clock in/out"""
+    device_code: str
+    staff_pin: str
+    action: str  # clock_in, clock_out, break_start, break_end
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+
+
+# ==================== SHIFT SCHEDULING EXTENSIONS ====================
+
+class ShiftStatus(str, Enum):
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+
+
+class RecurrencePattern(str, Enum):
+    NONE = "none"
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    BIWEEKLY = "biweekly"
+    MONTHLY = "monthly"
+
+
+class ScheduledShift(BaseDBModel):
+    """Individual scheduled shift"""
+    template_id: Optional[str] = None
+    staff_id: str
+    staff_name: str
+    location_id: str
+    
+    # Timing
+    start_time: datetime
+    end_time: datetime
+    
+    # Recurrence
+    recurrence_pattern: RecurrencePattern = RecurrencePattern.NONE
+    recurrence_end_date: Optional[datetime] = None
+    parent_shift_id: Optional[str] = None  # For recurring instances
+    
+    # Status
+    status: ShiftStatus = ShiftStatus.PUBLISHED
+    
+    # Actual timing (filled when staff clocks in/out)
+    actual_start: Optional[datetime] = None
+    actual_end: Optional[datetime] = None
+    time_entry_id: Optional[str] = None
+    
+    # Attachments
+    task_ids: List[str] = []
+    notes: Optional[str] = None
+    color: Optional[str] = "#3B82F6"  # Default blue
+    
+    # Publishing
+    published_at: Optional[datetime] = None
+    published_by: Optional[str] = None
+
+
+class ScheduledShiftCreate(BaseModel):
+    template_id: Optional[str] = None
+    staff_id: str
+    location_id: str
+    start_time: datetime
+    end_time: datetime
+    recurrence_pattern: RecurrencePattern = RecurrencePattern.NONE
+    recurrence_end_date: Optional[datetime] = None
+    task_ids: List[str] = []
+    notes: Optional[str] = None
+    color: Optional[str] = "#3B82F6"
+    status: ShiftStatus = ShiftStatus.DRAFT
+
+
+class ScheduledShiftResponse(BaseDBModel):
+    template_id: Optional[str] = None
+    staff_id: str
+    staff_name: str
+    location_id: str
+    start_time: datetime
+    end_time: datetime
+    recurrence_pattern: RecurrencePattern
+    recurrence_end_date: Optional[datetime] = None
+    status: ShiftStatus
+    actual_start: Optional[datetime] = None
+    actual_end: Optional[datetime] = None
+    time_entry_id: Optional[str] = None
+    task_ids: List[str]
+    notes: Optional[str] = None
+    color: Optional[str] = None
+    published_at: Optional[datetime] = None
+
+
+class PlannedVsActualReport(BaseModel):
+    """Report comparing scheduled vs actual hours"""
+    staff_id: str
+    staff_name: str
+    period_start: datetime
+    period_end: datetime
+    
+    # Planned (from shifts)
+    planned_shifts: int = 0
+    planned_hours: float = 0.0
+    
+    # Actual (from time entries)
+    actual_entries: int = 0
+    actual_hours: float = 0.0
+    
+    # Variance
+    hours_variance: float = 0.0  # Actual - Planned
+    variance_percentage: float = 0.0
+    
+    # Details
+    missed_shifts: int = 0
+    late_arrivals: int = 0
+    early_departures: int = 0
+    unscheduled_entries: int = 0
