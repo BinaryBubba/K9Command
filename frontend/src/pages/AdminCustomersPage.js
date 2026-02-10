@@ -28,6 +28,12 @@ const AdminCustomersPage = () => {
     password: '',
     is_active: true,
     notes: '',
+    address: '',
+    city: '',
+    state: '',
+    zip_code: '',
+    emergency_contact: '',
+    emergency_phone: '',
   });
 
   useEffect(() => {
