@@ -271,9 +271,11 @@ class BookingCreate(BaseModel):
     accommodation_type: str
     check_in_date: datetime
     check_out_date: datetime
+    booking_type: str = "stay"  # stay, daycare, meet_greet
     notes: Optional[str] = None
     special_request: Optional[str] = None
     needs_separate_playtime: bool = False
+    meet_greet_override: bool = False  # Admin can override meet & greet requirement
     # Phase 1 additions
     service_type_id: Optional[str] = None
     add_on_ids: List[str] = []
@@ -287,6 +289,7 @@ class BookingResponse(BaseDBModel):
     check_out_date: datetime
     status: BookingStatus
     total_price: float
+    booking_type: Optional[str] = "stay"
     notes: Optional[str] = None
     payment_status: Optional[str] = "pending"
     payment_type: Optional[str] = "invoice"
