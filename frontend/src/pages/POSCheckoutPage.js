@@ -5,11 +5,12 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { toast } from 'sonner';
 import { 
   ArrowLeftIcon, ShoppingCartIcon, TrashIcon, PlusIcon, MinusIcon,
   SearchIcon, CreditCardIcon, BanknoteIcon, CheckCircleIcon,
-  ReceiptIcon, UserIcon
+  ReceiptIcon, UserIcon, WalletIcon
 } from 'lucide-react';
 import api from '../utils/api';
 
@@ -26,11 +27,27 @@ export default function POSCheckoutPage() {
   // Payment options
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [discountAmount, setDiscountAmount] = useState(0);
-  const [customerSearch, setCustomerSearch] = useState('');
+  
+  // Customer and saved cards
+  const [showCustomerSearch, setShowCustomerSearch] = useState(false);
+  const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+  const [customers, setCustomers] = useState([]);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [savedCards, setSavedCards] = useState([]);
+  const [selectedCardId, setSelectedCardId] = useState('');
 
   useEffect(() => {
     loadProducts();
   }, []);
+
+  useEffect(() => {
+    if (selectedCustomer) {
+      loadCustomerCards(selectedCustomer.id);
+    } else {
+      setSavedCards([]);
+      setSelectedCardId('');
+    }
+  }, [selectedCustomer]);
 
   const loadProducts = async () => {
     setLoading(true);
@@ -41,6 +58,31 @@ export default function POSCheckoutPage() {
       toast.error('Failed to load products');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const searchCustomers = async (term) => {
+    if (!term || term.length < 2) {
+      setCustomers([]);
+      return;
+    }
+    try {
+      const res = await api.get(`/users?search=${term}&role=customer`);
+      setCustomers(res.data.users || []);
+    } catch (error) {
+      console.error('Customer search failed:', error);
+    }
+  };
+
+  const loadCustomerCards = async (customerId) => {
+    try {
+      const res = await api.get('/moego/payments/cards', {
+        params: { customer_id: customerId }
+      });
+      setSavedCards(res.data.cards || []);
+    } catch (error) {
+      console.error('Failed to load saved cards:', error);
+      setSavedCards([]);
     }
   };
 
@@ -92,6 +134,8 @@ export default function POSCheckoutPage() {
     setCart([]);
     setDiscountAmount(0);
     setPaymentMethod('cash');
+    setSelectedCustomer(null);
+    setSelectedCardId('');
   };
 
   const calculateTotals = () => {
@@ -110,6 +154,12 @@ export default function POSCheckoutPage() {
       return;
     }
     
+    // Validate card selection for card_on_file payment
+    if (paymentMethod === 'card_on_file' && !selectedCardId) {
+      toast.error('Please select a saved card');
+      return;
+    }
+    
     setProcessing(true);
     try {
       const items = cart.map(item => ({
@@ -117,11 +167,19 @@ export default function POSCheckoutPage() {
         quantity: item.quantity
       }));
       
-      const res = await api.post('/moego/pos/transaction', {
+      const payload = {
         items,
         payment_method: paymentMethod,
-        discount_cents: Math.round(discountAmount * 100)
-      });
+        discount_cents: Math.round(discountAmount * 100),
+        customer_id: selectedCustomer?.id || null
+      };
+      
+      // Add card_id if using saved card
+      if (paymentMethod === 'card_on_file' && selectedCardId) {
+        payload.card_id = selectedCardId;
+      }
+      
+      const res = await api.post('/moego/pos/transaction', payload);
       
       setLastTransaction(res.data.transaction);
       setShowReceipt(true);
@@ -200,6 +258,7 @@ export default function POSCheckoutPage() {
                     key={product.id}
                     className="bg-slate-800 border-slate-700 cursor-pointer hover:bg-slate-750 hover:border-blue-500/50 transition-all"
                     onClick={() => addToCart(product)}
+                    data-testid={`product-card-${product.id}`}
                   >
                     <CardContent className="p-4">
                       <div className="flex justify-between items-start mb-2">
@@ -225,6 +284,37 @@ export default function POSCheckoutPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4">
+                {/* Customer Selection */}
+                <div className="mb-4">
+                  <label className="text-xs text-slate-400 block mb-1">Customer (Optional)</label>
+                  {selectedCustomer ? (
+                    <div className="flex items-center justify-between bg-slate-800 rounded-lg p-2">
+                      <div className="flex items-center gap-2">
+                        <UserIcon size={16} className="text-blue-400" />
+                        <span className="text-white text-sm">{selectedCustomer.full_name}</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedCustomer(null)}
+                        className="text-slate-400 h-6 px-2"
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowCustomerSearch(true)}
+                      className="w-full border-slate-700 text-slate-300"
+                    >
+                      <UserIcon size={14} className="mr-2" />
+                      Add Customer
+                    </Button>
+                  )}
+                </div>
+
                 {cart.length === 0 ? (
                   <div className="text-center py-8 text-slate-500">
                     <ShoppingCartIcon className="mx-auto mb-2" size={32} />
@@ -232,7 +322,7 @@ export default function POSCheckoutPage() {
                     <p className="text-xs">Click products to add</p>
                   </div>
                 ) : (
-                  <div className="space-y-3 max-h-64 overflow-y-auto mb-4">
+                  <div className="space-y-3 max-h-48 overflow-y-auto mb-4">
                     {cart.map(item => (
                       <div key={item.product_id} className="flex items-center gap-3 bg-slate-800 rounded-lg p-3">
                         <div className="flex-1 min-w-0">
@@ -299,12 +389,42 @@ export default function POSCheckoutPage() {
                       </SelectItem>
                       <SelectItem value="card">
                         <span className="flex items-center gap-2">
-                          <CreditCardIcon size={14} /> Card
+                          <CreditCardIcon size={14} /> Card (Swipe/Tap)
                         </span>
                       </SelectItem>
+                      {selectedCustomer && savedCards.length > 0 && (
+                        <SelectItem value="card_on_file">
+                          <span className="flex items-center gap-2">
+                            <WalletIcon size={14} /> Saved Card
+                          </span>
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Saved Card Selection (if card_on_file selected) */}
+                {paymentMethod === 'card_on_file' && savedCards.length > 0 && (
+                  <div className="mb-4">
+                    <label className="text-xs text-slate-400 block mb-1">Select Card</label>
+                    <Select value={selectedCardId} onValueChange={setSelectedCardId}>
+                      <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                        <SelectValue placeholder="Choose a card..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {savedCards.map(card => (
+                          <SelectItem key={card.id} value={card.id}>
+                            <span className="flex items-center gap-2">
+                              <CreditCardIcon size={14} />
+                              {card.card_brand} •••• {card.last_4}
+                              {card.exp_month && ` (${card.exp_month}/${card.exp_year})`}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 {/* Totals */}
                 <div className="border-t border-slate-700 pt-4 space-y-2">
@@ -332,8 +452,9 @@ export default function POSCheckoutPage() {
                 <div className="mt-4 space-y-2">
                   <Button
                     onClick={processTransaction}
-                    disabled={cart.length === 0 || processing}
+                    disabled={cart.length === 0 || processing || (paymentMethod === 'card_on_file' && !selectedCardId)}
                     className="w-full bg-green-600 hover:bg-green-700 py-6 text-lg"
+                    data-testid="charge-btn"
                   >
                     {processing ? 'Processing...' : `Charge ${formatCurrency(totals.total)}`}
                   </Button>
@@ -351,6 +472,56 @@ export default function POSCheckoutPage() {
           </div>
         </div>
       </main>
+
+      {/* Customer Search Modal */}
+      <Dialog open={showCustomerSearch} onOpenChange={setShowCustomerSearch}>
+        <DialogContent className="bg-slate-900 border-slate-700 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Find Customer</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="relative">
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+              <Input
+                placeholder="Search by name or email..."
+                value={customerSearchTerm}
+                onChange={(e) => {
+                  setCustomerSearchTerm(e.target.value);
+                  searchCustomers(e.target.value);
+                }}
+                className="pl-10 bg-slate-800 border-slate-700 text-white"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {customers.length === 0 && customerSearchTerm.length >= 2 && (
+                <p className="text-center text-slate-500 py-4">No customers found</p>
+              )}
+              {customers.map(customer => (
+                <div
+                  key={customer.id}
+                  className="flex items-center justify-between bg-slate-800 rounded-lg p-3 cursor-pointer hover:bg-slate-750"
+                  onClick={() => {
+                    setSelectedCustomer(customer);
+                    setShowCustomerSearch(false);
+                    setCustomerSearchTerm('');
+                    setCustomers([]);
+                  }}
+                >
+                  <div>
+                    <p className="text-white font-medium">{customer.full_name}</p>
+                    <p className="text-xs text-slate-400">{customer.email}</p>
+                  </div>
+                  <UserIcon size={16} className="text-slate-500" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowCustomerSearch(false); setCustomerSearchTerm(''); setCustomers([]); }} className="border-slate-600 text-slate-300">Cancel</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Receipt Modal */}
       {showReceipt && lastTransaction && (
@@ -393,13 +564,14 @@ export default function POSCheckoutPage() {
               </div>
               
               <div className="text-center mt-4 text-xs text-slate-500">
-                <p>Payment: {lastTransaction.payment_method}</p>
+                <p>Payment: {lastTransaction.payment_method === 'card_on_file' ? 'Saved Card' : lastTransaction.payment_method}</p>
                 <p>ID: {lastTransaction.id?.slice(0, 8)}</p>
               </div>
               
               <Button
                 onClick={() => setShowReceipt(false)}
                 className="w-full mt-4"
+                data-testid="receipt-done-btn"
               >
                 Done
               </Button>
