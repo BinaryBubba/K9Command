@@ -7,9 +7,10 @@ from pydantic import EmailStr
 import os
 import logging
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone, timedelta
 import base64
+import uuid
 
 from models import (
     User, UserCreate, UserResponse, LoginRequest, LoginResponse,
@@ -22,10 +23,23 @@ from models import (
     AuditLog, AuditLogResponse, AuditAction,
     Incident, IncidentCreate, IncidentResponse,
     Review, ReviewCreate, ReviewResponse,
-    UserRole
+    UserRole,
+    # Phase 1 models
+    ServiceType, ServiceTypeCreate, ServiceTypeResponse,
+    AddOn, AddOnCreate, AddOnResponse,
+    CapacityRule, CapacityRuleCreate, CapacityRuleResponse,
+    PricingRule, PricingRuleCreate, PricingRuleResponse,
+    CancellationPolicy, CancellationPolicyCreate, CancellationPolicyResponse,
+    SystemSetting,
+    Payment, PaymentCreate, PaymentResponse,
+    Invoice, InvoiceResponse,
+    PriceCalculationRequest, PriceBreakdown,
+    PaymentType, PaymentProvider as PaymentProviderEnum
 )
 from auth import hash_password, verify_password, create_access_token, get_current_user, require_role, security
 from ai_service import generate_daily_summary
+from pricing_engine import PricingEngine
+from payment_service import PaymentService
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
