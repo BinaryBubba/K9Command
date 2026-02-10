@@ -551,22 +551,40 @@ async def create_booking(booking_data: BookingCreate, credentials: HTTPAuthoriza
             is_holiday = True
             break
     
-    # Pricing calculation
-    base_price = 50.0  # per night per dog
-    total_price = base_price * nights * len(booking_data.dog_ids)
-    
-    # Holiday surcharge (20%)
-    if is_holiday:
-        total_price *= 1.20
-    
-    # Separate playtime fee
-    separate_playtime_fee = 0.0
-    if booking_data.needs_separate_playtime:
-        separate_playtime_fee = 6.0 * nights  # $6 per day
-        total_price += separate_playtime_fee
+    # Pricing calculation based on booking type
+    if booking_type == "meet_greet":
+        # Get meet & greet price from settings
+        mg_price = 0.0
+        if mg_setting:
+            try:
+                mg_config = json.loads(mg_setting.get("value", "{}"))
+                mg_price = mg_config.get("price", 0.0)
+            except:
+                pass
+        total_price = mg_price
+        separate_playtime_fee = 0.0
+        nights = 1  # Meet & greet is a single session
+    else:
+        # Get base price from settings
+        base_price_setting = await database.system_settings.find_one({"key": "base_room_rate"}, {"_id": 0})
+        base_price = float(base_price_setting.get("value", "50")) if base_price_setting else 50.0
+        
+        total_price = base_price * nights * len(booking_data.dog_ids)
+        
+        # Holiday surcharge (20%)
+        if is_holiday:
+            total_price *= 1.20
+        
+        # Separate playtime fee
+        separate_playtime_fee = 0.0
+        if booking_data.needs_separate_playtime:
+            playtime_setting = await database.system_settings.find_one({"key": "separate_playtime_rate"}, {"_id": 0})
+            playtime_rate = float(playtime_setting.get("value", "6")) if playtime_setting else 6.0
+            separate_playtime_fee = playtime_rate * nights
+            total_price += separate_playtime_fee
     
     booking = Booking(
-        **booking_data.model_dump(),
+        **booking_data.model_dump(exclude={'meet_greet_override'}),
         household_id=user.household_id,
         status=BookingStatus.PENDING,
         total_price=total_price,
