@@ -149,6 +149,23 @@ const BookingModal = ({ isOpen, onClose, booking, onSuccess }) => {
           <DialogTitle>{booking ? 'Edit Booking' : 'Create Booking'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Booking Type Selection */}
+          <div>
+            <Label>Booking Type *</Label>
+            <select
+              value={formData.booking_type}
+              onChange={(e) => setFormData({ ...formData, booking_type: e.target.value })}
+              className="w-full p-2 border rounded-xl mt-1"
+            >
+              <option value="stay">Stay (Boarding)</option>
+              <option value="daycare">Daycare</option>
+              <option value="meet_greet">Meet & Greet</option>
+            </select>
+            {formData.booking_type === 'meet_greet' && (
+              <p className="text-xs text-muted-foreground mt-1">New customers must complete a Meet & Greet before booking stays or daycare.</p>
+            )}
+          </div>
+
           {/* Customer Selection - Only for Admin/Staff creating new booking */}
           {isAdminOrStaff && !booking && (
             <div>
