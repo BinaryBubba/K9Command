@@ -1397,6 +1397,12 @@ async def create_smart_booking(
             booking_id=booking_id,
             dog_names=dog_names
         )
+        
+        # Schedule auto-reminders for confirmed booking
+        try:
+            await schedule_reminders_for_booking(db, booking_doc, dog_names)
+        except Exception as e:
+            print(f"Failed to schedule reminders: {e}")
     
     # Remove _id from response
     booking_doc.pop('_id', None)
