@@ -276,6 +276,14 @@ function App() {
             }
           />
           <Route
+            path="/staff/time-management"
+            element={
+              <ProtectedRoute allowedRoles={['staff']}>
+                <StaffTimeManagementPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/staff/*"
             element={
               <ProtectedRoute allowedRoles={['staff']}>
