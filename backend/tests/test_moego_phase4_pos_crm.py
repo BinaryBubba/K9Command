@@ -29,7 +29,7 @@ class TestInventoryManagement:
             "password": ADMIN_PASSWORD
         })
         assert login_res.status_code == 200, f"Admin login failed: {login_res.text}"
-        token = login_res.json().get("access_token")
+        token = login_res.json().get("token")  # API returns 'token' not 'access_token'
         self.session.headers.update({"Authorization": f"Bearer {token}"})
         
         # Generate unique SKU for test products
@@ -212,7 +212,7 @@ class TestPOSCheckout:
             "password": ADMIN_PASSWORD
         })
         assert login_res.status_code == 200, f"Admin login failed: {login_res.text}"
-        token = login_res.json().get("access_token")
+        token = login_res.json().get("token")  # API returns 'token' not 'access_token'
         self.session.headers.update({"Authorization": f"Bearer {token}"})
         
         # Create a test product for POS transactions
@@ -382,7 +382,7 @@ class TestCRMLeads:
             "password": ADMIN_PASSWORD
         })
         assert login_res.status_code == 200, f"Admin login failed: {login_res.text}"
-        token = login_res.json().get("access_token")
+        token = login_res.json().get("token")  # API returns 'token' not 'access_token'
         self.session.headers.update({"Authorization": f"Bearer {token}"})
         yield
     
