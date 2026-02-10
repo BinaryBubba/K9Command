@@ -72,7 +72,7 @@ const AdminCustomersPage = () => {
   const openCreateModal = () => {
     setEditMode(false);
     setSelectedCustomer(null);
-    setFormData({ full_name: '', email: '', phone: '', password: '', is_active: true, notes: '' });
+    setFormData({ full_name: '', email: '', phone: '', password: '', is_active: true, notes: '', address: '', city: '', state: '', zip_code: '', emergency_contact: '', emergency_phone: '' });
     setModalOpen(true);
   };
 
@@ -86,6 +86,12 @@ const AdminCustomersPage = () => {
       password: '',
       is_active: customer.is_active !== false,
       notes: customer.notes || '',
+      address: customer.address || '',
+      city: customer.city || '',
+      state: customer.state || '',
+      zip_code: customer.zip_code || '',
+      emergency_contact: customer.emergency_contact || '',
+      emergency_phone: customer.emergency_phone || '',
     });
     setModalOpen(true);
   };
