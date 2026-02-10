@@ -432,6 +432,14 @@ function App() {
             }
           />
           <Route
+            path="/admin/booking-approvals"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <BookingApprovalPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin/*"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
