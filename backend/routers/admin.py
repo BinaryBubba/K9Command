@@ -16,10 +16,13 @@ router = APIRouter(prefix="/api/admin", tags=["Admin"])
 security = HTTPBearer()
 
 
-def get_db():
-    """Get database connection"""
-    from server import db
-    return db
+async def get_db():
+    """Get database connection - injected at request time"""
+    from motor.motor_asyncio import AsyncIOMotorClient
+    import os
+    mongo_url = os.environ['MONGO_URL']
+    client = AsyncIOMotorClient(mongo_url)
+    return client[os.environ['DB_NAME']]
 
 
 # ==================== EMAIL TEMPLATES ====================
@@ -29,7 +32,7 @@ async def get_email_templates(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Get all email templates"""
-    db = get_db()
+    db = await get_db()
     user = await get_current_user(credentials, db)
     if user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
@@ -50,7 +53,7 @@ async def update_email_template(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Update an email template"""
-    db = get_db()
+    db = await get_db()
     user = await get_current_user(credentials, db)
     if user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
