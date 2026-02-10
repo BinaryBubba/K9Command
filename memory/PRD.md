@@ -651,6 +651,58 @@ GET  /api/k9/reminders/pending - View pending reminders (admin)
 
 ---
 
+## BUG FIXES AND NEW FEATURES (Feb 2026) ✅ COMPLETE
+
+### Priority 1 - Critical Bug Fixes ✅
+1. **Admin Create Booking Fix** - BookingModal now detects admin/staff and uses `/bookings/admin` endpoint
+2. **Admin Edit Task Fix** - Added `PATCH /tasks/{task_id}` endpoint
+3. **Incident Modification Crash Fix** - Fixed SelectItem empty value issue in AdminIncidentsPage
+
+### Priority 2 - Customer Form & Admin Features ✅
+4. **Customer Form Address Fields** - Added address, city, state, zip_code, emergency_contact, emergency_phone
+5. **Global Pricing Settings Page** - `/admin/settings` with General, Pricing, and Meet & Greet tabs
+6. **Admin-adjustable Pricing** - Base rates, add-on rates, multi-dog discount configurable via settings
+
+### Priority 3 - Page Consolidation ✅
+7. **Admin Time Management Page** - Merged timesheets, schedules, time off into `/admin/time-management`
+   - Tabbed interface with Timesheets, Time Off Requests, Staff Schedules
+   - Calendar view option
+   - CSV export for reports
+8. **Staff Time Management Page** - Merged timeclock, schedule, time off into `/staff/time-management`
+   - Real-time clock display
+   - Clock in/out and break buttons
+   - Time off request submission
+   - Calendar view for schedule
+
+### Meet & Greet Configuration ✅
+- Required for new customers (configurable)
+- Admin-adjustable availability days and times
+- Price configurable (default: free)
+
+**New Frontend Pages:**
+```
+/app/frontend/src/pages/AdminSettingsPage.js - System settings (Pricing, Capacity, Meet & Greet)
+/app/frontend/src/pages/AdminTimeManagementPage.js - Consolidated admin time management
+/app/frontend/src/pages/StaffTimeManagementPage.js - Consolidated staff time management
+```
+
+**New API Endpoints:**
+```
+PATCH /api/tasks/{task_id} - Update task (admin only)
+GET /api/schedules - List staff schedules
+GET /api/schedules/my-schedule - Staff's own schedule
+GET /api/time-off/requests - List all time off requests (admin)
+GET /api/time-off/my-requests - Staff's own requests
+POST /api/time-off/requests - Submit time off request
+POST /api/time-off/requests/{id}/approve - Approve request
+POST /api/time-off/requests/{id}/reject - Reject request
+GET /api/time-off/balances - Get time off balances
+```
+
+**Test Report:** `/app/test_reports/iteration_16.json` - 9/9 backend tests passed
+
+---
+
 ## Test Accounts
 - Customer: `customer_test@k9.com` / `Test123!`
 - Staff: `staff_test@k9.com` / `Test123!`
