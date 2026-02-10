@@ -2919,3 +2919,682 @@ class PlannedVsActualReport(BaseModel):
     late_arrivals: int = 0
     early_departures: int = 0
     unscheduled_entries: int = 0
+
+
+
+# ==================== MOEGO PARITY - PHASE 1 ====================
+# Slot-based booking, kennels/runs, coupon codes, card-on-file
+
+# ==================== KENNELS / RUNS ====================
+
+class KennelType(str, Enum):
+    RUN = "run"  # Large outdoor/indoor run
+    SUITE = "suite"  # Premium private room
+    CRATE = "crate"  # Standard crate
+    LUXURY = "luxury"  # Luxury suite with extras
+
+
+class KennelStatus(str, Enum):
+    AVAILABLE = "available"
+    OCCUPIED = "occupied"
+    RESERVED = "reserved"
+    CLEANING = "cleaning"
+    MAINTENANCE = "maintenance"
+    OUT_OF_SERVICE = "out_of_service"
+
+
+class Kennel(BaseDBModel):
+    """Individual kennel/run/suite unit"""
+    name: str  # e.g., "Run A1", "Suite 3", "Crate 12"
+    location_id: str
+    kennel_type: KennelType
+    
+    # Physical attributes
+    size_category: str = "medium"  # small, medium, large, xlarge
+    max_dogs: int = 1  # Max dogs that can share (family groups)
+    square_feet: Optional[float] = None
+    
+    # Features
+    features: List[str] = []  # ["outdoor_access", "webcam", "climate_control", "raised_bed"]
+    
+    # Pricing
+    price_modifier: float = 0.0  # Added to base price (e.g., +$10 for suite)
+    
+    # Compatibility
+    suitable_for_breeds: List[str] = []  # Empty = all breeds
+    min_weight: Optional[float] = None
+    max_weight: Optional[float] = None
+    
+    # Status
+    status: KennelStatus = KennelStatus.AVAILABLE
+    current_booking_id: Optional[str] = None
+    current_dog_ids: List[str] = []
+    
+    # Display
+    sort_order: int = 0
+    color: Optional[str] = None  # For calendar/map display
+    notes: Optional[str] = None
+    is_active: bool = True
+
+
+class KennelCreate(BaseModel):
+    name: str
+    location_id: str
+    kennel_type: KennelType
+    size_category: str = "medium"
+    max_dogs: int = 1
+    square_feet: Optional[float] = None
+    features: List[str] = []
+    price_modifier: float = 0.0
+    suitable_for_breeds: List[str] = []
+    min_weight: Optional[float] = None
+    max_weight: Optional[float] = None
+    sort_order: int = 0
+    color: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class KennelResponse(BaseDBModel):
+    name: str
+    location_id: str
+    kennel_type: KennelType
+    size_category: str
+    max_dogs: int
+    square_feet: Optional[float] = None
+    features: List[str]
+    price_modifier: float
+    suitable_for_breeds: List[str]
+    min_weight: Optional[float] = None
+    max_weight: Optional[float] = None
+    status: KennelStatus
+    current_booking_id: Optional[str] = None
+    current_dog_ids: List[str]
+    sort_order: int
+    color: Optional[str] = None
+    notes: Optional[str] = None
+    is_active: bool
+
+
+# ==================== TIME SLOTS ====================
+
+class SlotType(str, Enum):
+    CHECK_IN = "check_in"
+    CHECK_OUT = "check_out"
+    DAYCARE_DROP_OFF = "daycare_drop_off"
+    DAYCARE_PICK_UP = "daycare_pick_up"
+    BATH = "bath"
+    APPOINTMENT = "appointment"
+
+
+class TimeSlot(BaseDBModel):
+    """Configurable time slot for bookings"""
+    location_id: str
+    slot_type: SlotType
+    
+    # Time configuration
+    start_time: str  # "08:00" format (24h)
+    end_time: str  # "09:00" format
+    
+    # Days of week (0=Monday, 6=Sunday)
+    days_of_week: List[int] = [0, 1, 2, 3, 4, 5, 6]
+    
+    # Capacity
+    max_bookings: int = 5  # Max bookings in this slot
+    buffer_minutes: int = 0  # Buffer between slots
+    
+    # Service type restrictions
+    service_type_ids: List[str] = []  # Empty = all services
+    
+    # Date range (for seasonal slots)
+    effective_date: Optional[datetime] = None
+    expiry_date: Optional[datetime] = None
+    
+    is_active: bool = True
+    notes: Optional[str] = None
+
+
+class TimeSlotCreate(BaseModel):
+    location_id: str
+    slot_type: SlotType
+    start_time: str
+    end_time: str
+    days_of_week: List[int] = [0, 1, 2, 3, 4, 5, 6]
+    max_bookings: int = 5
+    buffer_minutes: int = 0
+    service_type_ids: List[str] = []
+    effective_date: Optional[datetime] = None
+    expiry_date: Optional[datetime] = None
+    notes: Optional[str] = None
+
+
+class TimeSlotResponse(BaseDBModel):
+    location_id: str
+    slot_type: SlotType
+    start_time: str
+    end_time: str
+    days_of_week: List[int]
+    max_bookings: int
+    buffer_minutes: int
+    service_type_ids: List[str]
+    effective_date: Optional[datetime] = None
+    expiry_date: Optional[datetime] = None
+    is_active: bool
+    notes: Optional[str] = None
+
+
+class SlotAvailability(BaseModel):
+    """Real-time slot availability"""
+    slot_id: str
+    slot_type: SlotType
+    date: datetime
+    start_time: str
+    end_time: str
+    max_bookings: int
+    current_bookings: int
+    available_spots: int
+    status: str  # "available", "limited", "full", "closed"
+    booking_ids: List[str] = []
+
+
+# ==================== COUPON / DISCOUNT CODES ====================
+
+class DiscountType(str, Enum):
+    PERCENTAGE = "percentage"  # % off total
+    FLAT_AMOUNT = "flat_amount"  # $ off total
+    FREE_ADDON = "free_addon"  # Free add-on service
+    FREE_NIGHT = "free_night"  # Free night (buy X get 1)
+
+
+class CouponCode(BaseDBModel):
+    """Coupon/discount code"""
+    code: str  # The actual code customers enter
+    name: str  # Internal name
+    description: Optional[str] = None
+    
+    # Discount configuration
+    discount_type: DiscountType
+    discount_value: float  # Amount or percentage
+    free_addon_id: Optional[str] = None  # For FREE_ADDON type
+    buy_nights_get_free: Optional[int] = None  # For FREE_NIGHT type
+    
+    # Limits
+    max_uses: Optional[int] = None  # Total uses allowed
+    max_uses_per_customer: int = 1
+    current_uses: int = 0
+    
+    # Minimum requirements
+    min_order_amount: Optional[float] = None
+    min_nights: Optional[int] = None
+    min_dogs: Optional[int] = None
+    
+    # Restrictions
+    service_type_ids: List[str] = []  # Empty = all services
+    location_ids: List[str] = []  # Empty = all locations
+    first_booking_only: bool = False
+    
+    # Validity
+    valid_from: Optional[datetime] = None
+    valid_until: Optional[datetime] = None
+    
+    is_active: bool = True
+    created_by: Optional[str] = None
+
+
+class CouponCodeCreate(BaseModel):
+    code: str
+    name: str
+    description: Optional[str] = None
+    discount_type: DiscountType
+    discount_value: float
+    free_addon_id: Optional[str] = None
+    buy_nights_get_free: Optional[int] = None
+    max_uses: Optional[int] = None
+    max_uses_per_customer: int = 1
+    min_order_amount: Optional[float] = None
+    min_nights: Optional[int] = None
+    min_dogs: Optional[int] = None
+    service_type_ids: List[str] = []
+    location_ids: List[str] = []
+    first_booking_only: bool = False
+    valid_from: Optional[datetime] = None
+    valid_until: Optional[datetime] = None
+
+
+class CouponCodeResponse(BaseDBModel):
+    code: str
+    name: str
+    description: Optional[str] = None
+    discount_type: DiscountType
+    discount_value: float
+    free_addon_id: Optional[str] = None
+    buy_nights_get_free: Optional[int] = None
+    max_uses: Optional[int] = None
+    max_uses_per_customer: int
+    current_uses: int
+    min_order_amount: Optional[float] = None
+    min_nights: Optional[int] = None
+    service_type_ids: List[str]
+    location_ids: List[str]
+    first_booking_only: bool
+    valid_from: Optional[datetime] = None
+    valid_until: Optional[datetime] = None
+    is_active: bool
+
+
+class CouponUsage(BaseDBModel):
+    """Track coupon usage per customer"""
+    coupon_id: str
+    coupon_code: str
+    booking_id: str
+    household_id: str
+    discount_applied: float
+    used_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+# ==================== CARD ON FILE (SQUARE VAULT) ====================
+
+class PaymentMethodType(str, Enum):
+    CARD = "card"
+    BANK_ACCOUNT = "bank_account"
+
+
+class CardBrand(str, Enum):
+    VISA = "VISA"
+    MASTERCARD = "MASTERCARD"
+    AMERICAN_EXPRESS = "AMERICAN_EXPRESS"
+    DISCOVER = "DISCOVER"
+    DISCOVER_DINERS = "DISCOVER_DINERS"
+    JCB = "JCB"
+    CHINA_UNIONPAY = "CHINA_UNIONPAY"
+    SQUARE_GIFT_CARD = "SQUARE_GIFT_CARD"
+    OTHER = "OTHER"
+
+
+class StoredPaymentMethod(BaseDBModel):
+    """Card on file / stored payment method"""
+    household_id: str
+    customer_id: str  # Square customer ID
+    
+    # Square references
+    card_id: str  # Square card ID
+    
+    # Card details (masked)
+    payment_method_type: PaymentMethodType = PaymentMethodType.CARD
+    card_brand: Optional[CardBrand] = None
+    last_4: str
+    exp_month: int
+    exp_year: int
+    cardholder_name: Optional[str] = None
+    
+    # Billing address (optional)
+    billing_zip: Optional[str] = None
+    billing_country: Optional[str] = None
+    
+    # Status
+    is_default: bool = False
+    is_active: bool = True
+    
+    # Verification
+    verified: bool = False
+    verified_at: Optional[datetime] = None
+    
+    # Last used
+    last_used_at: Optional[datetime] = None
+
+
+class StoredPaymentMethodResponse(BaseModel):
+    id: str
+    household_id: str
+    payment_method_type: PaymentMethodType
+    card_brand: Optional[CardBrand] = None
+    last_4: str
+    exp_month: int
+    exp_year: int
+    cardholder_name: Optional[str] = None
+    billing_zip: Optional[str] = None
+    is_default: bool
+    is_active: bool
+    verified: bool
+    last_used_at: Optional[datetime] = None
+    created_at: datetime
+
+
+# ==================== ELIGIBILITY RULES ====================
+
+class EligibilityRuleType(str, Enum):
+    VACCINATION = "vaccination"
+    WEIGHT = "weight"
+    BREED = "breed"
+    AGE = "age"
+    BEHAVIOR = "behavior"
+    SPAY_NEUTER = "spay_neuter"
+
+
+class EligibilityRule(BaseDBModel):
+    """Rules for service/booking eligibility"""
+    name: str
+    rule_type: EligibilityRuleType
+    location_id: Optional[str] = None  # None = all locations
+    service_type_ids: List[str] = []  # Empty = all services
+    
+    # Rule configuration (depends on type)
+    # VACCINATION: required vaccines list
+    required_vaccines: List[str] = []  # ["rabies", "bordetella", "dhpp"]
+    vaccine_expiry_buffer_days: int = 0  # Days before expiry to flag
+    
+    # WEIGHT: min/max
+    min_weight: Optional[float] = None
+    max_weight: Optional[float] = None
+    
+    # BREED: allowed/blocked
+    allowed_breeds: List[str] = []  # Empty = all allowed
+    blocked_breeds: List[str] = []
+    
+    # AGE: min/max months
+    min_age_months: Optional[int] = None
+    max_age_months: Optional[int] = None
+    
+    # BEHAVIOR: required flags
+    requires_dog_friendly: bool = False
+    blocks_aggressive: bool = True
+    
+    # SPAY_NEUTER: required
+    requires_spay_neuter: bool = False
+    min_age_for_spay_neuter: int = 6  # Months
+    
+    # Enforcement
+    is_hard_block: bool = True  # If false, allows with warning
+    warning_message: Optional[str] = None
+    block_message: Optional[str] = None
+    
+    is_active: bool = True
+
+
+class EligibilityRuleCreate(BaseModel):
+    name: str
+    rule_type: EligibilityRuleType
+    location_id: Optional[str] = None
+    service_type_ids: List[str] = []
+    required_vaccines: List[str] = []
+    vaccine_expiry_buffer_days: int = 0
+    min_weight: Optional[float] = None
+    max_weight: Optional[float] = None
+    allowed_breeds: List[str] = []
+    blocked_breeds: List[str] = []
+    min_age_months: Optional[int] = None
+    max_age_months: Optional[int] = None
+    requires_dog_friendly: bool = False
+    blocks_aggressive: bool = True
+    requires_spay_neuter: bool = False
+    is_hard_block: bool = True
+    warning_message: Optional[str] = None
+    block_message: Optional[str] = None
+
+
+class EligibilityRuleResponse(BaseDBModel):
+    name: str
+    rule_type: EligibilityRuleType
+    location_id: Optional[str] = None
+    service_type_ids: List[str]
+    required_vaccines: List[str]
+    min_weight: Optional[float] = None
+    max_weight: Optional[float] = None
+    allowed_breeds: List[str]
+    blocked_breeds: List[str]
+    min_age_months: Optional[int] = None
+    max_age_months: Optional[int] = None
+    is_hard_block: bool
+    warning_message: Optional[str] = None
+    block_message: Optional[str] = None
+    is_active: bool
+
+
+class EligibilityCheckResult(BaseModel):
+    """Result of checking dog eligibility"""
+    dog_id: str
+    dog_name: str
+    is_eligible: bool
+    has_warnings: bool
+    errors: List[Dict[str, Any]] = []  # Hard blocks
+    warnings: List[Dict[str, Any]] = []  # Soft warnings
+    missing_vaccines: List[str] = []
+    expiring_vaccines: List[Dict[str, Any]] = []
+
+
+# ==================== BOOKING ENHANCEMENTS ====================
+
+class BookingSlot(BaseModel):
+    """Slot assignment for a booking"""
+    slot_id: str
+    slot_type: SlotType
+    date: datetime
+    time: str  # "08:00" format
+
+
+class BookingEnhanced(Booking):
+    """Enhanced booking with MoeGo features"""
+    # Kennel assignment
+    kennel_id: Optional[str] = None
+    kennel_name: Optional[str] = None
+    kennel_type: Optional[KennelType] = None
+    
+    # Slot assignments
+    check_in_slot: Optional[BookingSlot] = None
+    check_out_slot: Optional[BookingSlot] = None
+    
+    # Coupon/discount
+    coupon_code: Optional[str] = None
+    coupon_id: Optional[str] = None
+    coupon_discount: float = 0.0
+    
+    # Card on file
+    stored_payment_method_id: Optional[str] = None
+    pre_auth_amount: Optional[float] = None
+    pre_auth_id: Optional[str] = None
+    
+    # Bath add-on (simplified from grooming)
+    bath_requested: bool = False
+    bath_date: Optional[datetime] = None  # Date for bath (usually day before checkout)
+    bath_notes: Optional[str] = None
+    bath_completed: bool = False
+    bath_completed_by: Optional[str] = None
+    bath_completed_at: Optional[datetime] = None
+    
+    # Eligibility
+    eligibility_checked: bool = False
+    eligibility_warnings: List[str] = []
+    eligibility_overridden: bool = False
+    eligibility_override_by: Optional[str] = None
+    eligibility_override_reason: Optional[str] = None
+
+
+# ==================== WAITLIST ====================
+
+class WaitlistStatus(str, Enum):
+    WAITING = "waiting"
+    OFFERED = "offered"
+    ACCEPTED = "accepted"
+    DECLINED = "declined"
+    EXPIRED = "expired"
+    CANCELLED = "cancelled"
+
+
+class WaitlistEntry(BaseDBModel):
+    """Waitlist entry for full dates"""
+    household_id: str
+    customer_name: str
+    customer_email: str
+    customer_phone: Optional[str] = None
+    
+    dog_ids: List[str]
+    location_id: str
+    service_type_id: str
+    
+    # Requested dates
+    requested_check_in: datetime
+    requested_check_out: datetime
+    flexible_dates: bool = False
+    date_flexibility_days: int = 0
+    
+    # Preferences
+    preferred_kennel_type: Optional[KennelType] = None
+    notes: Optional[str] = None
+    
+    # Status
+    status: WaitlistStatus = WaitlistStatus.WAITING
+    position: int = 0
+    
+    # Offer tracking
+    offered_at: Optional[datetime] = None
+    offer_expires_at: Optional[datetime] = None
+    responded_at: Optional[datetime] = None
+    converted_booking_id: Optional[str] = None
+
+
+class WaitlistEntryCreate(BaseModel):
+    dog_ids: List[str]
+    location_id: str
+    service_type_id: str
+    requested_check_in: datetime
+    requested_check_out: datetime
+    flexible_dates: bool = False
+    date_flexibility_days: int = 0
+    preferred_kennel_type: Optional[KennelType] = None
+    notes: Optional[str] = None
+
+
+class WaitlistEntryResponse(BaseDBModel):
+    household_id: str
+    customer_name: str
+    dog_ids: List[str]
+    location_id: str
+    service_type_id: str
+    requested_check_in: datetime
+    requested_check_out: datetime
+    flexible_dates: bool
+    preferred_kennel_type: Optional[KennelType] = None
+    status: WaitlistStatus
+    position: int
+    offered_at: Optional[datetime] = None
+    offer_expires_at: Optional[datetime] = None
+
+
+# ==================== DAILY OPERATIONS VIEW ====================
+
+class DogOnSite(BaseModel):
+    """Dog currently on site"""
+    dog_id: str
+    dog_name: str
+    breed: str
+    weight: Optional[float] = None
+    photo_url: Optional[str] = None
+    
+    booking_id: str
+    household_id: str
+    customer_name: str
+    customer_phone: Optional[str] = None
+    
+    kennel_id: Optional[str] = None
+    kennel_name: Optional[str] = None
+    
+    check_in_date: datetime
+    check_out_date: datetime
+    nights_remaining: int
+    
+    # Status flags
+    needs_medication: bool = False
+    medication_notes: Optional[str] = None
+    special_diet: bool = False
+    diet_notes: Optional[str] = None
+    behavioral_flags: List[str] = []
+    
+    # Today's activities
+    bath_scheduled: bool = False
+    bath_completed: bool = False
+    tasks_pending: int = 0
+    last_update_sent: Optional[datetime] = None
+
+
+class DailyOperationsSummary(BaseModel):
+    """Daily operations dashboard data"""
+    date: datetime
+    location_id: str
+    
+    # Occupancy
+    total_kennels: int
+    occupied_kennels: int
+    available_kennels: int
+    occupancy_rate: float
+    
+    # Today's movements
+    check_ins_scheduled: int
+    check_ins_completed: int
+    check_outs_scheduled: int
+    check_outs_completed: int
+    
+    # Dogs on site
+    dogs_on_site: int
+    dogs_needing_medication: int
+    dogs_with_special_diet: int
+    
+    # Baths
+    baths_scheduled: int
+    baths_completed: int
+    
+    # Alerts
+    vaccines_expiring_soon: int
+    overdue_checkouts: int
+    pending_payments: int
+
+
+# ==================== PET PARENT PORTAL ENHANCEMENTS ====================
+
+class ServiceHistoryEntry(BaseModel):
+    """Entry in pet's service history"""
+    booking_id: str
+    service_type: str
+    service_name: str
+    location_name: str
+    
+    check_in_date: datetime
+    check_out_date: datetime
+    nights: int
+    
+    kennel_name: Optional[str] = None
+    add_ons: List[str] = []
+    bath_included: bool = False
+    
+    total_paid: float
+    
+    # For rebooking
+    can_rebook: bool = True
+    rebook_data: Optional[Dict[str, Any]] = None
+
+
+class CustomerPortalData(BaseModel):
+    """Aggregated data for customer portal"""
+    household_id: str
+    customer_name: str
+    
+    # Dogs
+    dogs: List[Dict[str, Any]] = []
+    dogs_with_expiring_vaccines: List[Dict[str, Any]] = []
+    
+    # Bookings
+    upcoming_bookings: List[Dict[str, Any]] = []
+    past_bookings: List[ServiceHistoryEntry] = []
+    
+    # Payments
+    stored_payment_methods: List[StoredPaymentMethodResponse] = []
+    outstanding_balance: float = 0.0
+    
+    # Preferences
+    preferred_kennel_type: Optional[str] = None
+    preferred_add_ons: List[str] = []
+    communication_preferences: Dict[str, bool] = {}
+    
+    # Stats
+    total_stays: int = 0
+    total_nights: int = 0
+    member_since: Optional[datetime] = None
+    loyalty_status: Optional[str] = None
