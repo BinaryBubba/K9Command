@@ -52,6 +52,9 @@ import LodgingMapPage from './pages/LodgingMapPage';
 import CheckInOutPage from './pages/CheckInOutPage';
 import BookingApprovalPage from './pages/BookingApprovalPage';
 
+// MoeGo Parity - Phase 3 Pages
+import CustomerPortalPage from './pages/CustomerPortalPage';
+
 // Store
 import useAuthStore from './store/authStore';
 
