@@ -59,6 +59,13 @@ class User(BaseDBModel):
     household_id: Optional[str] = None  # For customers
     reset_token: Optional[str] = None
     reset_token_expiry: Optional[datetime] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip_code: Optional[str] = None
+    emergency_contact: Optional[str] = None
+    emergency_phone: Optional[str] = None
+    notes: Optional[str] = None
 
 class UserCreate(BaseModel):
     email: EmailStr
