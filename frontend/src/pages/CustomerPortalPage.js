@@ -217,6 +217,10 @@ export default function CustomerPortalPage() {
               <ReceiptIcon size={16} className="mr-2" />
               Invoices ({invoices.length})
             </TabsTrigger>
+            <TabsTrigger value="reminders" className="data-[state=active]:bg-primary data-[state=active]:text-white">
+              <BellIcon size={16} className="mr-2" />
+              Reminders
+            </TabsTrigger>
           </TabsList>
 
           {/* Upcoming Bookings */}
