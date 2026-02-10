@@ -53,6 +53,18 @@ export default function CustomerPortalPage() {
   const [rebookCheckIn, setRebookCheckIn] = useState('');
   const [rebookCheckOut, setRebookCheckOut] = useState('');
   const [rebookLoading, setRebookLoading] = useState(false);
+  
+  // Reminder preferences state
+  const [reminderPrefs, setReminderPrefs] = useState({
+    check_in_24h: true,
+    check_in_2h: true,
+    check_out_24h: true,
+    check_out_2h: false,
+    booking_confirmation: true,
+    payment_due: true,
+    channels: ['in_app', 'push']
+  });
+  const [reminderLoading, setReminderLoading] = useState(false);
 
   useEffect(() => {
     loadData();
