@@ -427,14 +427,56 @@ GET  /api/comms/knowledge/categories/list - List categories
 
 ---
 
-## MOEGO PARITY - PHASE 4 (POS & Growth)
+## MOEGO PARITY - PHASE 4 (POS & Growth) ✅ COMPLETE
 
-### Pending Implementation
-- [ ] Retail inventory catalog (SKUs)
-- [ ] POS checkout (in-person)
-- [ ] Lead intake pipeline
-- [ ] CRM lifecycle states (new/active/lapsed)
-- [ ] Retention metrics (repeat rate, LTV)
+### Implemented (Dec 2025)
+- [x] Retail inventory catalog with SKUs, categories, pricing
+- [x] Inventory Management page (`/admin/inventory`):
+  - Product CRUD (SKU, name, description, category, price, cost, quantity)
+  - Auto-calculated stock status (in_stock, low_stock, out_of_stock, discontinued)
+  - Inventory adjustment with reason tracking and audit logs
+  - Low stock alerts when quantity falls below reorder_point
+  - Stats overview (Total Products, Inventory Value, Low Stock, Out of Stock)
+- [x] POS Checkout page (`/admin/pos`):
+  - Product grid with click-to-add cart functionality
+  - Cart with quantity controls and line item management
+  - Optional customer selection for linking sales
+  - Discount application
+  - Payment methods: Cash, Card (Swipe/Tap), Saved Card (card_on_file via Square)
+  - Tax calculation (8%)
+  - Transaction processing with receipt display
+  - Automatic inventory deduction on sale
+- [x] CRM & Leads page (`/admin/crm`):
+  - Lead intake pipeline with full profile (name, email, phone, source)
+  - Pet information capture (dog name, breed, age, notes)
+  - Admin-expandable custom fields (Preferred Contact, Referred By, Budget, Follow-up Date)
+  - Kanban-style lead pipeline (New → Contacted → Qualified → Converted/Lost)
+  - Lead detail modal with status workflow
+  - Convert lead to customer functionality
+- [x] Retention metrics dashboard:
+  - Total customers, repeat rate, average visits
+  - Customer Lifetime Value (LTV)
+  - Lifecycle distribution (lead/new/active/at_risk/lapsed/churned)
+- [x] Backend APIs:
+  - POST /api/moego/inventory/products - Create product
+  - GET /api/moego/inventory/products - List products with filters
+  - GET /api/moego/inventory/products/{id} - Get single product
+  - PUT /api/moego/inventory/products/{id} - Update product
+  - POST /api/moego/inventory/adjust - Adjust inventory with audit
+  - GET /api/moego/inventory/low-stock - Low stock alerts
+  - POST /api/moego/pos/transaction - Process POS transaction
+  - GET /api/moego/pos/transaction/{id} - Get transaction
+  - GET /api/moego/pos/daily-sales - Daily sales summary
+  - POST /api/moego/crm/leads - Create lead
+  - GET /api/moego/crm/leads - List leads with filters
+  - PUT /api/moego/crm/leads/{id}/status - Update lead status
+  - POST /api/moego/crm/leads/{id}/convert - Convert to customer
+  - GET /api/moego/crm/customers/{id}/metrics - Customer CRM metrics
+  - GET /api/moego/crm/retention-metrics - Overall retention stats
+
+### Notes
+- **MOCK MODE**: Square card_on_file payments use mock when SQUARE_ACCESS_TOKEN not configured
+- Inventory logs track all adjustments with reason, reference_id, and adjusted_by
 
 ---
 
