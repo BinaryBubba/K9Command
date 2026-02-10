@@ -239,13 +239,18 @@ async def check_is_owner(
     user_id: str,
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
-    """Check if a user is the owner (first admin)"""
+    """Check if a user is the owner (first admin or marked as owner)"""
     db = await get_db()
     user = await get_current_user(credentials, db)
     if user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
     
-    # Find the first admin by creation date
+    # First check if user has is_owner flag
+    target_user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if target_user and target_user.get("is_owner"):
+        return {"isOwner": True, "user_id": user_id}
+    
+    # Fallback: Find the first admin by creation date
     first_admin = await db.users.find_one(
         {"role": "admin"},
         {"_id": 0, "id": 1},
