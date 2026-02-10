@@ -50,6 +50,7 @@ import CouponManagementPage from './pages/CouponManagementPage';
 // MoeGo Parity - Phase 2 Pages
 import LodgingMapPage from './pages/LodgingMapPage';
 import CheckInOutPage from './pages/CheckInOutPage';
+import BookingApprovalPage from './pages/BookingApprovalPage';
 
 // Store
 import useAuthStore from './store/authStore';
