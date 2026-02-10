@@ -1438,6 +1438,19 @@ async def approve_booking(
     
     await db.bookings.update_one({"id": booking_id}, {"$set": update_data})
     
+    # Notify customer of approval
+    dog_ids = booking.get('dog_ids', [])
+    dogs = await db.dogs.find({"id": {"$in": dog_ids}}, {"_id": 0, "name": 1}).to_list(len(dog_ids))
+    dog_names = [d['name'] for d in dogs]
+    
+    await notify_booking_approved(
+        db=db,
+        customer_id=booking.get('customer_id'),
+        booking_id=booking_id,
+        check_in_date=booking.get('check_in_date', '')[:10],
+        dog_names=dog_names
+    )
+    
     return {"message": "Booking approved", "booking_id": booking_id}
 
 
@@ -1466,6 +1479,19 @@ async def reject_booking(
             "rejected_at": datetime.now(timezone.utc).isoformat(),
             "updated_at": datetime.now(timezone.utc).isoformat()
         }}
+    )
+    
+    # Notify customer of rejection
+    dog_ids = booking.get('dog_ids', [])
+    dogs = await db.dogs.find({"id": {"$in": dog_ids}}, {"_id": 0, "name": 1}).to_list(len(dog_ids))
+    dog_names = [d['name'] for d in dogs]
+    
+    await notify_booking_rejected(
+        db=db,
+        customer_id=booking.get('customer_id'),
+        booking_id=booking_id,
+        reason=reason,
+        dog_names=dog_names
     )
     
     return {"message": "Booking rejected", "booking_id": booking_id}
