@@ -587,6 +587,70 @@ GET  /api/k9/reminders/pending - View pending reminders (admin)
 
 ---
 
+## USER REQUESTED FEATURES (Feb 2026) ✅ COMPLETE
+
+### Task 1: Unified Frontend Data Access ✅
+- Created `/app/frontend/src/data/client.js` as central facade
+- Supports both 'mock' (localStorage) and 'api' modes via `REACT_APP_DATA_MODE`
+- All pages (CustomerDashboard, Calendar, etc.) now use `dataClient`
+- Functions: listBookings, listDogs, updateDog, updateBooking, cancelBooking, etc.
+
+### Task 2: Dashboard Calendar Fix ✅
+- CustomerCalendarPage uses dataClient for booking data
+- Normalizes dates using `toISODate()` function
+- Shows bookings correctly filtered by date range
+- Status indicators: green (confirmed), yellow (pending), gray (other)
+
+### Task 3: Modify Bookings ✅
+- Customers can edit upcoming bookings (pending/confirmed status)
+- 24-hour rule: Cannot modify within 24 hours of check-in
+- Edit modal for dates and notes in CustomerDashboard and Calendar
+- Cancel booking functionality with confirmation
+
+### Task 4: Modify Dog Profiles ✅
+- PATCH /api/dogs/{dog_id} endpoint added
+- Customers can edit: name, breed, age, birthday, feeding instructions, medications, behavior notes
+- Access control: customers can only edit their own dogs
+- Edit modal in CustomerDashboard
+
+### Task 5: Booking Confirmation Emails ✅ (MOCK MODE)
+- EmailService in `/app/backend/services/email.py`
+- Mock mode: emails stored in `email_outbox` MongoDB collection
+- SMTP mode ready when credentials configured
+- Admin email templates page at `/admin/email-templates`
+- Templates: booking_confirmation, booking_reminder, check_in_reminder, check_out_reminder
+- Emails sent on: booking confirmation, booking approval
+
+### Task 6: Account Governance ✅
+- **Customer registration**: Free, no approval needed
+- **Staff registration**: Returns HTTP 202, creates request in `staff_requests` collection, requires admin approval
+- **Admin registration**: First admin becomes "owner", subsequent admin registrations blocked
+- **Owner privileges**: Only owner can create new admin accounts
+- Admin staff management page at `/admin/staff-management`
+- Approve/reject workflow for staff requests
+
+### Task 7: Deadlinks - No Issues Found
+- All navigation links verified working
+- Routes properly configured in App.js
+
+**New Backend Router:**
+```
+/app/backend/routers/admin.py - Admin functions:
+- GET  /api/admin/email-templates - List templates
+- PUT  /api/admin/email-templates/{name} - Update template
+- POST /api/admin/email-templates/{name}/test - Send test email
+- GET  /api/admin/email-outbox - View sent emails
+- GET  /api/admin/staff-requests - List pending staff requests
+- POST /api/admin/staff-requests/{id}/approve - Approve and create staff account
+- POST /api/admin/staff-requests/{id}/reject - Reject request
+- GET  /api/admin/is-owner/{user_id} - Check owner status
+- POST /api/admin/create-admin - Create admin (owner only)
+```
+
+**Test Report:** `/app/test_reports/iteration_15.json` - 24/24 backend tests passed
+
+---
+
 ## Test Accounts
 - Customer: `customer_test@k9.com` / `Test123!`
 - Staff: `staff_test@k9.com` / `Test123!`
