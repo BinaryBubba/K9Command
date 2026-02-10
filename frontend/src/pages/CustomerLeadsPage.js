@@ -348,23 +348,23 @@ export default function CustomerLeadsPage() {
                   className="pl-10 bg-slate-800 border-slate-700 text-white"
                 />
               </div>
-              <Select value={filterStatus} onValueChange={(v) => { setFilterStatus(v); }}>
+              <Select value={filterStatus || 'all'} onValueChange={(v) => { setFilterStatus(v === 'all' ? '' : v); }}>
                 <SelectTrigger className="w-40 bg-slate-800 border-slate-700 text-white">
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Status</SelectItem>
+                  <SelectItem value="all">All Status</SelectItem>
                   {LEAD_STATUS.filter(s => s.value !== 'converted').map(s => (
                     <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={filterSource} onValueChange={(v) => { setFilterSource(v); }}>
+              <Select value={filterSource || 'all'} onValueChange={(v) => { setFilterSource(v === 'all' ? '' : v); }}>
                 <SelectTrigger className="w-40 bg-slate-800 border-slate-700 text-white">
                   <SelectValue placeholder="All Sources" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Sources</SelectItem>
+                  <SelectItem value="all">All Sources</SelectItem>
                   {LEAD_SOURCES.map(s => (
                     <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
                   ))}
