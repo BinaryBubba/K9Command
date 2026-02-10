@@ -60,6 +60,10 @@ import InventoryManagementPage from './pages/InventoryManagementPage';
 import POSCheckoutPage from './pages/POSCheckoutPage';
 import CustomerLeadsPage from './pages/CustomerLeadsPage';
 
+// Admin Management Pages
+import AdminEmailTemplatesPage from './pages/AdminEmailTemplatesPage';
+import AdminStaffManagementPage from './pages/AdminStaffManagementPage';
+
 // Store
 import useAuthStore from './store/authStore';
 
