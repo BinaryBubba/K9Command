@@ -399,12 +399,12 @@ const BookStayPage = () => {
                   {kennels.length > 0 && (
                     <div className="md:col-span-2">
                       <Label>Preferred Kennel (Optional)</Label>
-                      <Select value={formData.kennel_id} onValueChange={(v) => setFormData({ ...formData, kennel_id: v })}>
+                      <Select value={formData.kennel_id || "auto"} onValueChange={(v) => setFormData({ ...formData, kennel_id: v === "auto" ? "" : v })}>
                         <SelectTrigger className="mt-1">
                           <SelectValue placeholder="Auto-assign available kennel" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Auto-assign</SelectItem>
+                          <SelectItem value="auto">Auto-assign</SelectItem>
                           {kennels.map(k => (
                             <SelectItem key={k.id} value={k.id}>
                               {k.name} ({k.kennel_type}, {k.size_category})
