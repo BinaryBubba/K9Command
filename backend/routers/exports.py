@@ -374,3 +374,153 @@ async def export_form_submissions_csv(
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+
+
+@router.get("/bookings/csv")
+async def export_bookings_csv(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    status: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Export bookings to CSV"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    query = {}
+    if start_date:
+        query["check_in_date"] = {"$gte": start_date}
+    if end_date:
+        if "check_in_date" in query:
+            query["check_in_date"]["$lte"] = end_date
+        else:
+            query["check_in_date"] = {"$lte": end_date}
+    if status:
+        query["status"] = status
+    
+    bookings = await db.bookings.find(query, {"_id": 0}).sort("check_in_date", -1).to_list(10000)
+    
+    # Get customer and dog lookup maps
+    customers = await db.users.find({"role": "customer"}, {"_id": 0}).to_list(10000)
+    customer_map = {c.get('id'): c for c in customers}
+    household_map = {c.get('household_id'): c for c in customers if c.get('household_id')}
+    
+    dogs = await db.dogs.find({}, {"_id": 0}).to_list(10000)
+    dog_map = {d.get('id'): d for d in dogs}
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    writer.writerow([
+        "Booking ID", "Customer Name", "Customer Email", "Dog Names",
+        "Booking Type", "Check In", "Check Out", "Status",
+        "Total Price", "Payment Type", "Payment Status",
+        "Accommodation", "Created At"
+    ])
+    
+    for booking in bookings:
+        # Get customer info
+        customer = customer_map.get(booking.get('customer_id')) or household_map.get(booking.get('household_id'))
+        customer_name = customer.get('full_name', 'Unknown') if customer else 'Unknown'
+        customer_email = customer.get('email', '') if customer else ''
+        
+        # Get dog names
+        dog_names = ', '.join([
+            dog_map.get(did, {}).get('name', 'Unknown') 
+            for did in booking.get('dog_ids', [])
+        ])
+        
+        writer.writerow([
+            booking.get('id', ''),
+            customer_name,
+            customer_email,
+            dog_names,
+            booking.get('booking_type', 'stay'),
+            booking.get('check_in_date', '')[:10] if booking.get('check_in_date') else '',
+            booking.get('check_out_date', '')[:10] if booking.get('check_out_date') else '',
+            booking.get('status', ''),
+            booking.get('total_price', 0),
+            booking.get('payment_type', ''),
+            booking.get('payment_status', ''),
+            booking.get('accommodation_type', ''),
+            booking.get('created_at', '')[:19] if booking.get('created_at') else ''
+        ])
+    
+    output.seek(0)
+    filename = f"bookings_{datetime.now().strftime('%Y%m%d')}.csv"
+    
+    return StreamingResponse(
+        io.BytesIO(output.getvalue().encode('utf-8')),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@router.get("/customers/csv")
+async def export_customers_csv(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Export customers to CSV"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    customers = await db.users.find({"role": "customer"}, {"_id": 0}).sort("created_at", -1).to_list(10000)
+    
+    # Get dog counts per household
+    dogs = await db.dogs.find({}, {"_id": 0}).to_list(10000)
+    dog_counts = {}
+    for dog in dogs:
+        hid = dog.get('household_id')
+        if hid:
+            dog_counts[hid] = dog_counts.get(hid, 0) + 1
+    
+    # Get booking counts per household
+    bookings = await db.bookings.find({}, {"_id": 0, "household_id": 1, "status": 1}).to_list(10000)
+    booking_counts = {}
+    for booking in bookings:
+        hid = booking.get('household_id')
+        if hid:
+            booking_counts[hid] = booking_counts.get(hid, 0) + 1
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    writer.writerow([
+        "Customer ID", "Full Name", "Email", "Phone",
+        "Address", "City", "State", "Zip Code",
+        "Emergency Contact", "Emergency Phone",
+        "Dogs Count", "Bookings Count", "Active", "Created At"
+    ])
+    
+    for customer in customers:
+        hid = customer.get('household_id', '')
+        writer.writerow([
+            customer.get('id', ''),
+            customer.get('full_name', ''),
+            customer.get('email', ''),
+            customer.get('phone', ''),
+            customer.get('address', ''),
+            customer.get('city', ''),
+            customer.get('state', ''),
+            customer.get('zip_code', ''),
+            customer.get('emergency_contact', ''),
+            customer.get('emergency_phone', ''),
+            dog_counts.get(hid, 0),
+            booking_counts.get(hid, 0),
+            'Yes' if customer.get('is_active', True) else 'No',
+            customer.get('created_at', '')[:19] if customer.get('created_at') else ''
+        ])
+    
+    output.seek(0)
+    filename = f"customers_{datetime.now().strftime('%Y%m%d')}.csv"
+    
+    return StreamingResponse(
+        io.BytesIO(output.getvalue().encode('utf-8')),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
