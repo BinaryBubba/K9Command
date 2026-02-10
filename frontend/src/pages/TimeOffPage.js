@@ -66,8 +66,8 @@ export default function TimeOffPage() {
     setLoading(true);
     try {
       const [requestsRes, policiesRes] = await Promise.all([
-        api.get('/hr/requests'),
-        api.get('/hr/policies').catch(() => ({ data: [] }))
+        api.get('/hr/time-off-requests'),
+        api.get('/hr/time-off-policies').catch(() => ({ data: [] }))
       ]);
       setRequests(requestsRes.data || []);
       setPolicies(policiesRes.data || []);
@@ -97,7 +97,7 @@ export default function TimeOffPage() {
     }
 
     try {
-      await api.post('/hr/requests', {
+      await api.post('/hr/time-off-requests', {
         ...newRequest,
         status: 'pending'
       });
@@ -112,7 +112,7 @@ export default function TimeOffPage() {
 
   const handleReviewRequest = async (requestId, status, notes = '') => {
     try {
-      await api.post(`/hr/requests/${requestId}/review?status=${status}${notes ? `&notes=${encodeURIComponent(notes)}` : ''}`);
+      await api.post(`/hr/time-off-requests/${requestId}/review?status=${status}${notes ? `&notes=${encodeURIComponent(notes)}` : ''}`);
       toast.success(`Request ${status}`);
       loadData();
     } catch (error) {
