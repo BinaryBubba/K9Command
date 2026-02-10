@@ -156,9 +156,11 @@ class TestInventoryManagement:
         assert response.status_code == 200, f"Adjust inventory failed: {response.text}"
         
         data = response.json()
-        assert data["previous_quantity"] == 20
-        assert data["new_quantity"] == 30
-        print(f"✓ Adjusted inventory: {data['previous_quantity']} -> {data['new_quantity']}")
+        # Response has 'result' wrapper
+        result = data.get("result", data)
+        assert result["previous_quantity"] == 20
+        assert result["new_quantity"] == 30
+        print(f"✓ Adjusted inventory: {result['previous_quantity']} -> {result['new_quantity']}")
         
         # Adjust inventory - remove 5 units
         adjust_data2 = {
@@ -168,7 +170,8 @@ class TestInventoryManagement:
         }
         response2 = self.session.post(f"{BASE_URL}/api/moego/inventory/adjust", json=adjust_data2)
         assert response2.status_code == 200
-        assert response2.json()["new_quantity"] == 25
+        result2 = response2.json().get("result", response2.json())
+        assert result2["new_quantity"] == 25
         print(f"✓ Adjusted inventory again: 30 -> 25")
     
     def test_low_stock_alert(self):
