@@ -1,13 +1,118 @@
 # K9Command - PRD
 
 ## Original Problem Statement
-K9Command is evolving from a dog boarding/daycare platform into a general-purpose staff operations platform (Connecteam-class), customized for kennel operations but not limited to them.
+K9Command is a facility-centric pet services platform that must fully support:
+- Boarding (primary)
+- Daycare (primary)
+- Training (light support)
+
+It is not a marketplace. It serves one business with staff, not independent providers.
+Single location first, multi-location capable by design.
+
+**Note:** Grooming has been simplified to just "Bath before pickup" add-on.
 
 ## Tech Stack
 - **Frontend:** React 18, Tailwind CSS, Shadcn/UI, Zustand
 - **Backend:** FastAPI with Pydantic, MongoDB (Motor async)
 - **Auth:** JWT multi-role (Customer, Staff, Admin)
-- **Payments:** Square SDK (MOCKED)
+- **Payments:** Square SDK (card-on-file vaulting planned)
+
+---
+
+## MOEGO PARITY - PHASE 1 ✅ COMPLETE (Core Data Models & Rules)
+
+### Kennel/Run Management
+- ✅ Kennel types (run, suite, crate, luxury)
+- ✅ Size categories and weight restrictions
+- ✅ Features (outdoor_access, webcam, climate_control, raised_bed)
+- ✅ Price modifiers per kennel
+- ✅ Status tracking (available, occupied, reserved, cleaning, maintenance)
+- ✅ Assignment at booking time
+
+**Endpoints:**
+```
+GET  /api/moego/kennels - List all kennels
+POST /api/moego/kennels - Create kennel (admin)
+PATCH /api/moego/kennels/{id} - Update kennel
+DELETE /api/moego/kennels/{id} - Deactivate kennel
+GET  /api/moego/kennels/availability/{location_id} - Check availability
+```
+
+### Time Slots
+- ✅ Configurable check-in/check-out slots
+- ✅ Per-slot capacity limits
+- ✅ Day-of-week restrictions
+- ✅ Seasonal slot overrides
+
+**Endpoints:**
+```
+GET  /api/moego/slots - List time slots
+POST /api/moego/slots - Create slot (admin)
+PATCH /api/moego/slots/{id} - Update slot
+GET  /api/moego/slots/availability/{location_id} - Slot availability for date
+```
+
+### Coupon Codes
+- ✅ Percentage and flat amount discounts
+- ✅ Free night (buy X get 1 free)
+- ✅ Usage limits (total and per-customer)
+- ✅ Min order amount / min nights requirements
+- ✅ First booking only restriction
+- ✅ Validity date ranges
+
+**Endpoints:**
+```
+GET  /api/moego/coupons - List coupons (admin)
+POST /api/moego/coupons - Create coupon (admin)
+PATCH /api/moego/coupons/{id} - Update coupon
+DELETE /api/moego/coupons/{id} - Deactivate coupon
+POST /api/moego/coupons/validate - Validate & calculate discount
+```
+
+### Eligibility Rules
+- ✅ Vaccination requirements with expiry buffer
+- ✅ Weight restrictions
+- ✅ Breed restrictions (allowed/blocked)
+- ✅ Age restrictions
+- ✅ Behavior checks (dog-friendly, aggression history)
+- ✅ Hard block vs soft warning enforcement
+
+**Endpoints:**
+```
+GET  /api/moego/eligibility-rules - List rules
+POST /api/moego/eligibility-rules - Create rule (admin)
+POST /api/moego/eligibility/check - Check dog eligibility
+```
+
+### Waitlist
+- ✅ Waitlist for full dates
+- ✅ Position tracking
+- ✅ Offer/accept/decline workflow
+- ✅ Flexible date preferences
+
+**Endpoints:**
+```
+GET  /api/moego/waitlist - List waitlist entries
+POST /api/moego/waitlist - Join waitlist
+POST /api/moego/waitlist/{id}/offer - Offer spot (admin)
+POST /api/moego/waitlist/{id}/respond - Accept/decline offer
+```
+
+### Daily Operations
+- ✅ Dogs on site view
+- ✅ Operations summary (occupancy, check-ins, check-outs, baths)
+- ✅ Date-based filtering
+
+**Endpoints:**
+```
+GET  /api/moego/operations/dogs-on-site - List dogs currently on site
+GET  /api/moego/operations/summary - Daily operations summary
+```
+
+### Frontend Pages (Phase 1)
+- ✅ `/admin/kennels` - Kennel Management (CRUD, grouped by type)
+- ✅ `/admin/daily-ops` - Daily Operations dashboard
+- ✅ `/admin/coupons` - Coupon Code management
 
 ---
 
