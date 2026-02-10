@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 
 from models import UserRole
 from auth import get_current_user
-from services.payments import PaymentService
+from services.payments import SquarePaymentService as PaymentService
 
 router = APIRouter(prefix="/api/k9", tags=["Payments"])
 security = HTTPBearer()
