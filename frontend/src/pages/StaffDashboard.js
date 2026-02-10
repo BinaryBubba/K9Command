@@ -258,6 +258,48 @@ const StaffDashboard = () => {
               </div>
             </CardContent>
           </Card>
+
+          <Card data-testid="action-forms" className="bg-gradient-to-br from-teal-500 to-teal-600 text-white rounded-2xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/staff/forms')}>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <ClipboardListIcon size={24} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-serif font-bold">Forms</h3>
+                  <p className="text-sm opacity-90">Fill out forms</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="action-tasks" className="bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-2xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/staff/tasks')}>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <ListTodoIcon size={24} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-serif font-bold">My Tasks</h3>
+                  <p className="text-sm opacity-90">View & complete</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="action-time-off" className="bg-gradient-to-br from-pink-500 to-pink-600 text-white rounded-2xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/staff/time-off')}>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <UmbrellaIcon size={24} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-serif font-bold">Time Off</h3>
+                  <p className="text-sm opacity-90">Request leave</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Task List */}
