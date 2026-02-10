@@ -274,6 +274,36 @@ const AdminDashboard = () => {
               <p className="text-sm text-muted-foreground text-center">Review leave requests</p>
             </CardContent>
           </Card>
+
+          <Card data-testid="admin-nav-kennels" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/kennels')}>
+            <CardContent className="p-8">
+              <div className="w-16 h-16 rounded-full bg-emerald-100 mx-auto mb-4 flex items-center justify-center">
+                <HomeIcon className="text-emerald-600" size={32} />
+              </div>
+              <h3 className="text-xl font-serif font-semibold text-center mb-2">Kennel Management</h3>
+              <p className="text-sm text-muted-foreground text-center">Runs, suites & crates</p>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="admin-nav-daily-ops" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/daily-ops')}>
+            <CardContent className="p-8">
+              <div className="w-16 h-16 rounded-full bg-cyan-100 mx-auto mb-4 flex items-center justify-center">
+                <ActivityIcon className="text-cyan-600" size={32} />
+              </div>
+              <h3 className="text-xl font-serif font-semibold text-center mb-2">Daily Operations</h3>
+              <p className="text-sm text-muted-foreground text-center">Dogs on site today</p>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="admin-nav-coupons" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/coupons')}>
+            <CardContent className="p-8">
+              <div className="w-16 h-16 rounded-full bg-amber-100 mx-auto mb-4 flex items-center justify-center">
+                <TagIcon className="text-amber-600" size={32} />
+              </div>
+              <h3 className="text-xl font-serif font-semibold text-center mb-2">Coupon Codes</h3>
+              <p className="text-sm text-muted-foreground text-center">Manage discounts</p>
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>
