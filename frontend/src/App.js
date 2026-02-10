@@ -342,6 +342,46 @@ function App() {
             }
           />
           <Route
+            path="/admin/forms"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <FormsManagementPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/forms/builder"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <FormBuilderPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/forms/builder/:templateId"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <FormBuilderPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/tasks"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <TaskDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/time-off"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <TimeOffPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin/*"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
