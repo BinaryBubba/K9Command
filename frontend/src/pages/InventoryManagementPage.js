@@ -255,12 +255,12 @@ export default function InventoryManagementPage() {
               className="pl-10 bg-slate-800 border-slate-700 text-white"
             />
           </div>
-          <Select value={filterCategory} onValueChange={setFilterCategory}>
+          <Select value={filterCategory || 'all'} onValueChange={(v) => setFilterCategory(v === 'all' ? '' : v)}>
             <SelectTrigger className="w-40 bg-slate-800 border-slate-700 text-white">
               <SelectValue placeholder="All Categories" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Categories</SelectItem>
+              <SelectItem value="all">All Categories</SelectItem>
               {CATEGORIES.map(cat => (
                 <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
               ))}
