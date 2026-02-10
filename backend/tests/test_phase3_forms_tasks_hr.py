@@ -27,7 +27,7 @@ class TestAuthentication:
         })
         assert response.status_code == 200, f"Admin login failed: {response.text}"
         data = response.json()
-        assert "access_token" in data
+        assert "token" in data
         assert data["user"]["role"] == "admin"
         print(f"✓ Admin login successful")
     
@@ -39,7 +39,7 @@ class TestAuthentication:
         })
         assert response.status_code == 200, f"Staff login failed: {response.text}"
         data = response.json()
-        assert "access_token" in data
+        assert "token" in data
         assert data["user"]["role"] == "staff"
         print(f"✓ Staff login successful")
 
@@ -53,7 +53,7 @@ def admin_token():
     })
     if response.status_code != 200:
         pytest.skip(f"Admin login failed: {response.text}")
-    return response.json()["access_token"]
+    return response.json()["token"]
 
 
 @pytest.fixture(scope="module")
@@ -65,7 +65,7 @@ def staff_token():
     })
     if response.status_code != 200:
         pytest.skip(f"Staff login failed: {response.text}")
-    return response.json()["access_token"]
+    return response.json()["token"]
 
 
 @pytest.fixture(scope="module")
@@ -477,7 +477,7 @@ class TestHRRequests:
             "email": ADMIN_EMAIL,
             "password": ADMIN_PASSWORD
         })
-        admin_token = admin_response.json()["access_token"]
+        admin_token = admin_response.json()["token"]
         admin_headers = {"Authorization": f"Bearer {admin_token}"}
         
         policies_response = requests.get(f"{BASE_URL}/api/hr/time-off-policies", headers=admin_headers)
