@@ -34,12 +34,24 @@ from models import (
     Payment, PaymentCreate, PaymentResponse,
     Invoice, InvoiceResponse,
     PriceCalculationRequest, PriceBreakdown,
-    PaymentType, PaymentProvider as PaymentProviderEnum
+    PaymentType, PaymentProvider as PaymentProviderEnum,
+    # Phase 2 models
+    StaffAssignment, StaffAssignmentCreate, StaffAssignmentResponse,
+    PlayGroup, PlayGroupCreate, PlayGroupResponse,
+    FeedingSchedule, FeedingScheduleCreate, FeedingScheduleResponse,
+    DogOnSite, ArrivalDeparture, CapacitySnapshot, ApprovalQueueItem,
+    # Phase 4 models
+    NotificationTemplate, NotificationTemplateCreate, NotificationTemplateResponse,
+    Notification, NotificationResponse,
+    AutomationRule, AutomationRuleCreate, AutomationRuleResponse,
+    EventLog, EventLogResponse,
+    NotificationType, NotificationChannel
 )
 from auth import hash_password, verify_password, create_access_token, get_current_user, require_role, security
 from ai_service import generate_daily_summary
 from pricing_engine import PricingEngine
 from payment_service import PaymentService
+from automation_service import AutomationService, seed_default_automations
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
