@@ -1,193 +1,247 @@
 # K9Command - PRD
 
 ## Original Problem Statement
-K9Command is a single-facility, staff-operated dog boarding/daycare platform with customer self-service, internal staff operations tooling, and automation-first design. The goal is Rover-parity for a single facility.
+K9Command is evolving from a dog boarding/daycare platform into a general-purpose staff operations platform (Connecteam-class), customized for kennel operations but not limited to them.
 
 ## Tech Stack
 - **Frontend:** React 18, Tailwind CSS, Shadcn/UI, Zustand
 - **Backend:** FastAPI with Pydantic, MongoDB (Motor async)
 - **Auth:** JWT multi-role (Customer, Staff, Admin)
-- **Payments:** Square SDK (MOCKED), Crypto infrastructure (USDC - deferred)
+- **Payments:** Square SDK (MOCKED)
 
 ---
 
-## PHASE 1 - DATA & RULES FOUNDATION ✅ COMPLETE
+## CONNECTEAM PARITY - PHASE 1 ✅ COMPLETE (Data Models & Rules)
 
-### New Models Implemented
-1. **ServiceType** - Boarding, Daycare, etc. with configurable pricing
-2. **AddOn** - Extra services (Bath $40, Transport $25, Playtime $6/day, Feeding $6/day)
-3. **CapacityRule** - Soft capacity enforcement with buffer
-4. **PricingRule** - Weekend, holiday, seasonal, blackout rules
-5. **CancellationPolicy** - Tiered refund policies (7d=100%, 3d=50%, <3d=0%)
-6. **SystemSetting** - Admin-configurable settings (deposit %, tax rate)
-7. **Payment** - Payment transaction records
-8. **Invoice** - Booking invoices with line items
+### GPS Time Clock & Attendance
+- ✅ GPS clock in/out with coordinate capture
+- ✅ Geofencing with configurable zones (100m default)
+- ✅ Break tracking (start/end with GPS)
+- ✅ Punch rounding rules (5/10/15 min intervals)
+- ✅ Discrepancy detection (missing punches, geofence violations)
 
-### Booking Model Updates
-- `service_type_id` - Link to service type
-- `add_ons[]` - Selected add-ons with quantities
-- `deposit_amount`, `deposit_paid`, `deposit_paid_at`
-- `balance_due`, `balance_paid`, `balance_paid_at`
-- `requires_approval` - For over-capacity bookings
-- `pricing_rules_applied[]` - Audit trail
-
-### New Endpoints
+**Endpoints:**
 ```
-GET  /api/service-types
-POST /api/admin/service-types
-PATCH/DELETE /api/admin/service-types/{id}
+POST /api/timeclock/clock-in - Clock in with GPS
+POST /api/timeclock/clock-out - Clock out with GPS
+GET  /api/timeclock/entries - List time entries
+GET  /api/timeclock/entries/current - Current active entry
 
-GET  /api/add-ons
-POST /api/admin/add-ons
-PATCH/DELETE /api/admin/add-ons/{id}
+POST /api/timeclock/geofences - Create geofence (admin)
+GET  /api/timeclock/geofences - List geofences
 
-GET  /api/admin/capacity-rules
-POST /api/admin/capacity-rules
-PATCH/DELETE /api/admin/capacity-rules/{id}
+POST /api/timeclock/breaks/start - Start break
+POST /api/timeclock/breaks/end - End break
+GET  /api/timeclock/breaks - List breaks
 
-GET  /api/admin/pricing-rules
-POST /api/admin/pricing-rules
-PATCH/DELETE /api/admin/pricing-rules/{id}
+POST /api/timeclock/break-policies - Create policy (admin)
+GET  /api/timeclock/break-policies - List policies
 
-GET  /api/cancellation-policies
-POST /api/admin/cancellation-policies
-PATCH/DELETE /api/admin/cancellation-policies/{id}
+POST /api/timeclock/overtime-rules - Create OT rule (admin)
+GET  /api/timeclock/overtime-rules - List OT rules
+PATCH /api/timeclock/overtime-rules/{id} - Update rule
 
-GET  /api/admin/settings
-PATCH /api/admin/settings/{key}
+POST /api/timeclock/rounding-rules - Create rounding rule (admin)
+GET  /api/timeclock/rounding-rules - List rules
+```
 
-POST /api/pricing/calculate - Server-side price engine
+### Pay Periods & Timesheets
+- ✅ Pay period management (weekly, biweekly, semimonthly, monthly)
+- ✅ Timesheet approval workflow
+- ✅ Pay period locking
 
-GET  /api/payments/providers
-POST /api/payments/deposit
-POST /api/payments/balance
-GET  /api/payments/history
+**Endpoints:**
+```
+POST /api/timeclock/pay-periods - Create period (admin)
+GET  /api/timeclock/pay-periods - List periods
+POST /api/timeclock/pay-periods/{id}/approve - Approve entries
+POST /api/timeclock/pay-periods/{id}/lock - Lock period
+GET  /api/timeclock/pay-periods/{id}/summary - Timesheet summary
+```
 
-POST /api/bookings/{id}/cancel - Policy-aware cancellation
+### Forms Engine
+- ✅ Form templates with field types: text, number, date, select, checkbox, photo, signature, GPS, barcode
+- ✅ Conditional field logic
+- ✅ Form submissions with signature capture
+- ✅ GPS location stamping on submissions
+- ✅ Draft/submit/review workflow
+- ✅ Task templates with checklists
 
-GET  /api/invoices
-GET  /api/invoices/{id}
+**Endpoints:**
+```
+POST /api/forms/templates - Create template (admin)
+GET  /api/forms/templates - List templates
+GET  /api/forms/templates/{id} - Get template
+PATCH /api/forms/templates/{id} - Update template
+DELETE /api/forms/templates/{id} - Deactivate template
+
+POST /api/forms/submissions - Submit form
+GET  /api/forms/submissions - List submissions
+GET  /api/forms/submissions/{id} - Get submission
+PATCH /api/forms/submissions/{id} - Update/submit draft
+POST /api/forms/submissions/{id}/review - Approve/reject
+
+POST /api/forms/task-templates - Create task template (admin)
+GET  /api/forms/task-templates - List task templates
+POST /api/forms/task-templates/{id}/create-task - Create task from template
+
+GET  /api/forms/analytics/submissions - Submission analytics
+GET  /api/forms/analytics/tasks - Task completion analytics
+```
+
+### HR / Time Off
+- ✅ Time off policies (vacation, sick, personal, etc.)
+- ✅ Accrual rules (per pay period, monthly, yearly, anniversary)
+- ✅ Balance tracking and carryover
+- ✅ Time off request workflow with approval
+- ✅ Auto-approve option for short requests
+- ✅ Advance notice enforcement
+
+**Endpoints:**
+```
+POST /api/hr/time-off-policies - Create policy (admin)
+GET  /api/hr/time-off-policies - List policies
+PATCH /api/hr/time-off-policies/{id} - Update policy
+DELETE /api/hr/time-off-policies/{id} - Deactivate policy
+
+POST /api/hr/time-off-requests - Submit request
+GET  /api/hr/time-off-requests - List requests
+POST /api/hr/time-off-requests/{id}/review - Approve/reject
+POST /api/hr/time-off-requests/{id}/cancel - Cancel request
+
+GET  /api/hr/balances - Get my balances
+GET  /api/hr/balances/{staff_id} - Get staff balances (admin)
+POST /api/hr/balances/{staff_id}/adjust - Manual adjustment (admin)
+POST /api/hr/balances/run-accrual - Run accrual job (admin)
+
+GET  /api/hr/reports/time-off-summary - Time off report
+```
+
+### Communications
+- ✅ Announcements with targeting (role/team/staff)
+- ✅ Required acknowledgements
+- ✅ Priority levels (low/normal/high/urgent)
+- ✅ Pinned announcements
+- ✅ Scheduled publishing
+
+**Endpoints:**
+```
+POST /api/comms/announcements - Create announcement (admin)
+GET  /api/comms/announcements - List announcements
+GET  /api/comms/announcements/{id} - Get announcement
+PATCH /api/comms/announcements/{id} - Update announcement
+DELETE /api/comms/announcements/{id} - Archive announcement
+
+POST /api/comms/announcements/{id}/acknowledge - Acknowledge
+GET  /api/comms/announcements/{id}/acknowledgements - List acks (admin)
+GET  /api/comms/announcements/pending-acknowledgements - Pending for user
+```
+
+### Training & Knowledge Base
+- ✅ Training courses with sections
+- ✅ Course progress tracking
+- ✅ Quiz system with scoring
+- ✅ Knowledge base with search, tags, versioning
+
+**Endpoints:**
+```
+POST /api/comms/courses - Create course (admin)
+GET  /api/comms/courses - List courses
+GET  /api/comms/courses/{id} - Get course
+PATCH /api/comms/courses/{id} - Update course
+
+GET  /api/comms/courses/{id}/progress - Get my progress
+POST /api/comms/courses/{id}/start - Start course
+POST /api/comms/courses/{id}/complete-section - Complete section
+
+POST /api/comms/quizzes - Create quiz (admin)
+GET  /api/comms/quizzes/{id} - Get quiz
+POST /api/comms/quizzes/{id}/submit - Submit quiz answers
+
+POST /api/comms/knowledge - Create article (admin)
+GET  /api/comms/knowledge - List/search articles
+GET  /api/comms/knowledge/{id} - Get article
+PATCH /api/comms/knowledge/{id} - Update article
+GET  /api/comms/knowledge/categories/list - List categories
 ```
 
 ---
 
-## PHASE 2 - STAFF OPERATIONS ✅ COMPLETE (Backend)
+## CONNECTEAM PARITY - PHASE 2 (NEXT: Time Clock & Scheduling UI)
 
-### Features Implemented
-1. ✅ Daily capacity dashboard (`GET /api/ops/dashboard`)
-2. ✅ Upcoming arrivals/departures view (included in dashboard)
-3. ✅ Booking approval queue (`GET /api/ops/approval-queue`)
-4. ✅ Approve/Reject bookings (`POST /api/ops/bookings/{id}/approve|reject`)
-5. ✅ Dog ↔ Staff assignment (`/api/ops/staff-assignments`)
-6. ✅ Play groups / compatibility (`/api/ops/play-groups`)
-7. ✅ Feeding schedule management (`/api/ops/feeding-schedules`)
+### Pending Implementation
+- [ ] Kiosk mode for shared device clock in/out
+- [ ] Shift templates and repeating shifts
+- [ ] Shift swap/trade request workflow
+- [ ] Planned vs actual hours reporting
+- [ ] Shift attachments (tasks, notes)
 
-### Models Implemented
-- `StaffAssignment` (staff_id, dog_id, booking_id, assignment_date, assignment_type)
-- `PlayGroup` (name, dog_ids, scheduled_date, scheduled_time, supervisor_id, compatibility_level)
-- `FeedingSchedule` (dog_id, booking_id, frequency, feeding_times, food_type, portion_size)
-
-### Endpoints
-```
-GET  /api/ops/dashboard - Dogs on site, arrivals, departures, capacity
-GET  /api/ops/approval-queue - Bookings requiring approval
-POST /api/ops/bookings/{id}/approve
-POST /api/ops/bookings/{id}/reject
-
-GET/POST /api/ops/staff-assignments
-DELETE /api/ops/staff-assignments/{id}
-
-GET/POST /api/ops/play-groups
-PATCH /api/ops/play-groups/{id}
-POST /api/ops/play-groups/{id}/add-dog
-
-GET/POST /api/ops/feeding-schedules
-PATCH /api/ops/feeding-schedules/{id}
-POST /api/ops/feeding-schedules/{id}/log-feeding
-```
+### Frontend Needed
+- [ ] Staff time clock interface with GPS capture
+- [ ] Admin timesheet management dashboard
+- [ ] Pay period approval workflow UI
+- [ ] Discrepancy resolution interface
 
 ---
 
-## PHASE 3 - CUSTOMER UX COMPLETION ✅ COMPLETE (Backend)
+## CONNECTEAM PARITY - PHASE 3 (Tasks, Forms, HR UI)
 
-### Features Implemented
-1. ✅ Enhanced booking v2 with pricing engine (`POST /api/bookings/v2`)
-2. ✅ Booking modification (`PATCH /api/bookings/{id}/modify`)
-3. ✅ Get single booking (`GET /api/bookings/{id}`)
-4. ✅ Payment history & invoices (`GET /api/payments/history`, `/api/invoices`)
-5. ✅ Customer booking confirmation (`POST /api/bookings/{id}/confirm-payment` - FIXED)
-
-### Endpoints
-```
-POST /api/bookings/v2 - Enhanced booking with pricing engine, creates invoice
-PATCH /api/bookings/{id}/modify - Policy-aware modification
-GET /api/bookings/{id} - Get single booking
-POST /api/bookings/{id}/confirm-payment - Customer payment confirmation (FIXED)
-```
+### Pending Implementation
+- [ ] Forms builder UI
+- [ ] Form submission interface with camera/signature
+- [ ] Task management dashboard
+- [ ] Time off request and calendar view
+- [ ] Balance display for staff
 
 ---
 
-## PHASE 4 - AUTOMATION ✅ COMPLETE (Backend)
+## CONNECTEAM PARITY - PHASE 4 (Communication & Reporting)
 
-### Features Implemented
-1. ✅ Notification triggers (event-driven)
-2. ✅ Notification templates
-3. ✅ Automation rules engine
-4. ✅ Event logging for automation
-5. ✅ Manual notification sending
-
-### Models Implemented
-- `NotificationTemplate` (name, notification_type, channel, subject, body, trigger_event)
-- `Notification` (user_id, notification_type, channel, subject, body, status)
-- `AutomationRule` (name, trigger_event, conditions, actions, active)
-- `EventLog` (event_type, event_source, source_id, data, triggered_automations)
-
-### Endpoints
-```
-GET  /api/notifications
-GET  /api/notifications/unread-count
-POST /api/notifications/{id}/read
-POST /api/notifications/mark-all-read
-
-GET/POST /api/admin/notification-templates
-PATCH /api/admin/notification-templates/{id}
-
-GET/POST /api/admin/automation-rules
-PATCH/DELETE /api/admin/automation-rules/{id}
-
-GET /api/admin/event-logs
-POST /api/admin/send-notification
-```
-
-### Default Automation Rules
-- Booking Confirmation → In-app notification
-- Check-in Reminder (1 day before) → In-app notification
-- Payment Received → In-app notification
-- Booking Requires Approval → Create task for staff
+### Pending Implementation
+- [ ] Announcements feed UI
+- [ ] Training course viewer
+- [ ] Quiz taking interface
+- [ ] Knowledge base search and viewer
+- [ ] CSV/PDF export for timesheets, schedules, time off
 
 ---
 
-## PHASE 5 - MESSAGING (DEFERRED)
+## CONNECTEAM PARITY - PHASE 5 (Automation API)
+
+### Pending Implementation
+- [ ] Event model and trigger registry
+- [ ] Rule engine for automation
+- [ ] Webhook configuration
+- [ ] Integration API for payroll systems
+- [ ] Audit logs and job status endpoints
 
 ---
 
-## BUG FIXES COMPLETED
+## K9COMMAND ORIGINAL FEATURES
 
-### Customer Booking Flow ✅ FIXED
-- **Issue:** `POST /api/bookings/{id}/confirm-payment` expected query params but frontend sent JSON body
-- **Fix:** Changed endpoint to accept `ConfirmPaymentRequest` body model
-- **Status:** Verified working via API testing and customer dashboard
+### Phase 1 - Data & Rules ✅ COMPLETE
+- Service types, add-ons, dynamic pricing
+- Capacity rules, cancellation policies
+- System settings, invoices, payments
 
-### Staff Booking Flow ✅ VERIFIED WORKING
-- `POST /api/bookings/admin` endpoint works correctly for staff/admin users
+### Phase 2 - Staff Ops ✅ COMPLETE (Backend)
+- Ops dashboard, approval queue
+- Staff assignments, play groups
+- Feeding schedules
 
-### Send Notification ✅ FIXED
-- **Issue:** `POST /api/admin/send-notification` expected query params but should accept JSON body
-- **Fix:** Changed endpoint to accept `SendNotificationRequest` body model
+### Phase 3 - Customer UX ✅ COMPLETE (Backend)
+- Enhanced booking v2
+- Booking modification/cancellation
+- Payment history, invoices
 
-### Get Single Booking ✅ ADDED
-- **Issue:** Missing endpoint for `GET /api/bookings/{id}`
-- **Fix:** Added new endpoint with proper access control
+### Phase 4 - Automation ✅ COMPLETE (Backend)
+- Notifications, templates
+- Automation rules
+- Event logging
+
+### Known Issues (Pending)
+- Customer booking flow - needs frontend verification
+- Staff booking creation - needs frontend verification
 
 ---
 
@@ -196,83 +250,58 @@ POST /api/admin/send-notification
 - Staff: `staff_test@k9.com` / `Test123!`
 - Admin: `admin_test@k9.com` / `Test123!`
 
-## Key Business Rules
-- SOFT CAPACITY: Over-capacity bookings allowed but require approval
-- 50% DEPOSIT default (admin-configurable)
-- Weekend surcharge: 15%
-- All pricing server-side (never trust frontend)
-
----
-
-## Testing Status
-- **Test Report:** `/app/test_reports/iteration_4.json`
-- **Backend Tests:** 47/47 passed (100%)
-- **Test File:** `/app/backend/tests/test_phase2_4.py`
+## Testing
+- **Phase 1 K9Command:** `/app/test_reports/iteration_4.json` - 47/47 passed
+- **Phase 1 Connecteam:** `/app/test_reports/iteration_5.json` - 53/53 passed
+- **Test Files:** `/app/backend/tests/test_connecteam_phase1.py`
 
 ---
 
 ## MOCKED INTEGRATIONS
-- **Square Payments:** MOCKED - Returns mock payment IDs
-- **Email Notifications:** MOCKED - Logged only, not actually sent
-- **SMS Notifications:** MOCKED - Logged only, not actually sent
+- Square Payments (mock payment IDs)
+- Email Notifications (logged only)
+- SMS Notifications (logged only)
 
 ---
 
-## UPCOMING TASKS (Frontend Implementation)
+## Architecture
 
-### P1: Staff Ops Frontend (Phase 2 UI)
-- Build Daily Capacity Dashboard view
-- Arrivals/Departures list
-- Booking Approval Queue UI
-- Staff Assignment management
-- Play Groups management
-- Feeding Schedule display
+### Backend Structure
+```
+/app/backend/
+├── server.py           # Main API endpoints (K9Command original)
+├── models.py           # All data models
+├── routers/
+│   ├── timeclock.py    # GPS clock, breaks, pay periods
+│   ├── forms.py        # Forms engine, task templates
+│   ├── hr.py           # Time off policies, requests, balances
+│   └── communications.py # Announcements, training, knowledge
+├── pricing_engine.py
+├── payment_service.py
+├── automation_service.py
+└── auth.py
+```
 
-### P2: Customer UX Frontend (Phase 3 UI)
-- Multi-step booking with add-ons selection
-- Booking modification/cancellation UI
-- Payment history page with receipts
-- Calendar improvements
-
-### P3: Admin Features Frontend
-- Pricing Rules management UI
-- Capacity Rules management UI
-- Service Definitions management
-- Add-Ons configuration
-- Policy management
-
----
-
-## FUTURE/BACKLOG
-
-- Square payments integration (live mode with real API keys)
-- Crypto (USDC) payments implementation
-- Photo watermarking and purchasing feature
-- Native Android and iOS applications
-- Phase 5: In-app messaging system
-- Email/SMS notification delivery integration
-
----
-
-## Architecture Notes
-
-### Backend Files
-- `/app/backend/server.py` - All API endpoints (4500+ lines - needs refactoring)
-- `/app/backend/models.py` - All Pydantic data models
-- `/app/backend/pricing_engine.py` - Business logic for cost calculation
-- `/app/backend/payment_service.py` - Payment abstraction layer
-- `/app/backend/automation_service.py` - Event-driven automation engine
-- `/app/backend/auth.py` - JWT authentication
-
-### Frontend Structure
-- `/app/frontend/src/pages/` - Page components
-- `/app/frontend/src/components/ui/` - Shadcn UI components
-- `/app/frontend/src/data/client.js` - Mock data adapter (currently active)
-
-### Refactoring Needed
-- Break down `server.py` (4500+ lines) into multiple router files:
-  - `routers/auth.py`
-  - `routers/bookings.py`
-  - `routers/admin.py`
-  - `routers/ops.py`
-  - `routers/automation.py`
+### Database Collections (New)
+- `geofence_zones`
+- `enhanced_time_entries`
+- `gps_records`
+- `break_entries`
+- `break_policies`
+- `overtime_rules`
+- `punch_rounding_rules`
+- `pay_periods`
+- `form_templates`
+- `form_submissions`
+- `task_templates`
+- `enhanced_tasks`
+- `time_off_policies`
+- `time_off_requests`
+- `time_off_balances`
+- `announcements`
+- `acknowledgements`
+- `courses`
+- `course_progress`
+- `quizzes`
+- `quiz_attempts`
+- `knowledge_articles`
