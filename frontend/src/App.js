@@ -25,6 +25,8 @@ import StaffApprovePage from './pages/StaffApprovePage';
 import StaffTimesheetPage from './pages/StaffTimesheetPage';
 import AdminTimesheetPage from './pages/AdminTimesheetPage';
 import ChatPage from './pages/ChatPage';
+import CustomerCalendarPage from './pages/CustomerCalendarPage';
+import CustomerPaymentsPage from './pages/CustomerPaymentsPage';
 
 // Store
 import useAuthStore from './store/authStore';
