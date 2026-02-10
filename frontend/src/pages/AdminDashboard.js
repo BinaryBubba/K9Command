@@ -304,6 +304,26 @@ const AdminDashboard = () => {
               <p className="text-sm text-muted-foreground text-center">Manage discounts</p>
             </CardContent>
           </Card>
+
+          <Card data-testid="admin-nav-lodging-map" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/lodging-map')}>
+            <CardContent className="p-8">
+              <div className="w-16 h-16 rounded-full bg-indigo-100 mx-auto mb-4 flex items-center justify-center">
+                <MapIcon className="text-indigo-600" size={32} />
+              </div>
+              <h3 className="text-xl font-serif font-semibold text-center mb-2">Lodging Map</h3>
+              <p className="text-sm text-muted-foreground text-center">Visual kennel grid</p>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="admin-nav-check-in-out" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/check-in-out')}>
+            <CardContent className="p-8">
+              <div className="w-16 h-16 rounded-full bg-rose-100 mx-auto mb-4 flex items-center justify-center">
+                <LogInIcon className="text-rose-600" size={32} />
+              </div>
+              <h3 className="text-xl font-serif font-semibold text-center mb-2">Check-In/Out</h3>
+              <p className="text-sm text-muted-foreground text-center">Arrivals & departures</p>
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>
