@@ -484,6 +484,22 @@ function App() {
             }
           />
           <Route
+            path="/admin/email-templates"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminEmailTemplatesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/staff-management"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminStaffManagementPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin/*"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
