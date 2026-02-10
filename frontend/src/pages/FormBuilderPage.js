@@ -516,10 +516,10 @@ export default function FormBuilderPage() {
       };
 
       if (isEditing) {
-        await api.patch(`/api/forms/templates/${templateId}`, payload);
+        await api.patch(`/forms/templates/${templateId}`, payload);
         toast.success('Form template updated');
       } else {
-        await api.post('/api/forms/templates', payload);
+        await api.post('/forms/templates', payload);
         toast.success('Form template created');
       }
       navigate('/admin/forms');
