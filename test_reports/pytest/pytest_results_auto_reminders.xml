@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="14" skipped="0" tests="15" time="4.207" timestamp="2026-02-10T20:10:47.644823+00:00" hostname="agent-env-04aa737a-68fb-4f0c-9251-5972ff3a28ef"><testcase classname="backend.tests.test_auto_reminders.TestAutoReminders" name="test_get_reminder_preferences_customer" time="0.344"><failure message="AssertionError: Expected 200, got 401: {&quot;detail&quot;:&quot;Invalid authentication credentials&quot;}&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_auto_reminders.py:67: in test_get_reminder_preferences_customer
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+E   AssertionError: Expected 200, got 401: {"detail":"Invalid authentication credentials"}
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_auto_reminders.TestAutoReminders" name="test_get_reminder_preferences_admin" time="0.269"><failure message="AssertionError: Expected 200, got 401: {&quot;detail&quot;:&quot;Invalid authentication credentials&quot;}&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_auto_reminders.py:99: in test_get_reminder_preferences_admin
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+E   AssertionError: Expected 200, got 401: {"detail":"Invalid authentication credentials"}
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_auto_reminders.TestAutoReminders" name="test_update_reminder_preferences_single_field" time="0.362"><failure message="AssertionError: Expected 200, got 401: {&quot;detail&quot;:&quot;Invalid authentication credentials&quot;}&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_auto_reminders.py:124: in test_update_reminder_preferences_single_field
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+E   AssertionError: Expected 200, got 401: {"detail":"Invalid authentication credentials"}
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_auto_reminders.TestAutoReminders" name="test_update_reminder_preferences_multiple_fields" time="0.274"><failure message="AssertionError: Expected 200, got 401: {&quot;detail&quot;:&quot;Invalid authentication credentials&quot;}&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_auto_reminders.py:157: in test_update_reminder_preferences_multiple_fields
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+E   AssertionError: Expected 200, got 401: {"detail":"Invalid authentication credentials"}
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_auto_reminders.TestAutoReminders" name="test_update_reminder_preferences_unauthorized" time="0.035" /><testcase classname="backend.tests.test_auto_reminders.TestAutoReminders" name="test_get_scheduled_reminders_customer" time="0.312"><failure message="AssertionError: Expected 200, got 401: {&quot;detail&quot;:&quot;Invalid authentication credentials&quot;}&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_auto_reminders.py:190: in test_get_scheduled_reminders_customer
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+E   AssertionError: Expected 200, got 401: {"detail":"Invalid authentication credentials"}
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_auto_reminders.TestAutoReminders" name="test_get_scheduled_reminders_with_booking_filter" time="0.269"><failure message="AssertionError: Expected 200, got 401: {&quot;detail&quot;:&quot;Invalid authentication credentials&quot;}&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_auto_reminders.py:210: in test_get_scheduled_reminders_with_booking_filter
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+E   AssertionError: Expected 200, got 401: {"detail":"Invalid authentication credentials"}
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_auto_reminders.TestAutoReminders" name="test_process_due_reminders_admin" time="0.265"><failure message="AssertionError: Expected 200, got 401: {&quot;detail&quot;:&quot;Invalid authentication credentials&quot;}&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_auto_reminders.py:226: in test_process_due_reminders_admin
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+E   AssertionError: Expected 200, got 401: {"detail":"Invalid authentication credentials"}
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_auto_reminders.TestAutoReminders" name="test_process_due_reminders_customer_forbidden" time="0.262"><failure message="AssertionError: Expected 403, got 401&#10;assert 401 == 403&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_auto_reminders.py:245: in test_process_due_reminders_customer_forbidden
+    assert response.status_code == 403, f"Expected 403, got {response.status_code}"
+E   AssertionError: Expected 403, got 401
+E   assert 401 == 403
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_auto_reminders.TestAutoReminders" name="test_get_pending_reminders_admin" time="0.261"><failure message="AssertionError: Expected 200, got 401: {&quot;detail&quot;:&quot;Invalid authentication credentials&quot;}&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_auto_reminders.py:256: in test_get_pending_reminders_admin
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+E   AssertionError: Expected 200, got 401: {"detail":"Invalid authentication credentials"}
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_auto_reminders.TestAutoReminders" name="test_get_pending_reminders_customer_forbidden" time="0.265"><failure message="AssertionError: Expected 403, got 401&#10;assert 401 == 403&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_auto_reminders.py:273: in test_get_pending_reminders_customer_forbidden
+    assert response.status_code == 403, f"Expected 403, got {response.status_code}"
+E   AssertionError: Expected 403, got 401
+E   assert 401 == 403
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_auto_reminders.TestAutoReminders" name="test_schedule_reminders_nonexistent_booking" time="0.267"><failure message="AssertionError: Expected 404, got 401&#10;assert 401 == 404&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_auto_reminders.py:286: in test_schedule_reminders_nonexistent_booking
+    assert response.status_code == 404, f"Expected 404, got {response.status_code}"
+E   AssertionError: Expected 404, got 401
+E   assert 401 == 404
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_auto_reminders.TestAutoReminders" name="test_cancel_reminders_nonexistent_booking" time="0.268"><failure message="AssertionError: Expected 404, got 401&#10;assert 401 == 404&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_auto_reminders.py:297: in test_cancel_reminders_nonexistent_booking
+    assert response.status_code == 404, f"Expected 404, got {response.status_code}"
+E   AssertionError: Expected 404, got 401
+E   assert 401 == 404
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_auto_reminders.TestReminderIntegration" name="test_reminder_preferences_persistence" time="0.313"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_auto_reminders.py:343: in test_reminder_preferences_persistence
+    assert update_response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_auto_reminders.TestReminderIntegration" name="test_full_reminder_workflow" time="0.282"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_auto_reminders.py:367: in test_full_reminder_workflow
+    assert get_response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase></testsuite></testsuites>
