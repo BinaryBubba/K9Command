@@ -338,6 +338,36 @@ const AdminDashboard = () => {
               <p className="text-sm text-muted-foreground text-center">Review blocked bookings</p>
             </CardContent>
           </Card>
+
+          <Card data-testid="admin-nav-inventory" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/inventory')}>
+            <CardContent className="p-8">
+              <div className="w-16 h-16 rounded-full bg-teal-100 mx-auto mb-4 flex items-center justify-center">
+                <PackageIcon className="text-teal-600" size={32} />
+              </div>
+              <h3 className="text-xl font-serif font-semibold text-center mb-2">Inventory</h3>
+              <p className="text-sm text-muted-foreground text-center">Manage retail products</p>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="admin-nav-pos" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/pos')}>
+            <CardContent className="p-8">
+              <div className="w-16 h-16 rounded-full bg-lime-100 mx-auto mb-4 flex items-center justify-center">
+                <ShoppingCartIcon className="text-lime-600" size={32} />
+              </div>
+              <h3 className="text-xl font-serif font-semibold text-center mb-2">POS Checkout</h3>
+              <p className="text-sm text-muted-foreground text-center">Point of sale</p>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="admin-nav-crm" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/crm')}>
+            <CardContent className="p-8">
+              <div className="w-16 h-16 rounded-full bg-violet-100 mx-auto mb-4 flex items-center justify-center">
+                <UserPlusIcon className="text-violet-600" size={32} />
+              </div>
+              <h3 className="text-xl font-serif font-semibold text-center mb-2">CRM & Leads</h3>
+              <p className="text-sm text-muted-foreground text-center">Track customer lifecycle</p>
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>
