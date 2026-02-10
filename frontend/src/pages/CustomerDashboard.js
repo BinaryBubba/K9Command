@@ -56,6 +56,46 @@ const CustomerDashboard = () => {
       setDogs(dogsData || []);
       setBookings(bookingsData || []);
       setUpdates(updatesData || []);
+      
+      // Build today's agenda from active bookings
+      const today = new Date().toISOString().split('T')[0];
+      const activeBookings = (bookingsData || []).filter(b => {
+        const checkIn = b.check_in_date?.split('T')[0];
+        const checkOut = b.check_out_date?.split('T')[0];
+        return checkIn <= today && checkOut >= today && ['confirmed', 'checked_in'].includes(b.status);
+      });
+      
+      // Create agenda items for today
+      const agenda = [];
+      activeBookings.forEach(booking => {
+        const dogNames = (booking.dog_ids || []).map(id => {
+          const dog = (dogsData || []).find(d => d.id === id);
+          return dog?.name || 'Your pup';
+        }).join(', ');
+        
+        if (booking.check_in_date?.split('T')[0] === today) {
+          agenda.push({ time: '8:00 AM', type: 'check_in', title: 'Check-In', description: `${dogNames} arriving for ${booking.booking_type || 'stay'}`, icon: 'sun' });
+        }
+        if (booking.check_out_date?.split('T')[0] === today) {
+          agenda.push({ time: '4:00 PM', type: 'check_out', title: 'Check-Out', description: `${dogNames} ready for pickup`, icon: 'check' });
+        }
+        if (booking.status === 'checked_in') {
+          agenda.push({ time: '7:30 AM', type: 'breakfast', title: 'Breakfast', description: `${dogNames} morning meal`, icon: 'utensils' });
+          agenda.push({ time: '10:00 AM', type: 'playtime', title: 'Playtime', description: `${dogNames} group play session`, icon: 'activity' });
+          agenda.push({ time: '12:30 PM', type: 'lunch', title: 'Lunch', description: `${dogNames} midday meal`, icon: 'utensils' });
+          agenda.push({ time: '3:00 PM', type: 'playtime', title: 'Afternoon Activity', description: `${dogNames} afternoon enrichment`, icon: 'activity' });
+          agenda.push({ time: '5:30 PM', type: 'dinner', title: 'Dinner', description: `${dogNames} evening meal`, icon: 'utensils' });
+        }
+      });
+      
+      // Sort by time
+      agenda.sort((a, b) => {
+        const timeA = new Date(`2000-01-01 ${a.time}`).getTime();
+        const timeB = new Date(`2000-01-01 ${b.time}`).getTime();
+        return timeA - timeB;
+      });
+      
+      setTodayAgenda(agenda);
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
       toast.error('Failed to load dashboard data');
