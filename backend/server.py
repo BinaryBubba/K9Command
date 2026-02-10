@@ -101,6 +101,45 @@ async def register(user_data: UserCreate, database=Depends(get_db)):
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     
+    # Account Governance Rules
+    role = user_data.role
+    
+    # Rule 1: Admin registration - only allowed if no admins exist (first admin becomes owner)
+    if role == UserRole.ADMIN:
+        existing_admin = await database.users.find_one({"role": "admin"}, {"_id": 0})
+        if existing_admin:
+            raise HTTPException(
+                status_code=403, 
+                detail="Admin registration is not allowed. Contact the owner to create admin accounts."
+            )
+        # First admin - they become the owner
+        is_owner = True
+    else:
+        is_owner = False
+    
+    # Rule 2: Staff registration requires approval (create request, don't create user yet)
+    if role == UserRole.STAFF:
+        # Create a staff request instead of direct registration
+        from uuid import uuid4
+        request_id = str(uuid4())
+        request_doc = {
+            "id": request_id,
+            "email": user_data.email,
+            "full_name": user_data.full_name,
+            "phone": user_data.phone,
+            "hashed_password": hash_password(user_data.password),
+            "status": "pending",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await database.staff_requests.insert_one(request_doc)
+        
+        # Return a response indicating pending approval
+        raise HTTPException(
+            status_code=202,  # Accepted
+            detail="Staff registration submitted. Awaiting admin approval."
+        )
+    
+    # Rule 3: Customers can register freely
     # Create household for customers
     household_id = None
     if user_data.role == UserRole.CUSTOMER:
@@ -121,6 +160,8 @@ async def register(user_data: UserCreate, database=Depends(get_db)):
     user_doc = user.model_dump()
     user_doc['created_at'] = user_doc['created_at'].isoformat()
     user_doc['updated_at'] = user_doc['updated_at'].isoformat()
+    if is_owner:
+        user_doc['is_owner'] = True
     
     await database.users.insert_one(user_doc)
     
