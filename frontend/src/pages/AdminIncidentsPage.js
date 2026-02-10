@@ -336,12 +336,12 @@ const AdminIncidentsPage = () => {
             <div>
               <Label>Dogs Involved</Label>
               <Select
-                value={formData.dog_ids[0] || ''}
-                onValueChange={(v) => setFormData({ ...formData, dog_ids: v ? [v] : [] })}
+                value={formData.dog_ids[0] || 'none'}
+                onValueChange={(v) => setFormData({ ...formData, dog_ids: v && v !== 'none' ? [v] : [] })}
               >
                 <SelectTrigger><SelectValue placeholder="Select dog (optional)" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {dogs.map((dog) => (
                     <SelectItem key={dog.id} value={dog.id}>{dog.name} - {dog.breed}</SelectItem>
                   ))}
