@@ -4391,12 +4391,15 @@ async def get_event_logs(
 
 # ==================== PHASE 4: MANUAL NOTIFICATION SEND ====================
 
+class SendNotificationRequest(BaseModel):
+    user_id: str
+    subject: str
+    body: str
+    channel: str = "in_app"
+
 @api_router.post("/admin/send-notification")
 async def send_manual_notification(
-    user_id: str,
-    subject: str,
-    body: str,
-    channel: str = "in_app",
+    request: SendNotificationRequest,
     credentials: HTTPAuthorizationCredentials = Depends(security),
     database=Depends(get_db)
 ):
@@ -4406,23 +4409,23 @@ async def send_manual_notification(
         raise HTTPException(status_code=403, detail="Admin access required")
     
     # Verify user exists
-    target_user = await database.users.find_one({"id": user_id}, {"_id": 0})
+    target_user = await database.users.find_one({"id": request.user_id}, {"_id": 0})
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")
     
     automation = AutomationService(database)
     notification_id = await automation.send_notification(
-        user_id=user_id,
+        user_id=request.user_id,
         notification_type="custom",
-        channel=channel,
-        subject=subject,
-        body=body,
+        channel=request.channel,
+        subject=request.subject,
+        body=request.body,
         metadata={"sent_by": admin.id}
     )
     
     await create_audit_log(admin.id, AuditAction.CREATE, "notification", notification_id, {
-        "recipient": user_id,
-        "subject": subject
+        "recipient": request.user_id,
+        "subject": request.subject
     })
     
     return {"message": "Notification sent", "notification_id": notification_id}
