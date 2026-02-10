@@ -2237,8 +2237,7 @@ async def get_chat_users(
     
     return [{"id": u['id'], "full_name": u['full_name'], "role": u['role'], "email": u['email']} for u in users]
 
-# Include the router in the main app
-app.include_router(api_router)
+# Include the router in the main app - MOVED TO END OF FILE
 
 app.add_middleware(
     CORSMiddleware,
