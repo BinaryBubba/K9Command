@@ -193,6 +193,37 @@ async def approve_staff_request(
         }}
     )
     
+    # Send welcome email to new staff member
+    try:
+        from services.email import EmailService
+        email_service = EmailService(db)
+        await email_service.send_email(
+            to=request.get("email"),
+            subject="Welcome to the K9Command Team!",
+            body=f"""
+Hello {request.get("full_name")},
+
+Your staff account has been approved! You can now log in to K9Command using your email and password.
+
+As a team member, you have access to:
+- View and manage bookings
+- Clock in/out for your shifts
+- Request time off
+- View your schedule
+- Access daily operations
+
+If you have any questions, please contact your administrator.
+
+Welcome aboard!
+
+Best regards,
+K9Command Team
+            """.strip(),
+            template_name="staff_welcome"
+        )
+    except Exception as e:
+        print(f"Failed to send welcome email: {e}")
+    
     return {
         "message": "Staff request approved and account created",
         "request_id": request_id,
