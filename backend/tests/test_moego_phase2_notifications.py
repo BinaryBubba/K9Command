@@ -190,7 +190,7 @@ class TestSmartBookingWithNotifications:
         }
         dog_response = self.session.post(f"{BASE_URL}/api/dogs", json=dog_data)
         
-        if dog_response.status_code == 201:
+        if dog_response.status_code in [200, 201]:
             dog_id = dog_response.json().get("id")
             
             check_in = (datetime.now() + timedelta(days=21)).strftime("%Y-%m-%dT10:00:00Z")
@@ -232,7 +232,7 @@ class TestSmartBookingWithNotifications:
         }
         dog_response = self.session.post(f"{BASE_URL}/api/dogs", json=dog_data)
         
-        if dog_response.status_code == 201:
+        if dog_response.status_code in [200, 201]:
             dog_id = dog_response.json().get("id")
             
             check_in = (datetime.now() + timedelta(days=28)).strftime("%Y-%m-%dT10:00:00Z")
@@ -299,7 +299,7 @@ class TestSmartBookingEligibilityBlocking:
         }
         dog_response = self.session.post(f"{BASE_URL}/api/dogs", json=dog_data)
         
-        if dog_response.status_code == 201:
+        if dog_response.status_code in [200, 201]:
             dog_id = dog_response.json().get("id")
             
             check_in = (datetime.now() + timedelta(days=35)).strftime("%Y-%m-%dT10:00:00Z")
