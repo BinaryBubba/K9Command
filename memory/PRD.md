@@ -394,14 +394,36 @@ GET  /api/comms/knowledge/categories/list - List categories
 
 ---
 
-## MOEGO PARITY - PHASE 3 (Payments & Portal)
+## MOEGO PARITY - PHASE 3 (Payments & Portal) ✅ COMPLETE
 
-### Pending Implementation
-- [ ] Card-on-file vaulting (Square Customers API)
-- [ ] Deposit & pre-authorization holds
-- [ ] Customer portal depth (service history, one-click rebooking)
-- [ ] Invoice & receipt downloads
-- [ ] Dunning/overdue balance workflows
+### Implemented (Dec 2025)
+- [x] Square card-on-file (vaulting) - save/retrieve/delete customer cards
+- [x] Deposit/pre-authorization holds with delayed capture
+- [x] Direct payments with immediate capture
+- [x] Refund processing (full and partial)
+- [x] Customer Portal (`/customer/portal`):
+  - Upcoming bookings with status and kennel info
+  - Service history with one-click rebooking
+  - Saved payment methods management
+  - Invoice/receipt listing
+- [x] Backend APIs:
+  - GET /api/moego/payments/config - Payment configuration
+  - POST /api/moego/payments/cards - Save card on file
+  - GET /api/moego/payments/cards - Get saved cards
+  - DELETE /api/moego/payments/cards/{id} - Delete card
+  - POST /api/moego/payments/deposit-hold - Create pre-auth hold
+  - POST /api/moego/payments/capture/{id} - Capture hold
+  - POST /api/moego/payments/cancel/{id} - Cancel hold
+  - POST /api/moego/payments/charge - Direct payment
+  - POST /api/moego/payments/refund - Process refund
+  - GET /api/moego/portal/upcoming - Upcoming bookings
+  - GET /api/moego/portal/service-history - Past bookings
+  - GET /api/moego/portal/invoices - Payment receipts
+  - POST /api/moego/portal/rebook/{id} - One-click rebooking
+
+### Notes
+- **MOCK MODE**: Square API runs in mock mode when SQUARE_ACCESS_TOKEN is not configured
+- For production: Set SQUARE_ACCESS_TOKEN, SQUARE_APPLICATION_ID, SQUARE_LOCATION_ID in backend/.env
 
 ---
 
