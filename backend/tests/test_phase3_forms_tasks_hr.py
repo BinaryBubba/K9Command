@@ -312,6 +312,7 @@ class TestTasks:
             "description": "Deep clean kennel A before new arrivals",
             "priority": "high",
             "status": "pending",
+            "location_id": "main",
             "due_date": (datetime.now() + timedelta(days=1)).isoformat()
         }
         
@@ -362,7 +363,8 @@ class TestTasks:
             "title": "TEST_Staff Task",
             "description": "Task created by staff",
             "priority": "medium",
-            "status": "pending"
+            "status": "pending",
+            "location_id": "main"
         }
         response = requests.post(f"{BASE_URL}/api/tasks", json=task_data, headers=staff_headers)
         assert response.status_code == 200, f"Staff create task failed: {response.text}"
