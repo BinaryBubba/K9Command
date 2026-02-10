@@ -717,3 +717,6 @@ GET  /api/k9/reminders/pending - View pending reminders (admin)
 - `quizzes`
 - `quiz_attempts`
 - `knowledge_articles`
+- `email_templates` (NEW: Admin-editable email templates)
+- `email_outbox` (NEW: Sent/mock emails log)
+- `staff_requests` (NEW: Staff account approval queue)
