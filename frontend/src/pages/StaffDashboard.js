@@ -174,7 +174,35 @@ const StaffDashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          <Card data-testid="action-time-clock" className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-2xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/staff/time-clock')}>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <MapPinIcon size={24} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-serif font-bold">Time Clock</h3>
+                  <p className="text-sm opacity-90">GPS clock in/out</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="action-schedule" className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-2xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/staff/schedule')}>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <CalendarIcon size={24} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-serif font-bold">My Schedule</h3>
+                  <p className="text-sm opacity-90">View shifts & swaps</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card data-testid="action-upload-photos" className="bg-gradient-to-br from-primary to-primary/80 text-white rounded-2xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/staff/upload')}>
             <CardContent className="p-6">
               <div className="flex items-center gap-3">
