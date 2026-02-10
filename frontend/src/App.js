@@ -83,6 +83,22 @@ function App() {
             }
           />
           <Route
+            path="/customer/calendar"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <CustomerCalendarPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customer/payments"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <CustomerPaymentsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/customer/updates"
             element={
               <ProtectedRoute allowedRoles={['customer']}>
