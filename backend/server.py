@@ -3260,6 +3260,10 @@ async def get_invoice(
     return InvoiceResponse(**invoice)
 
 
+# ==================== INCLUDE ROUTER (MUST BE AFTER ALL ROUTES) ====================
+app.include_router(api_router)
+
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
