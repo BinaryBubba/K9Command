@@ -99,7 +99,7 @@ export default function TaskDashboardPage() {
 
   const handleUpdateStatus = async (taskId, newStatus) => {
     try {
-      await api.patch(`/api/tasks/${taskId}`, { status: newStatus });
+      await api.patch(`/tasks/${taskId}`, { status: newStatus });
       toast.success(`Task ${newStatus === 'completed' ? 'completed' : 'updated'}`);
       loadData();
     } catch (error) {
@@ -118,7 +118,7 @@ export default function TaskDashboardPage() {
     };
 
     try {
-      await api.patch(`/api/tasks/${taskId}`, { checklist_items: checklist });
+      await api.patch(`/tasks/${taskId}`, { checklist_items: checklist });
       loadData();
     } catch (error) {
       toast.error('Failed to update checklist');
