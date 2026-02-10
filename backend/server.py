@@ -587,8 +587,10 @@ async def create_booking(booking_data: BookingCreate, credentials: HTTPAuthoriza
     if booking_type == "meet_greet":
         # Get meet & greet price from settings
         mg_price = 0.0
+        mg_setting = await database.system_settings.find_one({"key": "meet_greet_settings"}, {"_id": 0})
         if mg_setting:
             try:
+                import json
                 mg_config = json.loads(mg_setting.get("value", "{}"))
                 mg_price = mg_config.get("price", 0.0)
             except:
