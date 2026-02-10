@@ -4466,12 +4466,14 @@ from routers.forms import router as forms_router
 from routers.hr import router as hr_router
 from routers.communications import router as comms_router
 from routers.scheduling import router as scheduling_router
+from routers.exports import router as exports_router
 
 app.include_router(timeclock_router)
 app.include_router(forms_router)
 app.include_router(hr_router)
 app.include_router(comms_router)
 app.include_router(scheduling_router)
+app.include_router(exports_router)
 
 
 @app.on_event("shutdown")
