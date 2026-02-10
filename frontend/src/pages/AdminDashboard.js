@@ -58,15 +58,18 @@ const AdminDashboard = () => {
             <h1 className="text-2xl font-serif font-bold text-primary">Admin Dashboard</h1>
             <p className="text-sm text-muted-foreground">Welcome back, {user?.full_name}</p>
           </div>
-          <Button
-            data-testid="admin-logout-button"
-            onClick={handleLogout}
-            variant="ghost"
-            className="flex items-center gap-2"
-          >
-            <LogOutIcon size={18} />
-            Logout
-          </Button>
+          <div className="flex items-center gap-4">
+            <NotificationBell />
+            <Button
+              data-testid="admin-logout-button"
+              onClick={handleLogout}
+              variant="ghost"
+              className="flex items-center gap-2"
+            >
+              <LogOutIcon size={18} />
+              Logout
+            </Button>
+          </div>
         </div>
       </header>
 
