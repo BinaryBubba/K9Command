@@ -223,6 +223,25 @@ class Booking(BaseDBModel):
     customer_id: Optional[str] = None
     created_by: Optional[str] = None
     modification_reason: Optional[str] = None
+    # Phase 1 additions
+    service_type_id: Optional[str] = None
+    add_ons: List[Dict[str, Any]] = []  # List of BookingAddOn
+    subtotal: float = 0.0
+    tax_amount: float = 0.0
+    discount_amount: float = 0.0
+    deposit_percentage: float = 50.0
+    deposit_amount: float = 0.0
+    deposit_paid: bool = False
+    deposit_paid_at: Optional[datetime] = None
+    balance_due: float = 0.0
+    balance_paid: bool = False
+    balance_paid_at: Optional[datetime] = None
+    invoice_id: Optional[str] = None
+    pricing_rules_applied: List[str] = []  # IDs of applied pricing rules
+    requires_approval: bool = False  # True if over soft capacity
+    approved_by: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    cancellation_policy_id: Optional[str] = None
 
 class BookingCreate(BaseModel):
     dog_ids: List[str]
