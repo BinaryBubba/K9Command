@@ -387,6 +387,30 @@ function App() {
             }
           />
           <Route
+            path="/admin/kennels"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <KennelManagementPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/daily-ops"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <DailyOpsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/coupons"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <CouponManagementPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin/*"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
