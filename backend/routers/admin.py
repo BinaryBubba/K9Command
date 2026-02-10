@@ -77,7 +77,7 @@ async def send_test_email(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Send a test email using a template"""
-    db = get_db()
+    db = await get_db()
     user = await get_current_user(credentials, db)
     if user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
@@ -105,7 +105,7 @@ async def get_email_outbox(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Get email outbox records"""
-    db = get_db()
+    db = await get_db()
     user = await get_current_user(credentials, db)
     if user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
@@ -127,7 +127,7 @@ async def list_staff_requests(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """List all staff account requests"""
-    db = get_db()
+    db = await get_db()
     user = await get_current_user(credentials, db)
     if user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
@@ -145,7 +145,7 @@ async def approve_staff_request(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Approve a staff account request"""
-    db = get_db()
+    db = await get_db()
     user = await get_current_user(credentials, db)
     if user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
@@ -182,7 +182,7 @@ async def reject_staff_request(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Reject a staff account request"""
-    db = get_db()
+    db = await get_db()
     user = await get_current_user(credentials, db)
     if user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
@@ -215,7 +215,7 @@ async def check_is_owner(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Check if a user is the owner (first admin)"""
-    db = get_db()
+    db = await get_db()
     user = await get_current_user(credentials, db)
     if user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
@@ -238,7 +238,7 @@ async def create_admin_account(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """Create a new admin account (owner only)"""
-    db = get_db()
+    db = await get_db()
     user = await get_current_user(credentials, db)
     if user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
