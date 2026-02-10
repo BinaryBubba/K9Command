@@ -491,6 +491,8 @@ class SquarePaymentService:
         # Store payment
         await self.db.payments.insert_one(payment_data)
         
+        # Remove MongoDB _id before returning
+        payment_data.pop('_id', None)
         return payment_data
     
     async def refund_payment(self, data: RefundCreate) -> Dict[str, Any]:
