@@ -2971,8 +2971,8 @@ async def schedule_reminders_for_specific_booking(
     db = get_db()
     user = await get_current_user(credentials, db)
     
-    # Get the booking
-    booking = await db.lodging_bookings.find_one({"id": booking_id}, {"_id": 0})
+    # Get the booking (check both collections for compatibility)
+    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
     
@@ -3018,7 +3018,7 @@ async def cancel_booking_reminders(
     user = await get_current_user(credentials, db)
     
     # Verify booking ownership or admin
-    booking = await db.lodging_bookings.find_one({"id": booking_id}, {"_id": 0})
+    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
     
