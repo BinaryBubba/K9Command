@@ -623,13 +623,41 @@ async def create_booking_admin(
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
     
+    booking_type = booking_data.get('booking_type', 'stay')
+    meet_greet_override = booking_data.get('meet_greet_override', False)
+    
+    # Check Meet & Greet requirement (unless override is set by admin)
+    if booking_type in ["stay", "daycare"] and not meet_greet_override:
+        mg_setting = await database.system_settings.find_one({"key": "meet_greet_settings"}, {"_id": 0})
+        mg_required = True
+        if mg_setting:
+            try:
+                import json
+                mg_config = json.loads(mg_setting.get("value", "{}"))
+                mg_required = mg_config.get("required_for_new_customers", True)
+            except:
+                pass
+        
+        if mg_required:
+            completed_mg = await database.bookings.find_one({
+                "household_id": customer['household_id'],
+                "booking_type": "meet_greet",
+                "status": {"$in": ["checked_out", "completed"]}
+            }, {"_id": 0})
+            
+            if not completed_mg:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Customer must complete a Meet & Greet first. Set meet_greet_override=true to bypass."
+                )
+    
     # Parse dates
     check_in_date = datetime.fromisoformat(booking_data['check_in_date'].replace('Z', '+00:00')) if isinstance(booking_data['check_in_date'], str) else booking_data['check_in_date']
     check_out_date = datetime.fromisoformat(booking_data['check_out_date'].replace('Z', '+00:00')) if isinstance(booking_data['check_out_date'], str) else booking_data['check_out_date']
     
     # Calculate nights
     nights = (check_out_date - check_in_date).days
-    if nights <= 0:
+    if nights <= 0 and booking_type != "meet_greet":
         raise HTTPException(status_code=400, detail="Invalid date range")
     
     dog_ids = booking_data.get('dog_ids', [])
