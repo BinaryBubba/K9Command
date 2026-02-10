@@ -4,6 +4,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
+import { Switch } from '../components/ui/switch';
 import { toast } from 'sonner';
 import api from '../utils/api';
 import useAuthStore from '../store/authStore';
@@ -21,11 +22,13 @@ const BookingModal = ({ isOpen, onClose, booking, onSuccess }) => {
     dog_ids: [],
     location_id: '',
     accommodation_type: 'room',
+    booking_type: 'stay',
     check_in_date: '',
     check_out_date: '',
     notes: '',
     needs_separate_playtime: false,
     payment_type: 'invoice',
+    meet_greet_override: false,
   });
 
   const isAdminOrStaff = user?.role === 'admin' || user?.role === 'staff';
@@ -39,11 +42,13 @@ const BookingModal = ({ isOpen, onClose, booking, onSuccess }) => {
           dog_ids: booking.dog_ids || [],
           location_id: booking.location_id || '',
           accommodation_type: booking.accommodation_type || 'room',
+          booking_type: booking.booking_type || 'stay',
           check_in_date: booking.check_in_date?.split('T')[0] || '',
           check_out_date: booking.check_out_date?.split('T')[0] || '',
           notes: booking.notes || '',
           needs_separate_playtime: booking.needs_separate_playtime || false,
           payment_type: booking.payment_type || 'invoice',
+          meet_greet_override: false,
         });
       }
     }
