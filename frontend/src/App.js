@@ -63,6 +63,8 @@ import CustomerLeadsPage from './pages/CustomerLeadsPage';
 // Admin Management Pages
 import AdminEmailTemplatesPage from './pages/AdminEmailTemplatesPage';
 import AdminStaffManagementPage from './pages/AdminStaffManagementPage';
+import AdminTimeManagementPage from './pages/AdminTimeManagementPage';
+import StaffTimeManagementPage from './pages/StaffTimeManagementPage';
 
 // Store
 import useAuthStore from './store/authStore';
