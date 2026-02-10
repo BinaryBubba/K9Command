@@ -1332,6 +1332,35 @@ async def create_smart_booking(
             {"$set": {"status": "reserved", "updated_at": datetime.now(timezone.utc).isoformat()}}
         )
     
+    # Get dog names for notifications
+    dogs_for_notif = await db.dogs.find({"id": {"$in": dog_ids}}, {"_id": 0, "name": 1}).to_list(len(dog_ids))
+    dog_names = [d['name'] for d in dogs_for_notif]
+    
+    # Send notifications if booking was auto-blocked
+    if requires_approval:
+        # Notify customer
+        await notify_booking_auto_blocked(
+            db=db,
+            customer_id=user.id,
+            customer_name=customer.get('full_name', 'Customer'),
+            booking_id=booking_id,
+            dog_names=dog_names,
+            errors=all_errors
+        )
+        
+        # Notify all admins
+        admin_users = await db.users.find({"role": "admin"}, {"_id": 0, "id": 1}).to_list(100)
+        admin_ids = [a['id'] for a in admin_users]
+        if admin_ids:
+            await notify_admin_pending_approval(
+                db=db,
+                admin_ids=admin_ids,
+                booking_id=booking_id,
+                customer_name=customer.get('full_name', 'Customer'),
+                dog_names=dog_names,
+                error_count=len(all_errors)
+            )
+    
     # Remove _id from response
     booking_doc.pop('_id', None)
     
