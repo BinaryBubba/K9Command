@@ -1897,7 +1897,7 @@ async def update_customer(
     
     update_doc = {"updated_at": datetime.now(timezone.utc).isoformat()}
     
-    allowed_fields = ['full_name', 'email', 'phone', 'is_active', 'notes']
+    allowed_fields = ['full_name', 'email', 'phone', 'is_active', 'notes', 'address', 'city', 'state', 'zip_code', 'emergency_contact', 'emergency_phone']
     for field in allowed_fields:
         if field in update_data:
             update_doc[field] = update_data[field]
