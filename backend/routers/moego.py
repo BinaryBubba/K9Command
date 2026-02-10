@@ -1109,3 +1109,640 @@ async def get_operations_summary(
         overdue_checkouts=0,
         pending_payments=0
     )
+
+
+# ==================== PHASE 2: BOOKING & CHECK-IN/OUT ====================
+
+@router.post("/bookings/smart")
+async def create_smart_booking(
+    data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """
+    Smart booking endpoint with eligibility checks and auto-block logic.
+    If eligibility fails with hard block, auto-block the booking and require admin approval.
+    """
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    
+    dog_ids = data.get('dog_ids', [])
+    location_id = data.get('location_id')
+    check_in_date = data.get('check_in_date')
+    check_out_date = data.get('check_out_date')
+    kennel_id = data.get('kennel_id')
+    bath_before_pickup = data.get('bath_before_pickup', False)
+    bath_day = data.get('bath_day', 'checkout')  # 'checkout' or 'day_before'
+    check_in_slot_id = data.get('check_in_slot_id')
+    check_out_slot_id = data.get('check_out_slot_id')
+    notes = data.get('notes', '')
+    coupon_code = data.get('coupon_code')
+    
+    # Parse dates
+    if isinstance(check_in_date, str):
+        check_in_date = datetime.fromisoformat(check_in_date.replace('Z', '+00:00'))
+    if isinstance(check_out_date, str):
+        check_out_date = datetime.fromisoformat(check_out_date.replace('Z', '+00:00'))
+    
+    nights = (check_out_date - check_in_date).days
+    if nights <= 0:
+        raise HTTPException(status_code=400, detail="Invalid date range")
+    
+    # Check eligibility for all dogs
+    eligibility_results = []
+    has_hard_block = False
+    all_errors = []
+    all_warnings = []
+    
+    for dog_id in dog_ids:
+        dog = await db.dogs.find_one({"id": dog_id}, {"_id": 0})
+        if not dog:
+            raise HTTPException(status_code=404, detail=f"Dog {dog_id} not found")
+        
+        # Get applicable rules
+        rules = await db.eligibility_rules.find({"is_active": True}, {"_id": 0}).to_list(100)
+        
+        errors = []
+        warnings = []
+        missing_vaccines = []
+        
+        for rule in rules:
+            rule_type = rule.get('rule_type')
+            
+            if rule_type == 'vaccination':
+                dog_vaccines = {v.get('vaccine_name', '').lower(): v for v in dog.get('vaccinations', [])}
+                for required in rule.get('required_vaccines', []):
+                    required_lower = required.lower()
+                    if required_lower not in dog_vaccines:
+                        missing_vaccines.append(required)
+                        if rule.get('is_hard_block'):
+                            has_hard_block = True
+                            errors.append({
+                                "dog_id": dog_id,
+                                "dog_name": dog.get('name'),
+                                "rule": rule['name'],
+                                "type": "vaccination",
+                                "message": f"Missing {required} vaccination"
+                            })
+                        else:
+                            warnings.append({
+                                "dog_id": dog_id,
+                                "dog_name": dog.get('name'),
+                                "message": f"Missing {required} vaccination"
+                            })
+            
+            elif rule_type == 'weight':
+                dog_weight = dog.get('weight')
+                if dog_weight:
+                    if rule.get('min_weight') and dog_weight < rule['min_weight']:
+                        if rule.get('is_hard_block'):
+                            has_hard_block = True
+                            errors.append({
+                                "dog_id": dog_id,
+                                "dog_name": dog.get('name'),
+                                "rule": rule['name'],
+                                "message": f"Weight {dog_weight}lb below minimum {rule['min_weight']}lb"
+                            })
+                    if rule.get('max_weight') and dog_weight > rule['max_weight']:
+                        if rule.get('is_hard_block'):
+                            has_hard_block = True
+                            errors.append({
+                                "dog_id": dog_id,
+                                "dog_name": dog.get('name'),
+                                "rule": rule['name'],
+                                "message": f"Weight {dog_weight}lb exceeds maximum {rule['max_weight']}lb"
+                            })
+            
+            elif rule_type == 'behavior':
+                if rule.get('blocks_aggressive') and dog.get('incidents_of_aggression'):
+                    if rule.get('is_hard_block'):
+                        has_hard_block = True
+                        errors.append({
+                            "dog_id": dog_id,
+                            "dog_name": dog.get('name'),
+                            "rule": rule['name'],
+                            "message": "Dog has history of aggression"
+                        })
+        
+        all_errors.extend(errors)
+        all_warnings.extend(warnings)
+        eligibility_results.append({
+            "dog_id": dog_id,
+            "dog_name": dog.get('name'),
+            "is_eligible": len(errors) == 0,
+            "errors": errors,
+            "warnings": warnings,
+            "missing_vaccines": missing_vaccines
+        })
+    
+    # Calculate pricing
+    base_price = 50.0  # Base price per dog per night
+    subtotal = base_price * nights * len(dog_ids)
+    
+    # Add bath fee if requested
+    bath_fee = 0
+    if bath_before_pickup:
+        bath_fee = 25.0 * len(dog_ids)  # $25 per dog
+        subtotal += bath_fee
+    
+    # Apply coupon if provided
+    discount_amount = 0
+    coupon_data = None
+    if coupon_code:
+        coupon = await db.coupon_codes.find_one({"code": coupon_code.upper(), "is_active": True}, {"_id": 0})
+        if coupon:
+            discount_type = coupon.get('discount_type')
+            discount_value = coupon.get('discount_value', 0)
+            if discount_type == 'percentage':
+                discount_amount = subtotal * (discount_value / 100)
+            elif discount_type == 'flat_amount':
+                discount_amount = min(discount_value, subtotal)
+            coupon_data = {
+                "coupon_id": coupon['id'],
+                "code": coupon['code'],
+                "discount_amount": round(discount_amount, 2)
+            }
+    
+    total_price = subtotal - discount_amount
+    
+    # Determine booking status based on eligibility
+    requires_approval = has_hard_block
+    booking_status = "pending_approval" if requires_approval else "confirmed"
+    
+    # Create booking document
+    booking_id = str(uuid.uuid4())
+    household_id = user.household_id or user.id
+    
+    # Get customer info
+    customer = await db.users.find_one({"id": user.id}, {"_id": 0})
+    
+    booking_doc = {
+        "id": booking_id,
+        "household_id": household_id,
+        "customer_id": user.id,
+        "customer_name": customer.get('full_name', 'Unknown'),
+        "customer_email": customer.get('email', ''),
+        "customer_phone": customer.get('phone'),
+        "dog_ids": dog_ids,
+        "location_id": location_id,
+        "kennel_id": kennel_id,
+        "check_in_date": check_in_date.isoformat(),
+        "check_out_date": check_out_date.isoformat(),
+        "check_in_slot_id": check_in_slot_id,
+        "check_out_slot_id": check_out_slot_id,
+        "nights": nights,
+        "status": booking_status,
+        "accommodation_type": "room",
+        "base_price": base_price,
+        "subtotal": subtotal,
+        "discount_amount": discount_amount,
+        "total_price": round(total_price, 2),
+        "coupon_data": coupon_data,
+        "bath_before_pickup": bath_before_pickup,
+        "bath_day": bath_day if bath_before_pickup else None,
+        "bath_fee": bath_fee,
+        "bath_scheduled": bath_before_pickup,
+        "bath_completed": False,
+        "requires_approval": requires_approval,
+        "approval_reason": "Eligibility check failed" if requires_approval else None,
+        "eligibility_errors": all_errors,
+        "eligibility_warnings": all_warnings,
+        "approved_by": None,
+        "approved_at": None,
+        "notes": notes,
+        "payment_status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": user.id
+    }
+    
+    await db.bookings.insert_one(booking_doc)
+    
+    # If kennel was assigned, mark it as reserved
+    if kennel_id and not requires_approval:
+        await db.kennels.update_one(
+            {"id": kennel_id},
+            {"$set": {"status": "reserved", "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+    
+    # Remove _id from response
+    booking_doc.pop('_id', None)
+    
+    return {
+        "booking": booking_doc,
+        "eligibility_results": eligibility_results,
+        "requires_approval": requires_approval,
+        "auto_blocked": requires_approval,
+        "message": "Booking requires admin approval" if requires_approval else "Booking confirmed"
+    }
+
+
+@router.get("/bookings/pending-approval")
+async def get_pending_approval_bookings(
+    location_id: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get all bookings pending admin approval"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    query = {"requires_approval": True, "status": "pending_approval"}
+    if location_id:
+        query["location_id"] = location_id
+    
+    bookings = await db.bookings.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    
+    # Enrich with dog names
+    for booking in bookings:
+        dog_ids = booking.get('dog_ids', [])
+        dogs = await db.dogs.find({"id": {"$in": dog_ids}}, {"_id": 0, "id": 1, "name": 1}).to_list(len(dog_ids))
+        booking['dog_names'] = [d['name'] for d in dogs]
+    
+    return bookings
+
+
+@router.post("/bookings/{booking_id}/approve")
+async def approve_booking(
+    booking_id: str,
+    kennel_id: Optional[str] = None,
+    notes: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Approve a pending booking (admin only)"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    if booking.get('status') != 'pending_approval':
+        raise HTTPException(status_code=400, detail="Booking is not pending approval")
+    
+    update_data = {
+        "status": "confirmed",
+        "requires_approval": False,
+        "approved_by": user.id,
+        "approved_at": datetime.now(timezone.utc).isoformat(),
+        "admin_notes": notes,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    if kennel_id:
+        update_data["kennel_id"] = kennel_id
+        # Reserve the kennel
+        await db.kennels.update_one(
+            {"id": kennel_id},
+            {"$set": {"status": "reserved", "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+    
+    await db.bookings.update_one({"id": booking_id}, {"$set": update_data})
+    
+    return {"message": "Booking approved", "booking_id": booking_id}
+
+
+@router.post("/bookings/{booking_id}/reject")
+async def reject_booking(
+    booking_id: str,
+    reason: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Reject a pending booking (admin only)"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    await db.bookings.update_one(
+        {"id": booking_id},
+        {"$set": {
+            "status": "cancelled",
+            "rejection_reason": reason,
+            "rejected_by": user.id,
+            "rejected_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"message": "Booking rejected", "booking_id": booking_id}
+
+
+# ==================== CHECK-IN / CHECK-OUT OPERATIONS ====================
+
+@router.get("/operations/check-ins")
+async def get_todays_check_ins(
+    location_id: str,
+    date: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get bookings scheduled for check-in today"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    if not date:
+        date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    bookings = await db.bookings.find({
+        "location_id": location_id,
+        "status": {"$in": ["confirmed", "checked_in"]},
+        "check_in_date": {"$regex": f"^{date}"}
+    }, {"_id": 0}).to_list(100)
+    
+    result = []
+    for booking in bookings:
+        dog_ids = booking.get('dog_ids', [])
+        dogs = await db.dogs.find({"id": {"$in": dog_ids}}, {"_id": 0}).to_list(len(dog_ids))
+        
+        kennel = None
+        if booking.get('kennel_id'):
+            kennel = await db.kennels.find_one({"id": booking['kennel_id']}, {"_id": 0})
+        
+        result.append({
+            "booking_id": booking['id'],
+            "customer_name": booking.get('customer_name', 'Unknown'),
+            "customer_phone": booking.get('customer_phone'),
+            "dogs": [{"id": d['id'], "name": d['name'], "breed": d.get('breed', ''), "weight": d.get('weight')} for d in dogs],
+            "kennel_id": booking.get('kennel_id'),
+            "kennel_name": kennel.get('name') if kennel else None,
+            "check_in_date": booking['check_in_date'],
+            "check_out_date": booking['check_out_date'],
+            "status": booking['status'],
+            "checked_in": booking['status'] == 'checked_in',
+            "notes": booking.get('notes'),
+            "special_needs": [d.get('medication_requirements') for d in dogs if d.get('medication_requirements')],
+            "bath_scheduled": booking.get('bath_scheduled', False),
+            "bath_day": booking.get('bath_day'),
+            "payment_status": booking.get('payment_status', 'pending'),
+            "total_price": booking.get('total_price', 0)
+        })
+    
+    return result
+
+
+@router.get("/operations/check-outs")
+async def get_todays_check_outs(
+    location_id: str,
+    date: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get bookings scheduled for check-out today"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    if not date:
+        date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    bookings = await db.bookings.find({
+        "location_id": location_id,
+        "status": {"$in": ["checked_in"]},
+        "check_out_date": {"$regex": f"^{date}"}
+    }, {"_id": 0}).to_list(100)
+    
+    result = []
+    for booking in bookings:
+        dog_ids = booking.get('dog_ids', [])
+        dogs = await db.dogs.find({"id": {"$in": dog_ids}}, {"_id": 0}).to_list(len(dog_ids))
+        
+        kennel = None
+        if booking.get('kennel_id'):
+            kennel = await db.kennels.find_one({"id": booking['kennel_id']}, {"_id": 0})
+        
+        result.append({
+            "booking_id": booking['id'],
+            "customer_name": booking.get('customer_name', 'Unknown'),
+            "customer_phone": booking.get('customer_phone'),
+            "dogs": [{"id": d['id'], "name": d['name'], "breed": d.get('breed', '')} for d in dogs],
+            "kennel_id": booking.get('kennel_id'),
+            "kennel_name": kennel.get('name') if kennel else None,
+            "check_in_date": booking['check_in_date'],
+            "check_out_date": booking['check_out_date'],
+            "bath_scheduled": booking.get('bath_scheduled', False),
+            "bath_completed": booking.get('bath_completed', False),
+            "bath_day": booking.get('bath_day'),
+            "payment_status": booking.get('payment_status', 'pending'),
+            "balance_due": booking.get('balance_due', booking.get('total_price', 0)),
+            "total_price": booking.get('total_price', 0),
+            "notes": booking.get('notes')
+        })
+    
+    return result
+
+
+@router.post("/operations/check-in/{booking_id}")
+async def perform_check_in(
+    booking_id: str,
+    data: dict = {},
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Perform check-in for a booking"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    if booking.get('status') not in ['confirmed', 'pending']:
+        raise HTTPException(status_code=400, detail=f"Cannot check in booking with status: {booking.get('status')}")
+    
+    kennel_id = data.get('kennel_id') or booking.get('kennel_id')
+    check_in_notes = data.get('notes', '')
+    items_received = data.get('items_received', [])  # List of items customer brought
+    
+    now = datetime.now(timezone.utc)
+    
+    # Update booking
+    update_data = {
+        "status": "checked_in",
+        "checked_in_at": now.isoformat(),
+        "checked_in_by": user.id,
+        "check_in_notes": check_in_notes,
+        "items_received": items_received,
+        "updated_at": now.isoformat()
+    }
+    
+    if kennel_id:
+        update_data["kennel_id"] = kennel_id
+        # Update kennel status to occupied
+        await db.kennels.update_one(
+            {"id": kennel_id},
+            {"$set": {"status": "occupied", "updated_at": now.isoformat()}}
+        )
+    
+    await db.bookings.update_one({"id": booking_id}, {"$set": update_data})
+    
+    return {
+        "message": "Check-in completed",
+        "booking_id": booking_id,
+        "checked_in_at": now.isoformat(),
+        "kennel_id": kennel_id
+    }
+
+
+@router.post("/operations/check-out/{booking_id}")
+async def perform_check_out(
+    booking_id: str,
+    data: dict = {},
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Perform check-out for a booking"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    if booking.get('status') != 'checked_in':
+        raise HTTPException(status_code=400, detail="Booking must be checked in first")
+    
+    # Check if bath was completed if scheduled
+    if booking.get('bath_scheduled') and not booking.get('bath_completed'):
+        if not data.get('skip_bath_check'):
+            raise HTTPException(
+                status_code=400, 
+                detail="Bath scheduled but not completed. Set skip_bath_check=true to proceed anyway."
+            )
+    
+    check_out_notes = data.get('notes', '')
+    items_returned = data.get('items_returned', [])
+    payment_collected = data.get('payment_collected', False)
+    
+    now = datetime.now(timezone.utc)
+    
+    # Update booking
+    update_data = {
+        "status": "checked_out",
+        "checked_out_at": now.isoformat(),
+        "checked_out_by": user.id,
+        "check_out_notes": check_out_notes,
+        "items_returned": items_returned,
+        "updated_at": now.isoformat()
+    }
+    
+    if payment_collected:
+        update_data["payment_status"] = "paid"
+        update_data["payment_collected_at"] = now.isoformat()
+    
+    await db.bookings.update_one({"id": booking_id}, {"$set": update_data})
+    
+    # Free up the kennel
+    kennel_id = booking.get('kennel_id')
+    if kennel_id:
+        await db.kennels.update_one(
+            {"id": kennel_id},
+            {"$set": {"status": "cleaning", "updated_at": now.isoformat()}}
+        )
+    
+    return {
+        "message": "Check-out completed",
+        "booking_id": booking_id,
+        "checked_out_at": now.isoformat(),
+        "kennel_id": kennel_id,
+        "kennel_status": "cleaning"
+    }
+
+
+@router.post("/operations/bath/{booking_id}")
+async def mark_bath_completed(
+    booking_id: str,
+    notes: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Mark bath as completed for a booking"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    booking = await db.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    if not booking.get('bath_scheduled'):
+        raise HTTPException(status_code=400, detail="No bath scheduled for this booking")
+    
+    now = datetime.now(timezone.utc)
+    
+    await db.bookings.update_one(
+        {"id": booking_id},
+        {"$set": {
+            "bath_completed": True,
+            "bath_completed_at": now.isoformat(),
+            "bath_completed_by": user.id,
+            "bath_notes": notes,
+            "updated_at": now.isoformat()
+        }}
+    )
+    
+    return {"message": "Bath marked as completed", "booking_id": booking_id}
+
+
+@router.get("/operations/baths-due")
+async def get_baths_due_today(
+    location_id: str,
+    date: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get all baths due today (checkout day or day before)"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    if not date:
+        date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    target_date = datetime.strptime(date, "%Y-%m-%d")
+    next_date = (target_date + timedelta(days=1)).strftime("%Y-%m-%d")
+    
+    # Find bookings where:
+    # 1. Bath scheduled and not completed
+    # 2. bath_day is 'checkout' and checkout is today, OR
+    # 3. bath_day is 'day_before' and checkout is tomorrow
+    bookings = await db.bookings.find({
+        "location_id": location_id,
+        "status": "checked_in",
+        "bath_scheduled": True,
+        "bath_completed": {"$ne": True},
+        "$or": [
+            {"bath_day": "checkout", "check_out_date": {"$regex": f"^{date}"}},
+            {"bath_day": "day_before", "check_out_date": {"$regex": f"^{next_date}"}}
+        ]
+    }, {"_id": 0}).to_list(100)
+    
+    result = []
+    for booking in bookings:
+        dog_ids = booking.get('dog_ids', [])
+        dogs = await db.dogs.find({"id": {"$in": dog_ids}}, {"_id": 0, "id": 1, "name": 1, "breed": 1}).to_list(len(dog_ids))
+        
+        kennel = None
+        if booking.get('kennel_id'):
+            kennel = await db.kennels.find_one({"id": booking['kennel_id']}, {"_id": 0, "name": 1})
+        
+        result.append({
+            "booking_id": booking['id'],
+            "customer_name": booking.get('customer_name'),
+            "dogs": [{"id": d['id'], "name": d['name'], "breed": d.get('breed', '')} for d in dogs],
+            "kennel_name": kennel.get('name') if kennel else None,
+            "check_out_date": booking['check_out_date'],
+            "bath_day": booking.get('bath_day'),
+            "bath_fee": booking.get('bath_fee', 0)
+        })
+    
+    return result
