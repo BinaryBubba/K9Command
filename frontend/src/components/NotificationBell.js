@@ -3,7 +3,7 @@ import { BellIcon, CheckIcon, XIcon, AlertTriangleIcon, CheckCircleIcon, InfoIco
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import api from '../utils/api';
-import { useAuthStore } from '../stores/authStore';
+import useAuthStore from '../store/authStore';
 
 const NotificationBell = () => {
   const [isOpen, setIsOpen] = useState(false);
