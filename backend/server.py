@@ -673,9 +673,25 @@ async def create_booking_admin(
             is_holiday = True
             break
     
-    # Pricing calculation
-    base_price = 50.0
-    total_price = base_price * nights * len(dog_ids)
+    # Pricing calculation based on booking type
+    if booking_type == "meet_greet":
+        mg_setting = await database.system_settings.find_one({"key": "meet_greet_settings"}, {"_id": 0})
+        mg_price = 0.0
+        if mg_setting:
+            try:
+                import json
+                mg_config = json.loads(mg_setting.get("value", "{}"))
+                mg_price = mg_config.get("price", 0.0)
+            except:
+                pass
+        total_price = mg_price
+        nights = 1
+    else:
+        # Get configurable base price from settings
+        base_price_setting = await database.system_settings.find_one({"key": "base_room_rate"}, {"_id": 0})
+        base_price = float(base_price_setting.get("value", "50")) if base_price_setting else 50.0
+        
+        total_price = base_price * nights * len(dog_ids)
     
     if is_holiday:
         total_price *= 1.20
