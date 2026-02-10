@@ -111,7 +111,8 @@ class EmailService:
         subject: str,
         body: str,
         email_type: str = "general",
-        booking_id: Optional[str] = None
+        booking_id: Optional[str] = None,
+        template_name: Optional[str] = None
     ) -> EmailRecord:
         """Send an email (SMTP) or store in mock outbox"""
         email_id = str(uuid.uuid4())
@@ -122,7 +123,7 @@ class EmailService:
             "to": to,
             "subject": subject,
             "body": body,
-            "type": email_type,
+            "type": template_name or email_type,
             "booking_id": booking_id,
             "sent_at": now,
             "status": "pending",
