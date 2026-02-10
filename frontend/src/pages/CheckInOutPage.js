@@ -3,60 +3,61 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
-import { Textarea } from '../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Checkbox } from '../components/ui/checkbox';
+import { Textarea } from '../components/ui/textarea';
 import { toast } from 'sonner';
 import { 
+  ArrowLeftIcon,
+  RefreshCwIcon,
   LogInIcon,
   LogOutIcon,
-  ArrowLeftIcon,
-  SearchIcon,
   DogIcon,
+  PhoneIcon,
   CalendarIcon,
   HomeIcon,
-  AlertTriangleIcon,
   CheckCircleIcon,
-  XCircleIcon,
-  ShieldAlertIcon,
-  ShowerHeadIcon,
   ClockIcon,
-  PhoneIcon,
+  ShowerHeadIcon,
+  DollarSignIcon,
+  AlertTriangleIcon,
+  PillIcon,
   UserIcon
 } from 'lucide-react';
 import api from '../utils/api';
 
+const ITEM_CHECKLIST = [
+  { id: 'leash', label: 'Leash' },
+  { id: 'collar', label: 'Collar' },
+  { id: 'food', label: 'Food' },
+  { id: 'bowl', label: 'Bowl' },
+  { id: 'bed', label: 'Bed/Blanket' },
+  { id: 'toys', label: 'Toys' },
+  { id: 'medication', label: 'Medication' },
+  { id: 'treats', label: 'Treats' },
+];
+
 export default function CheckInOutPage() {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('check-in');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('check-ins');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  
   const [checkIns, setCheckIns] = useState([]);
   const [checkOuts, setCheckOuts] = useState([]);
-  const [kennels, setKennels] = useState([]);
+  const [bathsDue, setBathsDue] = useState([]);
+  const [loading, setLoading] = useState(true);
   
-  // Modal states
+  // Modal state
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [showCheckOutModal, setShowCheckOutModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
-  const [eligibilityResult, setEligibilityResult] = useState(null);
-  const [checkingEligibility, setCheckingEligibility] = useState(false);
-  
-  // Check-in form
-  const [selectedKennel, setSelectedKennel] = useState('');
+  const [checkInItems, setCheckInItems] = useState([]);
   const [checkInNotes, setCheckInNotes] = useState('');
-  const [overrideEligibility, setOverrideEligibility] = useState(false);
-  const [overrideReason, setOverrideReason] = useState('');
-  
-  // Check-out form
-  const [bathCompleted, setBathCompleted] = useState(false);
+  const [checkOutItems, setCheckOutItems] = useState([]);
   const [checkOutNotes, setCheckOutNotes] = useState('');
+  const [paymentCollected, setPaymentCollected] = useState(false);
+  const [skipBathCheck, setSkipBathCheck] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -65,155 +66,92 @@ export default function CheckInOutPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [bookingsRes, kennelsRes] = await Promise.all([
-        api.get('/bookings'),
-        api.get('/moego/kennels?status=available')
+      const [checkInsRes, checkOutsRes, bathsRes] = await Promise.all([
+        api.get(`/moego/operations/check-ins?location_id=main&date=${selectedDate}`),
+        api.get(`/moego/operations/check-outs?location_id=main&date=${selectedDate}`),
+        api.get(`/moego/operations/baths-due?location_id=main&date=${selectedDate}`)
       ]);
       
-      const dateStr = selectedDate;
-      const bookings = bookingsRes.data || [];
-      
-      // Filter check-ins (bookings with check_in_date matching selected date)
-      const todayCheckIns = bookings.filter(b => {
-        const checkInDate = b.check_in_date?.split('T')[0];
-        return checkInDate === dateStr && b.status === 'confirmed';
-      });
-      
-      // Filter check-outs (bookings with check_out_date matching selected date)
-      const todayCheckOuts = bookings.filter(b => {
-        const checkOutDate = b.check_out_date?.split('T')[0];
-        return checkOutDate === dateStr && b.status === 'checked_in';
-      });
-      
-      setCheckIns(todayCheckIns);
-      setCheckOuts(todayCheckOuts);
-      setKennels(kennelsRes.data || []);
+      setCheckIns(checkInsRes.data);
+      setCheckOuts(checkOutsRes.data);
+      setBathsDue(bathsRes.data);
     } catch (error) {
       console.error('Failed to load data:', error);
-      toast.error('Failed to load bookings');
+      toast.error('Failed to load check-in/out data');
     } finally {
       setLoading(false);
     }
   };
 
-  const checkEligibility = async (booking) => {
-    setCheckingEligibility(true);
-    setEligibilityResult(null);
-    
-    try {
-      const results = [];
-      for (const dogId of booking.dog_ids || []) {
-        const response = await api.post(`/moego/eligibility/check?dog_id=${dogId}&location_id=main`);
-        results.push(response.data);
-      }
-      setEligibilityResult(results);
-    } catch (error) {
-      console.error('Eligibility check failed:', error);
-      setEligibilityResult([{ is_eligible: true, errors: [], warnings: [] }]);
-    } finally {
-      setCheckingEligibility(false);
-    }
-  };
-
-  const handleCheckInClick = async (booking) => {
+  const handleCheckInClick = (booking) => {
     setSelectedBooking(booking);
-    setSelectedKennel(booking.kennel_id || '');
+    setCheckInItems(booking.items_received || []);
     setCheckInNotes('');
-    setOverrideEligibility(false);
-    setOverrideReason('');
     setShowCheckInModal(true);
-    
-    // Check eligibility
-    await checkEligibility(booking);
   };
 
   const handleCheckOutClick = (booking) => {
     setSelectedBooking(booking);
-    setBathCompleted(booking.bath_completed || false);
+    setCheckOutItems(booking.items_received || []);
     setCheckOutNotes('');
+    setPaymentCollected(booking.payment_status === 'paid');
+    setSkipBathCheck(false);
     setShowCheckOutModal(true);
   };
 
-  const processCheckIn = async () => {
-    if (!selectedKennel) {
-      toast.error('Please select a kennel');
-      return;
-    }
+  const performCheckIn = async () => {
+    if (!selectedBooking) return;
     
-    const hasBlockingErrors = eligibilityResult?.some(r => !r.is_eligible && r.errors?.length > 0);
-    
-    if (hasBlockingErrors && !overrideEligibility) {
-      toast.error('Please resolve eligibility issues or request admin override');
-      return;
-    }
-    
-    if (overrideEligibility && !overrideReason) {
-      toast.error('Please provide a reason for override');
-      return;
-    }
-
     try {
-      await api.patch(`/bookings/${selectedBooking.id}`, {
-        status: 'checked_in',
-        kennel_id: selectedKennel,
-        check_in_notes: checkInNotes,
-        eligibility_overridden: overrideEligibility,
-        eligibility_override_reason: overrideReason,
-        actual_check_in_time: new Date().toISOString()
+      await api.post(`/moego/operations/check-in/${selectedBooking.booking_id}`, {
+        notes: checkInNotes,
+        items_received: checkInItems
       });
       
-      // Update kennel status
-      await api.patch(`/moego/kennels/${selectedKennel}`, {
-        status: 'occupied',
-        current_booking_id: selectedBooking.id,
-        current_dog_ids: selectedBooking.dog_ids
-      });
-      
-      toast.success('Check-in complete!');
+      toast.success(`${selectedBooking.customer_name} checked in successfully`);
       setShowCheckInModal(false);
       loadData();
     } catch (error) {
-      toast.error('Check-in failed');
-      console.error(error);
+      toast.error(error.response?.data?.detail || 'Check-in failed');
     }
   };
 
-  const processCheckOut = async () => {
+  const performCheckOut = async () => {
+    if (!selectedBooking) return;
+    
     try {
-      await api.patch(`/bookings/${selectedBooking.id}`, {
-        status: 'checked_out',
-        bath_completed: bathCompleted,
-        check_out_notes: checkOutNotes,
-        actual_check_out_time: new Date().toISOString()
+      await api.post(`/moego/operations/check-out/${selectedBooking.booking_id}`, {
+        notes: checkOutNotes,
+        items_returned: checkOutItems,
+        payment_collected: paymentCollected,
+        skip_bath_check: skipBathCheck
       });
       
-      // Free up kennel
-      if (selectedBooking.kennel_id) {
-        await api.patch(`/moego/kennels/${selectedBooking.kennel_id}`, {
-          status: 'cleaning',
-          current_booking_id: null,
-          current_dog_ids: []
-        });
-      }
-      
-      toast.success('Check-out complete!');
+      toast.success(`${selectedBooking.customer_name} checked out successfully`);
       setShowCheckOutModal(false);
       loadData();
     } catch (error) {
-      toast.error('Check-out failed');
-      console.error(error);
+      toast.error(error.response?.data?.detail || 'Check-out failed');
     }
   };
 
-  const filteredCheckIns = checkIns.filter(b => 
-    b.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    b.dog_names?.some(n => n.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const markBathComplete = async (bookingId) => {
+    try {
+      await api.post(`/moego/operations/bath/${bookingId}`);
+      toast.success('Bath marked as completed');
+      loadData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to mark bath complete');
+    }
+  };
 
-  const filteredCheckOuts = checkOuts.filter(b => 
-    b.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    b.dog_names?.some(n => n.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const toggleItem = (itemId, list, setList) => {
+    if (list.includes(itemId)) {
+      setList(list.filter(i => i !== itemId));
+    } else {
+      setList([...list, itemId]);
+    }
+  };
 
   if (loading) {
     return (
@@ -233,14 +171,14 @@ export default function CheckInOutPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate('/admin')}
+                onClick={() => navigate('/admin/dashboard')}
                 className="text-slate-400 hover:text-white"
               >
                 <ArrowLeftIcon size={20} />
               </Button>
               <div>
                 <h1 className="text-2xl font-bold text-white">Check-In / Check-Out</h1>
-                <p className="text-slate-400 text-sm">Process arrivals and departures</p>
+                <p className="text-slate-400 text-sm">Manage arrivals and departures</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -249,256 +187,415 @@ export default function CheckInOutPage() {
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
                 className="bg-slate-800 border-slate-700 text-white w-40"
+                data-testid="date-picker"
               />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadData}
+                className="border-slate-600 text-slate-300"
+              >
+                <RefreshCwIcon size={16} />
+              </Button>
             </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <Card className="bg-gradient-to-br from-emerald-600 to-emerald-700 border-none">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <LogInIcon className="text-white" size={28} />
-                <div>
-                  <p className="text-emerald-100 text-sm">Check-Ins Today</p>
-                  <p className="text-3xl font-bold text-white">{checkIns.length}</p>
-                </div>
+        {/* Quick Stats */}
+        <div className="grid grid-cols-4 gap-4 mb-8">
+          <Card className="bg-slate-900 border-slate-700">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+                <LogInIcon className="text-green-400" size={20} />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">{checkIns.filter(c => !c.checked_in).length}</p>
+                <p className="text-xs text-slate-400">Pending Check-Ins</p>
               </div>
             </CardContent>
           </Card>
-
-          <Card className="bg-gradient-to-br from-amber-600 to-amber-700 border-none">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <LogOutIcon className="text-white" size={28} />
-                <div>
-                  <p className="text-amber-100 text-sm">Check-Outs Today</p>
-                  <p className="text-3xl font-bold text-white">{checkOuts.length}</p>
-                </div>
+          
+          <Card className="bg-slate-900 border-slate-700">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
+                <LogOutIcon className="text-amber-400" size={20} />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">{checkOuts.length}</p>
+                <p className="text-xs text-slate-400">Pending Check-Outs</p>
               </div>
             </CardContent>
           </Card>
-        </div>
-
-        {/* Search */}
-        <div className="relative mb-6">
-          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <Input
-            placeholder="Search by customer or dog name..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-slate-800 border-slate-700 text-white"
-          />
+          
+          <Card className="bg-slate-900 border-slate-700">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-cyan-500/20 flex items-center justify-center">
+                <ShowerHeadIcon className="text-cyan-400" size={20} />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">{bathsDue.length}</p>
+                <p className="text-xs text-slate-400">Baths Due Today</p>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-slate-900 border-slate-700">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                <CheckCircleIcon className="text-blue-400" size={20} />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">{checkIns.filter(c => c.checked_in).length}</p>
+                <p className="text-xs text-slate-400">Completed Today</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-slate-800 mb-6">
-            <TabsTrigger value="check-in" className="data-[state=active]:bg-slate-700">
+          <TabsList className="bg-slate-800 border border-slate-700 mb-6">
+            <TabsTrigger value="check-ins" className="data-[state=active]:bg-green-600">
               <LogInIcon size={16} className="mr-2" />
-              Check-Ins ({filteredCheckIns.length})
+              Check-Ins ({checkIns.length})
             </TabsTrigger>
-            <TabsTrigger value="check-out" className="data-[state=active]:bg-slate-700">
+            <TabsTrigger value="check-outs" className="data-[state=active]:bg-amber-600">
               <LogOutIcon size={16} className="mr-2" />
-              Check-Outs ({filteredCheckOuts.length})
+              Check-Outs ({checkOuts.length})
+            </TabsTrigger>
+            <TabsTrigger value="baths" className="data-[state=active]:bg-cyan-600">
+              <ShowerHeadIcon size={16} className="mr-2" />
+              Baths Due ({bathsDue.length})
             </TabsTrigger>
           </TabsList>
 
           {/* Check-Ins Tab */}
-          <TabsContent value="check-in">
-            {filteredCheckIns.length === 0 ? (
-              <Card className="bg-slate-900 border-slate-700">
-                <CardContent className="py-12 text-center">
-                  <LogInIcon className="mx-auto text-slate-600 mb-4" size={48} />
-                  <h3 className="text-lg font-semibold text-slate-400">No check-ins scheduled</h3>
-                  <p className="text-slate-500">No arrivals scheduled for {selectedDate}</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-3">
-                {filteredCheckIns.map(booking => (
-                  <BookingCard 
-                    key={booking.id}
-                    booking={booking}
-                    type="check-in"
-                    onAction={() => handleCheckInClick(booking)}
-                  />
-                ))}
-              </div>
-            )}
+          <TabsContent value="check-ins">
+            <div className="space-y-4">
+              {checkIns.length === 0 ? (
+                <Card className="bg-slate-900 border-slate-700">
+                  <CardContent className="py-12 text-center">
+                    <LogInIcon className="mx-auto text-slate-600 mb-4" size={48} />
+                    <p className="text-slate-400">No check-ins scheduled for this date</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                checkIns.map(booking => (
+                  <Card 
+                    key={booking.booking_id} 
+                    className={`bg-slate-900 border-slate-700 ${booking.checked_in ? 'opacity-60' : ''}`}
+                    data-testid={`checkin-card-${booking.booking_id}`}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          {/* Customer Info */}
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center">
+                              <UserIcon className="text-slate-400" size={20} />
+                            </div>
+                            <div>
+                              <h3 className="text-white font-semibold">{booking.customer_name}</h3>
+                              {booking.customer_phone && (
+                                <p className="text-sm text-slate-400 flex items-center gap-1">
+                                  <PhoneIcon size={12} />
+                                  {booking.customer_phone}
+                                </p>
+                              )}
+                            </div>
+                            {booking.checked_in && (
+                              <Badge className="bg-green-500/20 text-green-400 ml-2">
+                                <CheckCircleIcon size={12} className="mr-1" />
+                                Checked In
+                              </Badge>
+                            )}
+                          </div>
+
+                          {/* Dogs */}
+                          <div className="flex flex-wrap gap-2 mb-3">
+                            {booking.dogs.map(dog => (
+                              <div key={dog.id} className="flex items-center gap-2 bg-slate-800 rounded-lg px-3 py-1.5">
+                                <DogIcon size={14} className="text-slate-400" />
+                                <span className="text-white text-sm">{dog.name}</span>
+                                <span className="text-slate-500 text-xs">({dog.breed})</span>
+                                {dog.weight && <span className="text-slate-500 text-xs">{dog.weight}lb</span>}
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Details */}
+                          <div className="flex items-center gap-4 text-sm text-slate-400">
+                            {booking.kennel_name && (
+                              <span className="flex items-center gap-1">
+                                <HomeIcon size={14} />
+                                {booking.kennel_name}
+                              </span>
+                            )}
+                            <span className="flex items-center gap-1">
+                              <CalendarIcon size={14} />
+                              Until {new Date(booking.check_out_date).toLocaleDateString()}
+                            </span>
+                            {booking.bath_scheduled && (
+                              <Badge className="bg-cyan-500/20 text-cyan-400">
+                                <ShowerHeadIcon size={12} className="mr-1" />
+                                Bath ({booking.bath_day})
+                              </Badge>
+                            )}
+                            {booking.special_needs?.length > 0 && (
+                              <Badge className="bg-red-500/20 text-red-400">
+                                <PillIcon size={12} className="mr-1" />
+                                Medication
+                              </Badge>
+                            )}
+                          </div>
+
+                          {/* Payment Status */}
+                          <div className="mt-3 flex items-center gap-2">
+                            <Badge className={booking.payment_status === 'paid' ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}>
+                              <DollarSignIcon size={12} className="mr-1" />
+                              ${booking.total_price} - {booking.payment_status}
+                            </Badge>
+                          </div>
+
+                          {/* Notes */}
+                          {booking.notes && (
+                            <p className="mt-2 text-sm text-slate-500 italic">"{booking.notes}"</p>
+                          )}
+                        </div>
+
+                        {/* Action Button */}
+                        <Button
+                          onClick={() => handleCheckInClick(booking)}
+                          disabled={booking.checked_in}
+                          className={booking.checked_in ? 'bg-slate-700' : 'bg-green-600 hover:bg-green-700'}
+                          data-testid={`checkin-btn-${booking.booking_id}`}
+                        >
+                          {booking.checked_in ? 'Done' : 'Check In'}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
           </TabsContent>
 
           {/* Check-Outs Tab */}
-          <TabsContent value="check-out">
-            {filteredCheckOuts.length === 0 ? (
-              <Card className="bg-slate-900 border-slate-700">
-                <CardContent className="py-12 text-center">
-                  <LogOutIcon className="mx-auto text-slate-600 mb-4" size={48} />
-                  <h3 className="text-lg font-semibold text-slate-400">No check-outs scheduled</h3>
-                  <p className="text-slate-500">No departures scheduled for {selectedDate}</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-3">
-                {filteredCheckOuts.map(booking => (
-                  <BookingCard 
-                    key={booking.id}
-                    booking={booking}
-                    type="check-out"
-                    onAction={() => handleCheckOutClick(booking)}
-                  />
-                ))}
-              </div>
-            )}
+          <TabsContent value="check-outs">
+            <div className="space-y-4">
+              {checkOuts.length === 0 ? (
+                <Card className="bg-slate-900 border-slate-700">
+                  <CardContent className="py-12 text-center">
+                    <LogOutIcon className="mx-auto text-slate-600 mb-4" size={48} />
+                    <p className="text-slate-400">No check-outs scheduled for this date</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                checkOuts.map(booking => (
+                  <Card 
+                    key={booking.booking_id} 
+                    className="bg-slate-900 border-slate-700"
+                    data-testid={`checkout-card-${booking.booking_id}`}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          {/* Customer Info */}
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center">
+                              <UserIcon className="text-slate-400" size={20} />
+                            </div>
+                            <div>
+                              <h3 className="text-white font-semibold">{booking.customer_name}</h3>
+                              {booking.customer_phone && (
+                                <p className="text-sm text-slate-400 flex items-center gap-1">
+                                  <PhoneIcon size={12} />
+                                  {booking.customer_phone}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Dogs */}
+                          <div className="flex flex-wrap gap-2 mb-3">
+                            {booking.dogs.map(dog => (
+                              <div key={dog.id} className="flex items-center gap-2 bg-slate-800 rounded-lg px-3 py-1.5">
+                                <DogIcon size={14} className="text-slate-400" />
+                                <span className="text-white text-sm">{dog.name}</span>
+                                <span className="text-slate-500 text-xs">({dog.breed})</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Details */}
+                          <div className="flex items-center gap-4 text-sm text-slate-400">
+                            {booking.kennel_name && (
+                              <span className="flex items-center gap-1">
+                                <HomeIcon size={14} />
+                                {booking.kennel_name}
+                              </span>
+                            )}
+                            {booking.bath_scheduled && (
+                              <Badge className={booking.bath_completed ? 'bg-green-500/20 text-green-400' : 'bg-amber-500/20 text-amber-400'}>
+                                <ShowerHeadIcon size={12} className="mr-1" />
+                                Bath: {booking.bath_completed ? 'Done' : 'Pending'}
+                              </Badge>
+                            )}
+                          </div>
+
+                          {/* Balance Due */}
+                          <div className="mt-3 flex items-center gap-2">
+                            <Badge className={booking.payment_status === 'paid' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}>
+                              <DollarSignIcon size={12} className="mr-1" />
+                              {booking.payment_status === 'paid' ? 'Paid' : `Balance Due: $${booking.balance_due}`}
+                            </Badge>
+                          </div>
+                        </div>
+
+                        {/* Action Button */}
+                        <Button
+                          onClick={() => handleCheckOutClick(booking)}
+                          className="bg-amber-600 hover:bg-amber-700"
+                          data-testid={`checkout-btn-${booking.booking_id}`}
+                        >
+                          Check Out
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Baths Tab */}
+          <TabsContent value="baths">
+            <div className="space-y-4">
+              {bathsDue.length === 0 ? (
+                <Card className="bg-slate-900 border-slate-700">
+                  <CardContent className="py-12 text-center">
+                    <ShowerHeadIcon className="mx-auto text-slate-600 mb-4" size={48} />
+                    <p className="text-slate-400">No baths due today</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                bathsDue.map(bath => (
+                  <Card 
+                    key={bath.booking_id} 
+                    className="bg-slate-900 border-slate-700"
+                    data-testid={`bath-card-${bath.booking_id}`}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-full bg-cyan-500/20 flex items-center justify-center">
+                            <ShowerHeadIcon className="text-cyan-400" size={24} />
+                          </div>
+                          <div>
+                            <h3 className="text-white font-semibold">{bath.customer_name}</h3>
+                            <div className="flex flex-wrap gap-2 mt-1">
+                              {bath.dogs.map(dog => (
+                                <span key={dog.id} className="text-sm text-slate-400">
+                                  {dog.name}
+                                </span>
+                              ))}
+                            </div>
+                            <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
+                              <span className="flex items-center gap-1">
+                                <HomeIcon size={12} />
+                                {bath.kennel_name || 'No kennel'}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <CalendarIcon size={12} />
+                                Checkout: {new Date(bath.check_out_date).toLocaleDateString()}
+                              </span>
+                              <Badge className="bg-slate-700 text-slate-300">
+                                {bath.bath_day === 'day_before' ? 'Day Before' : 'Checkout Day'}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                        <Button
+                          onClick={() => markBathComplete(bath.booking_id)}
+                          className="bg-cyan-600 hover:bg-cyan-700"
+                          data-testid={`bath-complete-btn-${bath.booking_id}`}
+                        >
+                          <CheckCircleIcon size={16} className="mr-2" />
+                          Mark Complete
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </main>
 
       {/* Check-In Modal */}
       <Dialog open={showCheckInModal} onOpenChange={setShowCheckInModal}>
-        <DialogContent className="bg-slate-900 border-slate-700 max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="bg-slate-900 border-slate-700 max-w-md">
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
-              <LogInIcon size={20} className="text-emerald-400" />
-              Process Check-In
+              <LogInIcon size={20} className="text-green-400" />
+              Check In: {selectedBooking?.customer_name}
             </DialogTitle>
           </DialogHeader>
           
-          {selectedBooking && (
-            <div className="space-y-4 py-4">
-              {/* Booking Summary */}
-              <div className="bg-slate-800 rounded-lg p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-white font-medium">{selectedBooking.customer_name}</span>
-                  <Badge className="bg-blue-500/20 text-blue-400">
-                    {selectedBooking.dog_names?.length || 0} dog(s)
-                  </Badge>
-                </div>
-                <div className="text-sm text-slate-400">
-                  {selectedBooking.dog_names?.join(', ')}
-                </div>
-                <div className="text-xs text-slate-500 mt-1">
-                  {new Date(selectedBooking.check_in_date).toLocaleDateString()} - {new Date(selectedBooking.check_out_date).toLocaleDateString()}
-                </div>
-              </div>
-
-              {/* Eligibility Check */}
-              <div className="border border-slate-700 rounded-lg p-3">
-                <h4 className="text-white font-medium mb-3 flex items-center gap-2">
-                  <ShieldAlertIcon size={16} />
-                  Eligibility Check
-                </h4>
-                
-                {checkingEligibility ? (
-                  <div className="flex items-center gap-2 text-slate-400">
-                    <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-                    Checking eligibility...
+          <div className="space-y-4 py-4">
+            {/* Dogs Summary */}
+            <div className="bg-slate-800 rounded-lg p-3">
+              <h4 className="text-sm text-slate-400 mb-2">Dogs</h4>
+              <div className="space-y-1">
+                {selectedBooking?.dogs.map(dog => (
+                  <div key={dog.id} className="flex items-center gap-2 text-white">
+                    <DogIcon size={14} className="text-slate-500" />
+                    {dog.name} ({dog.breed})
                   </div>
-                ) : eligibilityResult ? (
-                  <div className="space-y-2">
-                    {eligibilityResult.map((result, idx) => (
-                      <div key={idx} className={`p-2 rounded ${result.is_eligible ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
-                        <div className="flex items-center gap-2 mb-1">
-                          {result.is_eligible ? (
-                            <CheckCircleIcon size={16} className="text-green-400" />
-                          ) : (
-                            <XCircleIcon size={16} className="text-red-400" />
-                          )}
-                          <span className={result.is_eligible ? 'text-green-400' : 'text-red-400'}>
-                            {result.dog_name}
-                          </span>
-                        </div>
-                        
-                        {result.errors?.map((err, i) => (
-                          <div key={i} className="text-red-400 text-xs ml-6">
-                            ⚠️ {err.message}
-                          </div>
-                        ))}
-                        
-                        {result.warnings?.map((warn, i) => (
-                          <div key={i} className="text-amber-400 text-xs ml-6">
-                            ⚡ {warn.message}
-                          </div>
-                        ))}
-                        
-                        {result.missing_vaccines?.length > 0 && (
-                          <div className="text-red-400 text-xs ml-6">
-                            Missing vaccines: {result.missing_vaccines.join(', ')}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                    
-                    {/* Override Option */}
-                    {eligibilityResult.some(r => !r.is_eligible) && (
-                      <div className="border-t border-slate-700 pt-3 mt-3">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <Checkbox
-                            checked={overrideEligibility}
-                            onCheckedChange={setOverrideEligibility}
-                          />
-                          <span className="text-amber-400 text-sm">Request Admin Override</span>
-                        </label>
-                        
-                        {overrideEligibility && (
-                          <Textarea
-                            value={overrideReason}
-                            onChange={(e) => setOverrideReason(e.target.value)}
-                            placeholder="Reason for override (required)..."
-                            className="mt-2 bg-slate-800 border-slate-600 text-white text-sm"
-                            rows={2}
-                          />
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ) : null}
-              </div>
-
-              {/* Kennel Selection */}
-              <div>
-                <Label className="text-slate-300">Assign Kennel</Label>
-                <Select value={selectedKennel} onValueChange={setSelectedKennel}>
-                  <SelectTrigger className="mt-1 bg-slate-800 border-slate-600 text-white">
-                    <SelectValue placeholder="Select kennel..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {kennels.map(k => (
-                      <SelectItem key={k.id} value={k.id}>
-                        {k.name} ({k.kennel_type}, {k.size_category})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Notes */}
-              <div>
-                <Label className="text-slate-300">Check-In Notes (Optional)</Label>
-                <Textarea
-                  value={checkInNotes}
-                  onChange={(e) => setCheckInNotes(e.target.value)}
-                  placeholder="Any notes about the check-in..."
-                  className="mt-1 bg-slate-800 border-slate-600 text-white"
-                  rows={2}
-                />
+                ))}
               </div>
             </div>
-          )}
+
+            {/* Items Checklist */}
+            <div>
+              <h4 className="text-sm text-slate-400 mb-2">Items Received</h4>
+              <div className="grid grid-cols-2 gap-2">
+                {ITEM_CHECKLIST.map(item => (
+                  <div key={item.id} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`checkin-${item.id}`}
+                      checked={checkInItems.includes(item.id)}
+                      onCheckedChange={() => toggleItem(item.id, checkInItems, setCheckInItems)}
+                    />
+                    <label htmlFor={`checkin-${item.id}`} className="text-sm text-slate-300 cursor-pointer">
+                      {item.label}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <h4 className="text-sm text-slate-400 mb-2">Check-In Notes</h4>
+              <Textarea
+                value={checkInNotes}
+                onChange={(e) => setCheckInNotes(e.target.value)}
+                placeholder="Any notes about the check-in..."
+                className="bg-slate-800 border-slate-700 text-white"
+              />
+            </div>
+          </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCheckInModal(false)} className="border-slate-600 text-slate-300">
               Cancel
             </Button>
-            <Button 
-              onClick={processCheckIn} 
-              className="bg-emerald-600 hover:bg-emerald-700"
-              disabled={!selectedKennel || (eligibilityResult?.some(r => !r.is_eligible) && !overrideEligibility)}
-            >
-              <LogInIcon size={16} className="mr-2" />
+            <Button onClick={performCheckIn} className="bg-green-600 hover:bg-green-700">
+              <CheckCircleIcon size={16} className="mr-2" />
               Complete Check-In
             </Button>
           </DialogFooter>
@@ -511,132 +608,107 @@ export default function CheckInOutPage() {
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
               <LogOutIcon size={20} className="text-amber-400" />
-              Process Check-Out
+              Check Out: {selectedBooking?.customer_name}
             </DialogTitle>
           </DialogHeader>
           
-          {selectedBooking && (
-            <div className="space-y-4 py-4">
-              {/* Booking Summary */}
-              <div className="bg-slate-800 rounded-lg p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-white font-medium">{selectedBooking.customer_name}</span>
-                  <Badge className="bg-blue-500/20 text-blue-400">
-                    {selectedBooking.dog_names?.length || 0} dog(s)
-                  </Badge>
+          <div className="space-y-4 py-4">
+            {/* Bath Warning */}
+            {selectedBooking?.bath_scheduled && !selectedBooking?.bath_completed && (
+              <div className="bg-amber-500/20 border border-amber-500/50 rounded-lg p-3">
+                <div className="flex items-center gap-2 text-amber-400 mb-2">
+                  <AlertTriangleIcon size={16} />
+                  <span className="font-medium">Bath Not Completed</span>
                 </div>
-                <div className="text-sm text-slate-400">
-                  {selectedBooking.dog_names?.join(', ')}
-                </div>
-                {selectedBooking.kennel_name && (
-                  <div className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                    <HomeIcon size={12} />
-                    {selectedBooking.kennel_name}
-                  </div>
-                )}
-              </div>
-
-              {/* Bath Status */}
-              {selectedBooking.bath_requested && (
-                <div className="border border-slate-700 rounded-lg p-3">
-                  <h4 className="text-white font-medium mb-2 flex items-center gap-2">
-                    <ShowerHeadIcon size={16} className="text-cyan-400" />
-                    Bath Service
-                  </h4>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <Checkbox
-                      checked={bathCompleted}
-                      onCheckedChange={setBathCompleted}
-                    />
-                    <span className="text-slate-300">Bath completed</span>
+                <p className="text-sm text-amber-300/80">
+                  This booking has a bath scheduled that hasn't been completed.
+                </p>
+                <div className="flex items-center gap-2 mt-2">
+                  <Checkbox
+                    id="skip-bath"
+                    checked={skipBathCheck}
+                    onCheckedChange={setSkipBathCheck}
+                  />
+                  <label htmlFor="skip-bath" className="text-sm text-amber-300 cursor-pointer">
+                    Skip bath check and proceed
                   </label>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Notes */}
-              <div>
-                <Label className="text-slate-300">Check-Out Notes (Optional)</Label>
-                <Textarea
-                  value={checkOutNotes}
-                  onChange={(e) => setCheckOutNotes(e.target.value)}
-                  placeholder="Any notes about the check-out..."
-                  className="mt-1 bg-slate-800 border-slate-600 text-white"
-                  rows={2}
-                />
+            {/* Dogs Summary */}
+            <div className="bg-slate-800 rounded-lg p-3">
+              <h4 className="text-sm text-slate-400 mb-2">Dogs</h4>
+              <div className="space-y-1">
+                {selectedBooking?.dogs.map(dog => (
+                  <div key={dog.id} className="flex items-center gap-2 text-white">
+                    <DogIcon size={14} className="text-slate-500" />
+                    {dog.name}
+                  </div>
+                ))}
               </div>
             </div>
-          )}
+
+            {/* Items Checklist */}
+            <div>
+              <h4 className="text-sm text-slate-400 mb-2">Items Returned</h4>
+              <div className="grid grid-cols-2 gap-2">
+                {ITEM_CHECKLIST.map(item => (
+                  <div key={item.id} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`checkout-${item.id}`}
+                      checked={checkOutItems.includes(item.id)}
+                      onCheckedChange={() => toggleItem(item.id, checkOutItems, setCheckOutItems)}
+                    />
+                    <label htmlFor={`checkout-${item.id}`} className="text-sm text-slate-300 cursor-pointer">
+                      {item.label}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Payment */}
+            <div className="bg-slate-800 rounded-lg p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-slate-400">Balance Due:</span>
+                <span className="text-white font-semibold">${selectedBooking?.balance_due || selectedBooking?.total_price}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="payment-collected"
+                  checked={paymentCollected}
+                  onCheckedChange={setPaymentCollected}
+                />
+                <label htmlFor="payment-collected" className="text-sm text-slate-300 cursor-pointer">
+                  Payment collected
+                </label>
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <h4 className="text-sm text-slate-400 mb-2">Check-Out Notes</h4>
+              <Textarea
+                value={checkOutNotes}
+                onChange={(e) => setCheckOutNotes(e.target.value)}
+                placeholder="Any notes about the check-out..."
+                className="bg-slate-800 border-slate-700 text-white"
+              />
+            </div>
+          </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCheckOutModal(false)} className="border-slate-600 text-slate-300">
               Cancel
             </Button>
-            <Button onClick={processCheckOut} className="bg-amber-600 hover:bg-amber-700">
-              <LogOutIcon size={16} className="mr-2" />
+            <Button onClick={performCheckOut} className="bg-amber-600 hover:bg-amber-700">
+              <CheckCircleIcon size={16} className="mr-2" />
               Complete Check-Out
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-// Booking Card Component
-function BookingCard({ booking, type, onAction }) {
-  return (
-    <Card className="bg-slate-900 border-slate-700 hover:border-slate-600 transition-colors">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-              type === 'check-in' ? 'bg-emerald-500/20' : 'bg-amber-500/20'
-            }`}>
-              {type === 'check-in' ? (
-                <LogInIcon className="text-emerald-400" size={24} />
-              ) : (
-                <LogOutIcon className="text-amber-400" size={24} />
-              )}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-medium text-white">{booking.customer_name}</h3>
-                {booking.check_in_slot?.time && (
-                  <Badge variant="outline" className="border-slate-600 text-slate-400 text-xs">
-                    <ClockIcon size={10} className="mr-1" />
-                    {booking.check_in_slot.time}
-                  </Badge>
-                )}
-              </div>
-              <div className="flex items-center gap-2 text-sm text-slate-400">
-                <DogIcon size={14} />
-                {booking.dog_names?.join(', ') || `${booking.dog_ids?.length || 0} dog(s)`}
-              </div>
-              <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
-                {booking.kennel_name && (
-                  <span className="flex items-center gap-1">
-                    <HomeIcon size={12} />
-                    {booking.kennel_name}
-                  </span>
-                )}
-                {booking.bath_requested && (
-                  <Badge className={`text-xs ${booking.bath_completed ? 'bg-green-500/20 text-green-400' : 'bg-cyan-500/20 text-cyan-400'}`}>
-                    <ShowerHeadIcon size={10} className="mr-1" />
-                    {booking.bath_completed ? 'Bath Done' : 'Bath Requested'}
-                  </Badge>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          <Button
-            onClick={onAction}
-            className={type === 'check-in' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-amber-600 hover:bg-amber-700'}
-          >
-            {type === 'check-in' ? 'Check In' : 'Check Out'}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
