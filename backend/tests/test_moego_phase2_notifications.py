@@ -138,7 +138,7 @@ class TestSmartBookingWithNotifications:
         }
         dog_response = self.session.post(f"{BASE_URL}/api/dogs", json=dog_data)
         
-        if dog_response.status_code == 201:
+        if dog_response.status_code in [200, 201]:
             dog_id = dog_response.json().get("id")
             
             # Create smart booking
