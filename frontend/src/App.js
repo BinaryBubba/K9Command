@@ -415,6 +415,22 @@ function App() {
             }
           />
           <Route
+            path="/admin/lodging-map"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'staff']}>
+                <LodgingMapPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/check-in-out"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'staff']}>
+                <CheckInOutPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin/*"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
