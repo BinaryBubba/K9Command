@@ -1503,6 +1503,12 @@ async def approve_booking(
         dog_names=dog_names
     )
     
+    # Schedule auto-reminders for the newly approved booking
+    try:
+        await schedule_reminders_for_booking(db, booking, dog_names)
+    except Exception as e:
+        print(f"Failed to schedule reminders: {e}")
+    
     return {"message": "Booking approved", "booking_id": booking_id}
 
 
