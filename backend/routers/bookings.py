@@ -30,6 +30,7 @@ from services.push_notifications import (
     send_admin_alert_push
 )
 from services.reminders import schedule_reminders_for_booking
+from services.email import EmailService
 
 router = APIRouter(prefix="/api/k9", tags=["Bookings"])
 security = HTTPBearer()
