@@ -1323,3 +1323,1444 @@ class EventLogResponse(BaseDBModel):
     data: Dict[str, Any]
     triggered_automations: List[str]
     processed: bool
+
+
+# ==================== CONNECTEAM PARITY: PHASE 1 ====================
+# GPS, Time Clock, Breaks, Overtime, Forms, HR, Training, Announcements
+
+# ==================== GPS & GEOFENCING ====================
+
+class GPSRecord(BaseDBModel):
+    """GPS location capture for clock events"""
+    staff_id: str
+    latitude: float
+    longitude: float
+    accuracy: float  # meters
+    altitude: Optional[float] = None
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    source: str = "mobile"  # mobile, kiosk, manual
+    event_type: str = "clock_in"  # clock_in, clock_out, break_start, break_end
+    event_id: Optional[str] = None  # Reference to time entry or break
+
+
+class GeofenceZone(BaseDBModel):
+    """Geofence boundary for location verification"""
+    name: str
+    location_id: str
+    latitude: float  # Center point
+    longitude: float
+    radius: float = 100.0  # meters, default 100m as specified
+    is_active: bool = True
+    require_within: bool = True  # If true, clock events must be within zone
+    description: Optional[str] = None
+
+
+class GeofenceZoneCreate(BaseModel):
+    name: str
+    location_id: str
+    latitude: float
+    longitude: float
+    radius: float = 100.0
+    is_active: bool = True
+    require_within: bool = True
+    description: Optional[str] = None
+
+
+class GeofenceZoneResponse(BaseDBModel):
+    name: str
+    location_id: str
+    latitude: float
+    longitude: float
+    radius: float
+    is_active: bool
+    require_within: bool
+    description: Optional[str] = None
+
+
+# ==================== ENHANCED TIME CLOCK ====================
+
+class ClockEventType(str, Enum):
+    CLOCK_IN = "clock_in"
+    CLOCK_OUT = "clock_out"
+    BREAK_START = "break_start"
+    BREAK_END = "break_end"
+
+
+class ClockEventSource(str, Enum):
+    MOBILE = "mobile"
+    KIOSK = "kiosk"
+    WEB = "web"
+    MANUAL = "manual"  # Admin correction
+
+
+class DiscrepancyType(str, Enum):
+    MISSING_CLOCK_OUT = "missing_clock_out"
+    MISSING_CLOCK_IN = "missing_clock_in"
+    LOCATION_MISMATCH = "location_mismatch"
+    OUTSIDE_GEOFENCE = "outside_geofence"
+    OUTSIDE_SCHEDULED_SHIFT = "outside_scheduled_shift"
+    OVERTIME_EXCEEDED = "overtime_exceeded"
+    BREAK_VIOLATION = "break_violation"
+
+
+class EnhancedTimeEntry(BaseDBModel):
+    """Extended time entry with GPS, breaks, and discrepancy tracking"""
+    staff_id: str
+    staff_name: Optional[str] = None
+    location_id: str
+    
+    # Clock times
+    clock_in: datetime
+    clock_out: Optional[datetime] = None
+    
+    # GPS data
+    clock_in_gps_id: Optional[str] = None
+    clock_out_gps_id: Optional[str] = None
+    clock_in_within_geofence: bool = True
+    clock_out_within_geofence: Optional[bool] = None
+    
+    # Source tracking
+    clock_in_source: ClockEventSource = ClockEventSource.MOBILE
+    clock_out_source: Optional[ClockEventSource] = None
+    
+    # Shift association
+    shift_id: Optional[str] = None
+    
+    # Calculated hours
+    regular_hours: float = 0.0
+    overtime_hours: float = 0.0
+    double_time_hours: float = 0.0
+    total_break_minutes: int = 0
+    paid_break_minutes: int = 0
+    unpaid_break_minutes: int = 0
+    
+    # Rounding applied
+    rounded_clock_in: Optional[datetime] = None
+    rounded_clock_out: Optional[datetime] = None
+    rounding_rule_applied: Optional[str] = None
+    
+    # Status
+    status: str = "active"  # active, approved, locked, flagged
+    discrepancies: List[str] = []  # List of DiscrepancyType values
+    
+    # Approval
+    approved_by: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    pay_period_id: Optional[str] = None
+    
+    # Notes
+    notes: Optional[str] = None
+    admin_notes: Optional[str] = None
+
+
+class EnhancedTimeEntryCreate(BaseModel):
+    location_id: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    accuracy: Optional[float] = None
+    source: ClockEventSource = ClockEventSource.MOBILE
+    shift_id: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class EnhancedTimeEntryResponse(BaseDBModel):
+    staff_id: str
+    staff_name: Optional[str] = None
+    location_id: str
+    clock_in: datetime
+    clock_out: Optional[datetime] = None
+    clock_in_within_geofence: bool
+    clock_out_within_geofence: Optional[bool] = None
+    clock_in_source: ClockEventSource
+    clock_out_source: Optional[ClockEventSource] = None
+    shift_id: Optional[str] = None
+    regular_hours: float
+    overtime_hours: float
+    double_time_hours: float
+    total_break_minutes: int
+    status: str
+    discrepancies: List[str] = []
+    approved_by: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    pay_period_id: Optional[str] = None
+    notes: Optional[str] = None
+
+
+# ==================== BREAK TRACKING ====================
+
+class BreakType(str, Enum):
+    LUNCH = "lunch"
+    REST = "rest"
+    PERSONAL = "personal"
+    OTHER = "other"
+
+
+class BreakEntry(BaseDBModel):
+    """Individual break within a time entry"""
+    time_entry_id: str
+    staff_id: str
+    break_type: BreakType = BreakType.REST
+    start_time: datetime
+    end_time: Optional[datetime] = None
+    is_paid: bool = False
+    duration_minutes: Optional[int] = None  # Calculated on end
+    
+    # GPS
+    start_gps_id: Optional[str] = None
+    end_gps_id: Optional[str] = None
+    
+    notes: Optional[str] = None
+    auto_deducted: bool = False  # True if auto-deducted by policy
+
+
+class BreakEntryCreate(BaseModel):
+    time_entry_id: str
+    break_type: BreakType = BreakType.REST
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    accuracy: Optional[float] = None
+    notes: Optional[str] = None
+
+
+class BreakEntryResponse(BaseDBModel):
+    time_entry_id: str
+    staff_id: str
+    break_type: BreakType
+    start_time: datetime
+    end_time: Optional[datetime] = None
+    is_paid: bool
+    duration_minutes: Optional[int] = None
+    notes: Optional[str] = None
+
+
+class BreakPolicy(BaseDBModel):
+    """Break rules per location/role"""
+    name: str
+    location_id: Optional[str] = None  # None = all locations
+    role: Optional[str] = None  # None = all roles
+    
+    # Break rules
+    min_shift_for_break: float = 4.0  # Hours worked before break required
+    break_duration_minutes: int = 30
+    is_paid: bool = False
+    auto_deduct: bool = False  # Auto-deduct if not taken
+    
+    # Multiple breaks
+    second_break_after_hours: Optional[float] = None  # e.g., 8 hours
+    second_break_duration_minutes: Optional[int] = None
+    
+    is_active: bool = True
+    description: Optional[str] = None
+
+
+class BreakPolicyCreate(BaseModel):
+    name: str
+    location_id: Optional[str] = None
+    role: Optional[str] = None
+    min_shift_for_break: float = 4.0
+    break_duration_minutes: int = 30
+    is_paid: bool = False
+    auto_deduct: bool = False
+    second_break_after_hours: Optional[float] = None
+    second_break_duration_minutes: Optional[int] = None
+    is_active: bool = True
+    description: Optional[str] = None
+
+
+class BreakPolicyResponse(BaseDBModel):
+    name: str
+    location_id: Optional[str] = None
+    role: Optional[str] = None
+    min_shift_for_break: float
+    break_duration_minutes: int
+    is_paid: bool
+    auto_deduct: bool
+    second_break_after_hours: Optional[float] = None
+    second_break_duration_minutes: Optional[int] = None
+    is_active: bool
+    description: Optional[str] = None
+
+
+# ==================== OVERTIME RULES ====================
+
+class OvertimeRule(BaseDBModel):
+    """Overtime calculation rules - weekly with admin-configurable limits"""
+    name: str
+    location_id: Optional[str] = None  # None = all locations
+    
+    # Weekly overtime (primary)
+    weekly_regular_hours: float = 40.0  # Hours before OT kicks in
+    weekly_overtime_multiplier: float = 1.5  # 1.5x pay
+    
+    # Double time (optional)
+    weekly_double_time_hours: Optional[float] = None  # e.g., 60 hours
+    double_time_multiplier: float = 2.0
+    
+    # Daily limits (optional, admin-configurable)
+    daily_regular_hours: Optional[float] = None  # e.g., 8 hours
+    daily_overtime_multiplier: Optional[float] = None
+    
+    # Caps
+    max_weekly_hours: Optional[float] = None  # Hard cap
+    max_daily_hours: Optional[float] = None
+    
+    is_active: bool = True
+    priority: int = 0  # Higher priority rules override
+    description: Optional[str] = None
+
+
+class OvertimeRuleCreate(BaseModel):
+    name: str
+    location_id: Optional[str] = None
+    weekly_regular_hours: float = 40.0
+    weekly_overtime_multiplier: float = 1.5
+    weekly_double_time_hours: Optional[float] = None
+    double_time_multiplier: float = 2.0
+    daily_regular_hours: Optional[float] = None
+    daily_overtime_multiplier: Optional[float] = None
+    max_weekly_hours: Optional[float] = None
+    max_daily_hours: Optional[float] = None
+    is_active: bool = True
+    priority: int = 0
+    description: Optional[str] = None
+
+
+class OvertimeRuleResponse(BaseDBModel):
+    name: str
+    location_id: Optional[str] = None
+    weekly_regular_hours: float
+    weekly_overtime_multiplier: float
+    weekly_double_time_hours: Optional[float] = None
+    double_time_multiplier: float
+    daily_regular_hours: Optional[float] = None
+    daily_overtime_multiplier: Optional[float] = None
+    max_weekly_hours: Optional[float] = None
+    max_daily_hours: Optional[float] = None
+    is_active: bool
+    priority: int
+    description: Optional[str] = None
+
+
+# ==================== PUNCH ROUNDING ====================
+
+class RoundingDirection(str, Enum):
+    NEAREST = "nearest"
+    UP = "up"
+    DOWN = "down"
+
+
+class PunchRoundingRule(BaseDBModel):
+    """Punch rounding configuration"""
+    name: str
+    location_id: Optional[str] = None
+    
+    # Rounding interval in minutes (5, 10, 15, etc.)
+    interval_minutes: int = 15
+    
+    # Direction
+    clock_in_direction: RoundingDirection = RoundingDirection.NEAREST
+    clock_out_direction: RoundingDirection = RoundingDirection.NEAREST
+    
+    # Grace period (optional)
+    grace_period_minutes: int = 0  # Minutes before/after scheduled time
+    
+    is_active: bool = True
+    description: Optional[str] = None
+
+
+class PunchRoundingRuleCreate(BaseModel):
+    name: str
+    location_id: Optional[str] = None
+    interval_minutes: int = 15
+    clock_in_direction: RoundingDirection = RoundingDirection.NEAREST
+    clock_out_direction: RoundingDirection = RoundingDirection.NEAREST
+    grace_period_minutes: int = 0
+    is_active: bool = True
+    description: Optional[str] = None
+
+
+class PunchRoundingRuleResponse(BaseDBModel):
+    name: str
+    location_id: Optional[str] = None
+    interval_minutes: int
+    clock_in_direction: RoundingDirection
+    clock_out_direction: RoundingDirection
+    grace_period_minutes: int
+    is_active: bool
+    description: Optional[str] = None
+
+
+# ==================== PAY PERIODS & TIMESHEETS ====================
+
+class PayPeriodType(str, Enum):
+    WEEKLY = "weekly"
+    BIWEEKLY = "biweekly"
+    SEMIMONTHLY = "semimonthly"
+    MONTHLY = "monthly"
+
+
+class PayPeriodStatus(str, Enum):
+    OPEN = "open"
+    PENDING_APPROVAL = "pending_approval"
+    APPROVED = "approved"
+    LOCKED = "locked"
+    EXPORTED = "exported"
+
+
+class PayPeriod(BaseDBModel):
+    """Pay period for timesheet grouping and locking"""
+    name: str
+    location_id: Optional[str] = None  # None = all locations
+    period_type: PayPeriodType = PayPeriodType.BIWEEKLY
+    start_date: datetime
+    end_date: datetime
+    status: PayPeriodStatus = PayPeriodStatus.OPEN
+    
+    # Approval tracking
+    approved_by: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    locked_by: Optional[str] = None
+    locked_at: Optional[datetime] = None
+    
+    # Export tracking
+    exported_at: Optional[datetime] = None
+    export_format: Optional[str] = None  # csv, pdf
+    export_url: Optional[str] = None
+    
+    notes: Optional[str] = None
+
+
+class PayPeriodCreate(BaseModel):
+    name: str
+    location_id: Optional[str] = None
+    period_type: PayPeriodType = PayPeriodType.BIWEEKLY
+    start_date: datetime
+    end_date: datetime
+    notes: Optional[str] = None
+
+
+class PayPeriodResponse(BaseDBModel):
+    name: str
+    location_id: Optional[str] = None
+    period_type: PayPeriodType
+    start_date: datetime
+    end_date: datetime
+    status: PayPeriodStatus
+    approved_by: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    locked_by: Optional[str] = None
+    locked_at: Optional[datetime] = None
+    exported_at: Optional[datetime] = None
+    notes: Optional[str] = None
+
+
+class TimesheetSummary(BaseModel):
+    """Summary of hours for a staff member in a pay period"""
+    staff_id: str
+    staff_name: str
+    pay_period_id: str
+    
+    # Hours breakdown
+    total_hours: float = 0.0
+    regular_hours: float = 0.0
+    overtime_hours: float = 0.0
+    double_time_hours: float = 0.0
+    
+    # Breaks
+    total_break_minutes: int = 0
+    paid_break_minutes: int = 0
+    unpaid_break_minutes: int = 0
+    
+    # Entries
+    entry_count: int = 0
+    entries_approved: int = 0
+    entries_pending: int = 0
+    entries_flagged: int = 0
+    
+    # Discrepancies
+    discrepancy_count: int = 0
+    discrepancies: List[Dict[str, Any]] = []
+
+
+# ==================== SHIFT TEMPLATES & SWAPS ====================
+
+class ShiftTemplate(BaseDBModel):
+    """Reusable shift pattern"""
+    name: str
+    location_id: str
+    
+    # Time pattern (not actual dates)
+    start_time: str  # "09:00" format
+    end_time: str    # "17:00" format
+    
+    # Assignment
+    role: Optional[str] = None  # staff, admin
+    default_staff_id: Optional[str] = None
+    
+    # Recurrence
+    days_of_week: List[int] = []  # 0=Monday, 6=Sunday
+    is_active: bool = True
+    
+    # Attached items
+    task_template_ids: List[str] = []  # Tasks auto-created with shift
+    notes: Optional[str] = None
+    color: Optional[str] = None  # For calendar display
+
+
+class ShiftTemplateCreate(BaseModel):
+    name: str
+    location_id: str
+    start_time: str
+    end_time: str
+    role: Optional[str] = None
+    default_staff_id: Optional[str] = None
+    days_of_week: List[int] = []
+    is_active: bool = True
+    task_template_ids: List[str] = []
+    notes: Optional[str] = None
+    color: Optional[str] = None
+
+
+class ShiftTemplateResponse(BaseDBModel):
+    name: str
+    location_id: str
+    start_time: str
+    end_time: str
+    role: Optional[str] = None
+    default_staff_id: Optional[str] = None
+    days_of_week: List[int]
+    is_active: bool
+    task_template_ids: List[str]
+    notes: Optional[str] = None
+    color: Optional[str] = None
+
+
+class ShiftSwapStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    CANCELLED = "cancelled"
+
+
+class ShiftSwapRequest(BaseDBModel):
+    """Request to swap/trade shifts between staff"""
+    shift_id: str
+    requesting_staff_id: str
+    requesting_staff_name: str
+    target_staff_id: str
+    target_staff_name: str
+    
+    # Optional: swap for another shift
+    swap_shift_id: Optional[str] = None  # If trading shifts
+    
+    reason: Optional[str] = None
+    status: ShiftSwapStatus = ShiftSwapStatus.PENDING
+    
+    # Approval
+    reviewed_by: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+    review_notes: Optional[str] = None
+
+
+class ShiftSwapRequestCreate(BaseModel):
+    shift_id: str
+    target_staff_id: str
+    swap_shift_id: Optional[str] = None
+    reason: Optional[str] = None
+
+
+class ShiftSwapRequestResponse(BaseDBModel):
+    shift_id: str
+    requesting_staff_id: str
+    requesting_staff_name: str
+    target_staff_id: str
+    target_staff_name: str
+    swap_shift_id: Optional[str] = None
+    reason: Optional[str] = None
+    status: ShiftSwapStatus
+    reviewed_by: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+    review_notes: Optional[str] = None
+
+
+# Extend existing Shift model fields (to be added via migration)
+class EnhancedShift(BaseDBModel):
+    """Extended shift with template support and attachments"""
+    staff_id: str
+    staff_name: Optional[str] = None
+    location_id: str
+    start_time: datetime
+    end_time: datetime
+    
+    # Template reference
+    template_id: Optional[str] = None
+    is_recurring: bool = False
+    recurrence_rule: Optional[str] = None  # iCal RRULE format
+    
+    # Status
+    status: str = "scheduled"  # scheduled, in_progress, completed, cancelled
+    
+    # Planned vs actual
+    actual_start: Optional[datetime] = None
+    actual_end: Optional[datetime] = None
+    time_entry_id: Optional[str] = None  # Link to actual time entry
+    
+    # Attachments
+    task_ids: List[str] = []
+    form_ids: List[str] = []
+    
+    notes: Optional[str] = None
+    color: Optional[str] = None
+    
+    # Publishing
+    published: bool = False
+    published_at: Optional[datetime] = None
+
+
+# ==================== FORMS ENGINE ====================
+
+class FormFieldType(str, Enum):
+    TEXT = "text"
+    TEXTAREA = "textarea"
+    NUMBER = "number"
+    DATE = "date"
+    TIME = "time"
+    DATETIME = "datetime"
+    SELECT = "select"
+    MULTISELECT = "multiselect"
+    CHECKBOX = "checkbox"
+    RADIO = "radio"
+    FILE = "file"
+    PHOTO = "photo"  # Camera capture
+    SIGNATURE = "signature"  # Signature pad
+    GPS = "gps"  # Location stamp
+    BARCODE = "barcode"  # Barcode/QR scanner
+    SECTION = "section"  # Section divider
+    INSTRUCTIONS = "instructions"  # Read-only text
+
+
+class FormField(BaseModel):
+    """Individual field in a form template"""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    field_type: FormFieldType
+    label: str
+    placeholder: Optional[str] = None
+    help_text: Optional[str] = None
+    
+    # Validation
+    required: bool = False
+    min_length: Optional[int] = None
+    max_length: Optional[int] = None
+    min_value: Optional[float] = None
+    max_value: Optional[float] = None
+    pattern: Optional[str] = None  # Regex pattern
+    
+    # Options (for select, multiselect, radio, checkbox)
+    options: List[Dict[str, str]] = []  # [{"value": "x", "label": "X"}]
+    
+    # Conditional logic
+    show_if: Optional[Dict[str, Any]] = None  # {"field_id": "x", "equals": "value"}
+    
+    # Layout
+    order: int = 0
+    width: str = "full"  # full, half, third
+
+
+class FormTemplate(BaseDBModel):
+    """Form template definition"""
+    name: str
+    description: Optional[str] = None
+    location_id: Optional[str] = None  # None = all locations
+    
+    # Fields
+    fields: List[FormField] = []
+    
+    # Assignment
+    assignable_to: str = "all"  # all, staff, admin, role:xyz
+    
+    # Settings
+    require_signature: bool = False
+    require_gps: bool = False
+    allow_save_draft: bool = True
+    allow_edit_after_submit: bool = False
+    
+    # Notifications
+    notify_on_submit: List[str] = []  # User IDs or roles
+    
+    # Status
+    is_active: bool = True
+    is_template: bool = True  # False for ad-hoc forms
+    version: int = 1
+    
+    # Categories/tags
+    category: Optional[str] = None
+    tags: List[str] = []
+
+
+class FormTemplateCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    location_id: Optional[str] = None
+    fields: List[Dict[str, Any]] = []
+    assignable_to: str = "all"
+    require_signature: bool = False
+    require_gps: bool = False
+    allow_save_draft: bool = True
+    allow_edit_after_submit: bool = False
+    notify_on_submit: List[str] = []
+    is_active: bool = True
+    category: Optional[str] = None
+    tags: List[str] = []
+
+
+class FormTemplateResponse(BaseDBModel):
+    name: str
+    description: Optional[str] = None
+    location_id: Optional[str] = None
+    fields: List[Dict[str, Any]]
+    assignable_to: str
+    require_signature: bool
+    require_gps: bool
+    allow_save_draft: bool
+    allow_edit_after_submit: bool
+    notify_on_submit: List[str]
+    is_active: bool
+    version: int
+    category: Optional[str] = None
+    tags: List[str]
+
+
+class FormSubmissionStatus(str, Enum):
+    DRAFT = "draft"
+    SUBMITTED = "submitted"
+    UNDER_REVIEW = "under_review"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    ARCHIVED = "archived"
+
+
+class FormSubmission(BaseDBModel):
+    """Completed form submission"""
+    template_id: str
+    template_name: str
+    submitted_by: str
+    submitted_by_name: str
+    location_id: Optional[str] = None
+    
+    # Field values
+    values: Dict[str, Any] = {}  # field_id -> value
+    
+    # Attachments (file URLs)
+    attachments: List[Dict[str, str]] = []  # [{"field_id": "x", "url": "..."}]
+    
+    # Signature
+    signature_data: Optional[str] = None  # Base64 or URL
+    signature_timestamp: Optional[datetime] = None
+    
+    # GPS
+    gps_latitude: Optional[float] = None
+    gps_longitude: Optional[float] = None
+    gps_accuracy: Optional[float] = None
+    gps_timestamp: Optional[datetime] = None
+    
+    # Status
+    status: FormSubmissionStatus = FormSubmissionStatus.DRAFT
+    submitted_at: Optional[datetime] = None
+    
+    # Review
+    reviewed_by: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+    review_notes: Optional[str] = None
+    
+    # Association
+    related_type: Optional[str] = None  # booking, task, shift, etc.
+    related_id: Optional[str] = None
+
+
+class FormSubmissionCreate(BaseModel):
+    template_id: str
+    values: Dict[str, Any] = {}
+    attachments: List[Dict[str, str]] = []
+    signature_data: Optional[str] = None
+    gps_latitude: Optional[float] = None
+    gps_longitude: Optional[float] = None
+    gps_accuracy: Optional[float] = None
+    status: FormSubmissionStatus = FormSubmissionStatus.DRAFT
+    related_type: Optional[str] = None
+    related_id: Optional[str] = None
+
+
+class FormSubmissionResponse(BaseDBModel):
+    template_id: str
+    template_name: str
+    submitted_by: str
+    submitted_by_name: str
+    location_id: Optional[str] = None
+    values: Dict[str, Any]
+    attachments: List[Dict[str, str]]
+    signature_data: Optional[str] = None
+    gps_latitude: Optional[float] = None
+    gps_longitude: Optional[float] = None
+    status: FormSubmissionStatus
+    submitted_at: Optional[datetime] = None
+    reviewed_by: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+    review_notes: Optional[str] = None
+    related_type: Optional[str] = None
+    related_id: Optional[str] = None
+
+
+# ==================== TASK TEMPLATES & CHECKLISTS ====================
+
+class TaskTemplate(BaseDBModel):
+    """Reusable task template"""
+    name: str
+    description: Optional[str] = None
+    location_id: Optional[str] = None
+    
+    # Checklist items
+    checklist_items: List[Dict[str, Any]] = []  # [{"text": "x", "required": true}]
+    
+    # Assignment rules
+    assign_to_role: Optional[str] = None
+    assign_to_team: Optional[str] = None
+    assign_to_staff_id: Optional[str] = None
+    
+    # Timing
+    default_due_hours: Optional[int] = None  # Hours after creation
+    
+    # Recurrence
+    is_recurring: bool = False
+    recurrence_rule: Optional[str] = None
+    
+    # Forms
+    form_template_ids: List[str] = []  # Forms to attach
+    
+    # Priority
+    priority: str = "medium"  # low, medium, high, urgent
+    
+    # Reminders
+    reminder_hours_before: List[int] = []  # e.g., [24, 2] = 24h and 2h before
+    escalate_after_hours: Optional[int] = None
+    escalate_to: Optional[str] = None  # User ID or role
+    
+    is_active: bool = True
+    category: Optional[str] = None
+    tags: List[str] = []
+
+
+class TaskTemplateCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    location_id: Optional[str] = None
+    checklist_items: List[Dict[str, Any]] = []
+    assign_to_role: Optional[str] = None
+    assign_to_team: Optional[str] = None
+    assign_to_staff_id: Optional[str] = None
+    default_due_hours: Optional[int] = None
+    is_recurring: bool = False
+    recurrence_rule: Optional[str] = None
+    form_template_ids: List[str] = []
+    priority: str = "medium"
+    reminder_hours_before: List[int] = []
+    escalate_after_hours: Optional[int] = None
+    escalate_to: Optional[str] = None
+    is_active: bool = True
+    category: Optional[str] = None
+    tags: List[str] = []
+
+
+class TaskTemplateResponse(BaseDBModel):
+    name: str
+    description: Optional[str] = None
+    location_id: Optional[str] = None
+    checklist_items: List[Dict[str, Any]]
+    assign_to_role: Optional[str] = None
+    assign_to_team: Optional[str] = None
+    assign_to_staff_id: Optional[str] = None
+    default_due_hours: Optional[int] = None
+    is_recurring: bool
+    recurrence_rule: Optional[str] = None
+    form_template_ids: List[str]
+    priority: str
+    reminder_hours_before: List[int]
+    escalate_after_hours: Optional[int] = None
+    escalate_to: Optional[str] = None
+    is_active: bool
+    category: Optional[str] = None
+    tags: List[str]
+
+
+class EnhancedTask(BaseDBModel):
+    """Extended task with templates, assignments, and tracking"""
+    title: str
+    description: Optional[str] = None
+    location_id: str
+    
+    # Template reference
+    template_id: Optional[str] = None
+    
+    # Assignment
+    assigned_to: Optional[str] = None  # User ID
+    assigned_to_name: Optional[str] = None
+    assigned_to_role: Optional[str] = None
+    assigned_to_team: Optional[str] = None
+    assigned_by: Optional[str] = None
+    
+    # Timing
+    due_date: Optional[datetime] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    
+    # Checklist
+    checklist_items: List[Dict[str, Any]] = []  # [{"text": "x", "completed": false, "completed_by": null}]
+    checklist_progress: float = 0.0  # 0-100
+    
+    # Status
+    status: TaskStatus = TaskStatus.PENDING
+    
+    # Completion
+    completed_by: Optional[str] = None
+    completed_by_name: Optional[str] = None
+    
+    # Forms
+    form_submission_ids: List[str] = []
+    
+    # Priority & escalation
+    priority: str = "medium"
+    escalated: bool = False
+    escalated_at: Optional[datetime] = None
+    escalated_to: Optional[str] = None
+    
+    # Reminders sent
+    reminders_sent: List[datetime] = []
+    
+    # Association
+    shift_id: Optional[str] = None
+    booking_id: Optional[str] = None
+    
+    notes: Optional[str] = None
+    tags: List[str] = []
+
+
+# ==================== HR / TIME OFF ====================
+
+class TimeOffType(str, Enum):
+    VACATION = "vacation"
+    SICK = "sick"
+    PERSONAL = "personal"
+    BEREAVEMENT = "bereavement"
+    JURY_DUTY = "jury_duty"
+    UNPAID = "unpaid"
+    OTHER = "other"
+
+
+class AccrualFrequency(str, Enum):
+    PER_PAY_PERIOD = "per_pay_period"
+    MONTHLY = "monthly"
+    YEARLY = "yearly"
+    ANNIVERSARY = "anniversary"
+
+
+class TimeOffPolicy(BaseDBModel):
+    """Time off accrual and rules policy"""
+    name: str
+    time_off_type: TimeOffType
+    location_id: Optional[str] = None  # None = all locations
+    
+    # Accrual
+    accrual_rate: float = 0.0  # Hours accrued per period
+    accrual_frequency: AccrualFrequency = AccrualFrequency.PER_PAY_PERIOD
+    accrual_start_date: Optional[datetime] = None  # When accrual begins for new staff
+    
+    # Limits
+    max_balance: Optional[float] = None  # Max hours that can accumulate
+    max_carryover: Optional[float] = None  # Max hours carried to next year
+    
+    # Waiting period
+    waiting_period_days: int = 0  # Days before staff can use
+    
+    # Request rules
+    min_request_hours: float = 1.0
+    max_request_days: Optional[int] = None
+    advance_notice_days: int = 0
+    
+    # Approval
+    requires_approval: bool = True
+    auto_approve_under_hours: Optional[float] = None
+    
+    is_paid: bool = True
+    is_active: bool = True
+    description: Optional[str] = None
+
+
+class TimeOffPolicyCreate(BaseModel):
+    name: str
+    time_off_type: TimeOffType
+    location_id: Optional[str] = None
+    accrual_rate: float = 0.0
+    accrual_frequency: AccrualFrequency = AccrualFrequency.PER_PAY_PERIOD
+    max_balance: Optional[float] = None
+    max_carryover: Optional[float] = None
+    waiting_period_days: int = 0
+    min_request_hours: float = 1.0
+    max_request_days: Optional[int] = None
+    advance_notice_days: int = 0
+    requires_approval: bool = True
+    auto_approve_under_hours: Optional[float] = None
+    is_paid: bool = True
+    is_active: bool = True
+    description: Optional[str] = None
+
+
+class TimeOffPolicyResponse(BaseDBModel):
+    name: str
+    time_off_type: TimeOffType
+    location_id: Optional[str] = None
+    accrual_rate: float
+    accrual_frequency: AccrualFrequency
+    max_balance: Optional[float] = None
+    max_carryover: Optional[float] = None
+    waiting_period_days: int
+    min_request_hours: float
+    max_request_days: Optional[int] = None
+    advance_notice_days: int
+    requires_approval: bool
+    auto_approve_under_hours: Optional[float] = None
+    is_paid: bool
+    is_active: bool
+    description: Optional[str] = None
+
+
+class TimeOffRequestStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    CANCELLED = "cancelled"
+
+
+class TimeOffRequest(BaseDBModel):
+    """Staff time off request"""
+    staff_id: str
+    staff_name: str
+    policy_id: str
+    time_off_type: TimeOffType
+    
+    # Request details
+    start_date: datetime
+    end_date: datetime
+    hours_requested: float
+    
+    reason: Optional[str] = None
+    
+    # Status
+    status: TimeOffRequestStatus = TimeOffRequestStatus.PENDING
+    
+    # Approval
+    reviewed_by: Optional[str] = None
+    reviewed_by_name: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+    review_notes: Optional[str] = None
+    
+    # Balance snapshot at time of request
+    balance_before: float = 0.0
+    balance_after: float = 0.0
+
+
+class TimeOffRequestCreate(BaseModel):
+    policy_id: str
+    start_date: datetime
+    end_date: datetime
+    hours_requested: float
+    reason: Optional[str] = None
+
+
+class TimeOffRequestResponse(BaseDBModel):
+    staff_id: str
+    staff_name: str
+    policy_id: str
+    time_off_type: TimeOffType
+    start_date: datetime
+    end_date: datetime
+    hours_requested: float
+    reason: Optional[str] = None
+    status: TimeOffRequestStatus
+    reviewed_by: Optional[str] = None
+    reviewed_by_name: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+    review_notes: Optional[str] = None
+    balance_before: float
+    balance_after: float
+
+
+class TimeOffBalance(BaseDBModel):
+    """Staff time off balance per policy"""
+    staff_id: str
+    policy_id: str
+    time_off_type: TimeOffType
+    
+    # Current balance
+    balance_hours: float = 0.0
+    
+    # Tracking
+    accrued_ytd: float = 0.0  # Year to date accrued
+    used_ytd: float = 0.0  # Year to date used
+    pending_hours: float = 0.0  # In pending requests
+    
+    # Last updated
+    last_accrual_date: Optional[datetime] = None
+    
+    # Carryover from previous year
+    carryover_hours: float = 0.0
+
+
+class TimeOffBalanceResponse(BaseDBModel):
+    staff_id: str
+    policy_id: str
+    time_off_type: TimeOffType
+    balance_hours: float
+    accrued_ytd: float
+    used_ytd: float
+    pending_hours: float
+    last_accrual_date: Optional[datetime] = None
+    carryover_hours: float
+
+
+# ==================== TRAINING & KNOWLEDGE ====================
+
+class CourseStatus(str, Enum):
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    ARCHIVED = "archived"
+
+
+class Course(BaseDBModel):
+    """Training course/module"""
+    title: str
+    description: Optional[str] = None
+    location_id: Optional[str] = None  # None = all locations
+    
+    # Content
+    content_type: str = "document"  # document, video, mixed
+    content_url: Optional[str] = None
+    content_html: Optional[str] = None
+    video_url: Optional[str] = None
+    
+    # Structure
+    sections: List[Dict[str, Any]] = []  # [{"title": "x", "content": "...", "video_url": null}]
+    
+    # Quiz
+    has_quiz: bool = False
+    quiz_id: Optional[str] = None
+    passing_score: Optional[int] = None  # Percentage
+    
+    # Assignment
+    required_for_roles: List[str] = []  # Roles that must complete
+    required_for_new_staff: bool = False
+    due_days_after_start: Optional[int] = None  # Days after employment start
+    
+    # Deadline
+    due_date: Optional[datetime] = None  # Global deadline
+    
+    # Status
+    status: CourseStatus = CourseStatus.DRAFT
+    
+    # Metadata
+    duration_minutes: Optional[int] = None
+    category: Optional[str] = None
+    tags: List[str] = []
+    
+    # Versioning
+    version: int = 1
+
+
+class CourseCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    location_id: Optional[str] = None
+    content_type: str = "document"
+    content_url: Optional[str] = None
+    content_html: Optional[str] = None
+    video_url: Optional[str] = None
+    sections: List[Dict[str, Any]] = []
+    has_quiz: bool = False
+    quiz_id: Optional[str] = None
+    passing_score: Optional[int] = None
+    required_for_roles: List[str] = []
+    required_for_new_staff: bool = False
+    due_days_after_start: Optional[int] = None
+    due_date: Optional[datetime] = None
+    status: CourseStatus = CourseStatus.DRAFT
+    duration_minutes: Optional[int] = None
+    category: Optional[str] = None
+    tags: List[str] = []
+
+
+class CourseResponse(BaseDBModel):
+    title: str
+    description: Optional[str] = None
+    location_id: Optional[str] = None
+    content_type: str
+    content_url: Optional[str] = None
+    video_url: Optional[str] = None
+    sections: List[Dict[str, Any]]
+    has_quiz: bool
+    quiz_id: Optional[str] = None
+    passing_score: Optional[int] = None
+    required_for_roles: List[str]
+    required_for_new_staff: bool
+    due_days_after_start: Optional[int] = None
+    due_date: Optional[datetime] = None
+    status: CourseStatus
+    duration_minutes: Optional[int] = None
+    category: Optional[str] = None
+    tags: List[str]
+    version: int
+
+
+class Quiz(BaseDBModel):
+    """Quiz for training assessment"""
+    title: str
+    description: Optional[str] = None
+    course_id: Optional[str] = None
+    
+    # Questions
+    questions: List[Dict[str, Any]] = []  # [{"text": "?", "type": "multiple_choice", "options": [], "correct_answer": "x"}]
+    
+    # Settings
+    passing_score: int = 70  # Percentage
+    max_attempts: Optional[int] = None
+    time_limit_minutes: Optional[int] = None
+    shuffle_questions: bool = False
+    show_correct_answers: bool = True
+    
+    is_active: bool = True
+
+
+class QuizCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    course_id: Optional[str] = None
+    questions: List[Dict[str, Any]] = []
+    passing_score: int = 70
+    max_attempts: Optional[int] = None
+    time_limit_minutes: Optional[int] = None
+    shuffle_questions: bool = False
+    show_correct_answers: bool = True
+    is_active: bool = True
+
+
+class QuizResponse(BaseDBModel):
+    title: str
+    description: Optional[str] = None
+    course_id: Optional[str] = None
+    questions: List[Dict[str, Any]]
+    passing_score: int
+    max_attempts: Optional[int] = None
+    time_limit_minutes: Optional[int] = None
+    shuffle_questions: bool
+    show_correct_answers: bool
+    is_active: bool
+
+
+class QuizAttempt(BaseDBModel):
+    """Staff quiz attempt"""
+    quiz_id: str
+    staff_id: str
+    staff_name: str
+    
+    # Answers
+    answers: Dict[str, Any] = {}  # question_id -> answer
+    
+    # Results
+    score: float = 0.0
+    passed: bool = False
+    
+    # Timing
+    started_at: datetime
+    completed_at: Optional[datetime] = None
+    time_taken_seconds: Optional[int] = None
+    
+    attempt_number: int = 1
+
+
+class CourseProgress(BaseDBModel):
+    """Staff progress on a course"""
+    course_id: str
+    staff_id: str
+    staff_name: str
+    
+    # Progress
+    status: str = "not_started"  # not_started, in_progress, completed
+    progress_percentage: float = 0.0
+    sections_completed: List[str] = []
+    
+    # Timing
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    
+    # Quiz
+    quiz_passed: bool = False
+    quiz_attempts: int = 0
+    best_quiz_score: Optional[float] = None
+    
+    # Due date for this staff member
+    due_date: Optional[datetime] = None
+    overdue: bool = False
+
+
+class KnowledgeArticle(BaseDBModel):
+    """Knowledge base article"""
+    title: str
+    content: str  # HTML or Markdown
+    location_id: Optional[str] = None  # None = all locations
+    
+    # Organization
+    category: Optional[str] = None
+    tags: List[str] = []
+    
+    # Access
+    visible_to_roles: List[str] = []  # Empty = all
+    
+    # Versioning
+    version: int = 1
+    revision_history: List[Dict[str, Any]] = []  # [{"version": 1, "updated_by": "x", "updated_at": "..."}]
+    
+    # Status
+    status: str = "published"  # draft, published, archived
+    
+    # Search
+    search_keywords: List[str] = []
+    
+    # Attachments
+    attachments: List[Dict[str, str]] = []  # [{"name": "x", "url": "..."}]
+    
+    # Metadata
+    author_id: str
+    author_name: str
+    last_updated_by: Optional[str] = None
+
+
+class KnowledgeArticleCreate(BaseModel):
+    title: str
+    content: str
+    location_id: Optional[str] = None
+    category: Optional[str] = None
+    tags: List[str] = []
+    visible_to_roles: List[str] = []
+    status: str = "published"
+    search_keywords: List[str] = []
+    attachments: List[Dict[str, str]] = []
+
+
+class KnowledgeArticleResponse(BaseDBModel):
+    title: str
+    content: str
+    location_id: Optional[str] = None
+    category: Optional[str] = None
+    tags: List[str]
+    visible_to_roles: List[str]
+    version: int
+    status: str
+    author_id: str
+    author_name: str
+    attachments: List[Dict[str, str]]
+
+
+# ==================== ANNOUNCEMENTS ====================
+
+class AnnouncementPriority(str, Enum):
+    LOW = "low"
+    NORMAL = "normal"
+    HIGH = "high"
+    URGENT = "urgent"
+
+
+class Announcement(BaseDBModel):
+    """Company announcements and updates"""
+    title: str
+    content: str  # HTML or Markdown
+    
+    # Author
+    author_id: str
+    author_name: str
+    
+    # Targeting
+    location_id: Optional[str] = None  # None = all locations
+    target_roles: List[str] = []  # Empty = all
+    target_teams: List[str] = []  # Empty = all
+    target_staff_ids: List[str] = []  # Specific users
+    
+    # Priority & pinning
+    priority: AnnouncementPriority = AnnouncementPriority.NORMAL
+    is_pinned: bool = False
+    
+    # Acknowledgement
+    requires_acknowledgement: bool = False
+    acknowledgement_deadline: Optional[datetime] = None
+    
+    # Scheduling
+    publish_at: Optional[datetime] = None  # Scheduled publish
+    expires_at: Optional[datetime] = None
+    
+    # Status
+    status: str = "draft"  # draft, published, archived
+    published_at: Optional[datetime] = None
+    
+    # Attachments
+    attachments: List[Dict[str, str]] = []
+    
+    # Tracking
+    view_count: int = 0
+    acknowledgement_count: int = 0
+
+
+class AnnouncementCreate(BaseModel):
+    title: str
+    content: str
+    location_id: Optional[str] = None
+    target_roles: List[str] = []
+    target_teams: List[str] = []
+    target_staff_ids: List[str] = []
+    priority: AnnouncementPriority = AnnouncementPriority.NORMAL
+    is_pinned: bool = False
+    requires_acknowledgement: bool = False
+    acknowledgement_deadline: Optional[datetime] = None
+    publish_at: Optional[datetime] = None
+    expires_at: Optional[datetime] = None
+    status: str = "draft"
+    attachments: List[Dict[str, str]] = []
+
+
+class AnnouncementResponse(BaseDBModel):
+    title: str
+    content: str
+    author_id: str
+    author_name: str
+    location_id: Optional[str] = None
+    target_roles: List[str]
+    target_teams: List[str]
+    target_staff_ids: List[str]
+    priority: AnnouncementPriority
+    is_pinned: bool
+    requires_acknowledgement: bool
+    acknowledgement_deadline: Optional[datetime] = None
+    publish_at: Optional[datetime] = None
+    expires_at: Optional[datetime] = None
+    status: str
+    published_at: Optional[datetime] = None
+    attachments: List[Dict[str, str]]
+    view_count: int
+    acknowledgement_count: int
+
+
+class Acknowledgement(BaseDBModel):
+    """Staff acknowledgement of announcement"""
+    announcement_id: str
+    staff_id: str
+    staff_name: str
+    
+    acknowledged_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    
+    # Optional confirmation text
+    confirmation_text: Optional[str] = None  # "I have read and understood..."
