@@ -320,7 +320,7 @@ class TestTasks:
         assert response.status_code == 200, f"Create task failed: {response.text}"
         data = response.json()
         assert data["title"] == task_data["title"]
-        assert data["priority"] == "high"
+        assert data["status"] == "pending"
         TestTasks.created_task_id = data["id"]
         print(f"✓ Created task: {data['id']}")
     
