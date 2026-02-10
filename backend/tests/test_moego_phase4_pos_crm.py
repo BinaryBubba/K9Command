@@ -578,10 +578,10 @@ class TestIntegration:
         transaction = sale_res.json()["transaction"]
         print(f"✓ Step 2: Completed sale for ${transaction['total_cents']/100:.2f}")
         
-        # 3. Verify inventory deducted
+        # 3. Verify inventory deducted - API returns product directly
         product_res = self.session.get(f"{BASE_URL}/api/moego/inventory/products/{product_id}")
         assert product_res.status_code == 200
-        updated_product = product_res.json()["product"]
+        updated_product = product_res.json()
         assert updated_product["quantity"] == 20
         print(f"✓ Step 3: Inventory verified (25 -> 20)")
         
