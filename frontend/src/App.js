@@ -55,6 +55,11 @@ import BookingApprovalPage from './pages/BookingApprovalPage';
 // MoeGo Parity - Phase 3 Pages
 import CustomerPortalPage from './pages/CustomerPortalPage';
 
+// MoeGo Parity - Phase 4 Pages
+import InventoryManagementPage from './pages/InventoryManagementPage';
+import POSCheckoutPage from './pages/POSCheckoutPage';
+import CustomerLeadsPage from './pages/CustomerLeadsPage';
+
 // Store
 import useAuthStore from './store/authStore';
 
