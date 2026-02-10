@@ -277,6 +277,22 @@ function App() {
             }
           />
           <Route
+            path="/admin/time-management"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminTimesheetDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/schedule"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <ScheduleViewPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin/*"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
