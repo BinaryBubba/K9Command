@@ -325,15 +325,37 @@ GET  /api/comms/knowledge/categories/list - List categories
 
 ---
 
-## MOEGO PARITY - PHASE 2 (Booking + Ops Views)
+## MOEGO PARITY - PHASE 2 (Booking + Ops Views) ✅ COMPLETE
 
-### Pending Implementation
-- [ ] Smart booking UI with slot selection
-- [ ] Kennel assignment at booking time
-- [ ] Lodging map view (visual kennel grid)
-- [ ] Check-in/check-out flows with eligibility enforcement
-- [ ] Bath scheduling (before pickup add-on)
+### Implemented (Dec 2025)
+- [x] Smart booking API with eligibility checks and auto-block logic
+- [x] Lodging map view (visual kennel grid) - `/admin/lodging-map`
+  - Simple grid layout grouped by kennel type
+  - Color-coded status (green=available, red=occupied)
+  - Occupancy stats and filtering
+- [x] Check-in/check-out workflows - `/admin/check-in-out`
+  - Tabs for Check-ins, Check-outs, Baths Due
+  - Item checklist for arrivals/departures
+  - Payment collection on checkout
+- [x] Booking approval page - `/admin/booking-approvals`
+  - Review auto-blocked bookings
+  - Approve with kennel assignment or reject with reason
+- [x] Bath scheduling (day of/day before checkout)
+- [x] Backend APIs:
+  - POST /api/moego/bookings/smart - Smart booking with eligibility
+  - GET /api/moego/operations/check-ins - Today's check-ins
+  - GET /api/moego/operations/check-outs - Today's check-outs  
+  - GET /api/moego/operations/baths-due - Baths due today
+  - POST /api/moego/operations/check-in/{id} - Perform check-in
+  - POST /api/moego/operations/check-out/{id} - Perform check-out
+  - POST /api/moego/operations/bath/{id} - Mark bath complete
+  - GET /api/moego/bookings/pending-approval - Pending approvals
+  - POST /api/moego/bookings/{id}/approve - Approve booking
+  - POST /api/moego/bookings/{id}/reject - Reject booking
+
+### Pending
 - [ ] Waitlist management UI
+- [ ] Smart booking UI integration into existing BookStayPage
 
 ---
 
