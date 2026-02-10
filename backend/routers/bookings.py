@@ -699,6 +699,22 @@ async def create_smart_booking(
             await schedule_reminders_for_booking(db, booking_doc, dog_names)
         except Exception as e:
             print(f"Failed to schedule reminders: {e}")
+        
+        # Send booking confirmation email
+        try:
+            email_service = EmailService(db)
+            await email_service.send_booking_confirmation(
+                to=user.email,
+                booking={
+                    "id": booking_id,
+                    "check_in_date": check_in,
+                    "check_out_date": check_out,
+                    "status": "confirmed"
+                },
+                dog_names=dog_names
+            )
+        except Exception as e:
+            print(f"Failed to send confirmation email: {e}")
     
     booking_doc.pop('_id', None)
     
