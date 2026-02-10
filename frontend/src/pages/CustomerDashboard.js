@@ -286,6 +286,19 @@ const CustomerDashboard = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Settings Section */}
+        <Card className="bg-white rounded-2xl border border-border/50 shadow-sm">
+          <CardHeader className="border-b border-border/40">
+            <CardTitle className="text-2xl font-serif flex items-center gap-2">
+              <SettingsIcon className="text-primary" />
+              Notification Settings
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <PushNotificationSettings />
+          </CardContent>
+        </Card>
       </main>
     </div>
   );
