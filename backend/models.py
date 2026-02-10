@@ -199,6 +199,11 @@ class AccommodationType(str, Enum):
     ROOM = "room"
     CRATE = "crate"
 
+class BookingType(str, Enum):
+    STAY = "stay"
+    DAYCARE = "daycare"
+    MEET_GREET = "meet_greet"
+
 class BookingPricingConfig(BaseModel):
     """Simple booking pricing configuration"""
     base_price_per_night: float
