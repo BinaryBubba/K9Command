@@ -186,6 +186,8 @@ class SquarePaymentService:
         # Store in database
         await self.db.saved_cards.insert_one(card_data)
         
+        # Remove MongoDB _id before creating response
+        card_data.pop('_id', None)
         return SavedCardResponse(**card_data)
     
     async def _ensure_square_customer(self, customer_id: str, email: str) -> str:
