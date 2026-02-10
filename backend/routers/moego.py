@@ -2506,3 +2506,372 @@ async def get_invoices(
         "count": len(invoices)
     }
 
+
+
+# ==================== PHASE 4: POS & CRM ====================
+
+from services.pos_crm import (
+    InventoryService, POSService, CRMService,
+    ProductCreate, ProductCategory, InventoryStatus,
+    InventoryAdjustment, POSTransaction, LeadCreate, CustomerLifecycle
+)
+
+
+# ==================== INVENTORY ENDPOINTS ====================
+
+@router.post("/inventory/products")
+async def create_product(
+    data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Create a new product in inventory"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    service = InventoryService(db)
+    product_data = ProductCreate(
+        sku=data.get('sku', ''),
+        name=data.get('name', ''),
+        description=data.get('description'),
+        category=data.get('category', ProductCategory.OTHER),
+        price_cents=data.get('price_cents', 0),
+        cost_cents=data.get('cost_cents'),
+        quantity=data.get('quantity', 0),
+        reorder_point=data.get('reorder_point', 5),
+        barcode=data.get('barcode'),
+        image_url=data.get('image_url'),
+        is_active=data.get('is_active', True)
+    )
+    
+    try:
+        result = await service.create_product(product_data)
+        return {"message": "Product created", "product": result.dict()}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/inventory/products")
+async def list_products(
+    category: Optional[str] = None,
+    status: Optional[str] = None,
+    active_only: bool = True,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """List all products in inventory"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role not in [UserRole.ADMIN, UserRole.STAFF]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    service = InventoryService(db)
+    products = await service.list_products(
+        category=ProductCategory(category) if category else None,
+        status=InventoryStatus(status) if status else None,
+        active_only=active_only
+    )
+    
+    return {
+        "products": [p.dict() for p in products],
+        "count": len(products)
+    }
+
+
+@router.get("/inventory/products/{product_id}")
+async def get_product(
+    product_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get a single product by ID"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role not in [UserRole.ADMIN, UserRole.STAFF]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    service = InventoryService(db)
+    product = await service.get_product(product_id)
+    
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    return product.dict()
+
+
+@router.put("/inventory/products/{product_id}")
+async def update_product(
+    product_id: str,
+    data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Update a product"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    service = InventoryService(db)
+    
+    # Only allow certain fields to be updated
+    allowed_fields = ['name', 'description', 'price_cents', 'cost_cents', 
+                      'reorder_point', 'barcode', 'image_url', 'is_active']
+    updates = {k: v for k, v in data.items() if k in allowed_fields}
+    
+    product = await service.update_product(product_id, updates)
+    
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    return {"message": "Product updated", "product": product.dict()}
+
+
+@router.post("/inventory/adjust")
+async def adjust_inventory(
+    data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Adjust inventory quantity"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role not in [UserRole.ADMIN, UserRole.STAFF]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    service = InventoryService(db)
+    adjustment = InventoryAdjustment(
+        product_id=data.get('product_id'),
+        quantity_change=data.get('quantity_change', 0),
+        reason=data.get('reason', 'Manual adjustment'),
+        reference_id=data.get('reference_id')
+    )
+    
+    try:
+        result = await service.adjust_inventory(adjustment, user.id)
+        return {"message": "Inventory adjusted", "result": result}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/inventory/low-stock")
+async def get_low_stock(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get products that are low or out of stock"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role not in [UserRole.ADMIN, UserRole.STAFF]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    service = InventoryService(db)
+    products = await service.get_low_stock_products()
+    
+    return {
+        "products": [p.dict() for p in products],
+        "count": len(products)
+    }
+
+
+# ==================== POS ENDPOINTS ====================
+
+@router.post("/pos/transaction")
+async def create_pos_transaction(
+    data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Process a POS sale"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role not in [UserRole.ADMIN, UserRole.STAFF]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    from services.pos_crm import POSCartItem
+    
+    items = [POSCartItem(**item) for item in data.get('items', [])]
+    
+    transaction = POSTransaction(
+        items=items,
+        customer_id=data.get('customer_id'),
+        payment_method=data.get('payment_method', 'cash'),
+        card_id=data.get('card_id'),
+        notes=data.get('notes'),
+        discount_cents=data.get('discount_cents', 0)
+    )
+    
+    service = POSService(db)
+    
+    try:
+        result = await service.process_transaction(transaction, user.id)
+        return {"message": "Transaction completed", "transaction": result}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/pos/transaction/{transaction_id}")
+async def get_pos_transaction(
+    transaction_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get a POS transaction by ID"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role not in [UserRole.ADMIN, UserRole.STAFF]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    service = POSService(db)
+    transaction = await service.get_transaction(transaction_id)
+    
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    
+    return transaction
+
+
+@router.get("/pos/daily-sales")
+async def get_daily_sales(
+    date: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get daily sales summary"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role not in [UserRole.ADMIN, UserRole.STAFF]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    service = POSService(db)
+    summary = await service.get_daily_sales(date)
+    
+    return summary
+
+
+# ==================== CRM ENDPOINTS ====================
+
+@router.post("/crm/leads")
+async def create_lead(
+    data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Create a new lead"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role not in [UserRole.ADMIN, UserRole.STAFF]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    lead_data = LeadCreate(
+        name=data.get('name', ''),
+        email=data.get('email'),
+        phone=data.get('phone'),
+        source=data.get('source', 'walk_in'),
+        notes=data.get('notes'),
+        dog_info=data.get('dog_info')
+    )
+    
+    service = CRMService(db)
+    result = await service.create_lead(lead_data, user.id)
+    
+    return {"message": "Lead created", "lead": result}
+
+
+@router.get("/crm/leads")
+async def get_leads(
+    status: Optional[str] = None,
+    source: Optional[str] = None,
+    limit: int = 50,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get leads with optional filters"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role not in [UserRole.ADMIN, UserRole.STAFF]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    service = CRMService(db)
+    leads = await service.get_leads(status, source, limit)
+    
+    return {"leads": leads, "count": len(leads)}
+
+
+@router.put("/crm/leads/{lead_id}/status")
+async def update_lead_status(
+    lead_id: str,
+    data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Update lead status"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role not in [UserRole.ADMIN, UserRole.STAFF]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    service = CRMService(db)
+    result = await service.update_lead_status(
+        lead_id,
+        data.get('status', 'new'),
+        data.get('notes')
+    )
+    
+    if not result:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    return {"message": "Lead updated", "lead": result}
+
+
+@router.post("/crm/leads/{lead_id}/convert")
+async def convert_lead(
+    lead_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Convert a lead to a customer"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role not in [UserRole.ADMIN, UserRole.STAFF]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    service = CRMService(db)
+    result = await service.convert_lead_to_customer(lead_id)
+    
+    if not result:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    return {"message": "Lead converted to customer", "lead": result}
+
+
+@router.get("/crm/customers/{customer_id}/metrics")
+async def get_customer_metrics(
+    customer_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get CRM metrics for a customer"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role not in [UserRole.ADMIN, UserRole.STAFF]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    service = CRMService(db)
+    metrics = await service.get_customer_metrics(customer_id)
+    
+    if not metrics:
+        return {
+            "customer_id": customer_id,
+            "total_visits": 0,
+            "total_spent_cents": 0,
+            "lifecycle_stage": "new",
+            "message": "No activity recorded"
+        }
+    
+    return metrics.dict()
+
+
+@router.get("/crm/retention-metrics")
+async def get_retention_metrics(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get overall retention and CRM metrics"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    service = CRMService(db)
+    metrics = await service.get_retention_metrics()
+    
+    return metrics
+
