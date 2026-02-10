@@ -1,0 +1,86 @@
+{
+  "summary": "Auto-Reminders System Testing Complete. All 15 backend API tests passed. Frontend Reminders tab fully functional with all 6 toggle switches working correctly.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_auto_reminders.py",
+    "/app/test_reports/pytest/pytest_results_auto_reminders.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Fixed bug: schedule/cancel reminder endpoints were using wrong collection (lodging_bookings instead of bookings)",
+    "Reminders auto-schedule when booking is confirmed (line 1403 in moego.py)",
+    "Reminders auto-schedule when booking is approved by admin (line 1508 in moego.py)",
+    "Push notifications may not deliver if user hasn't subscribed to web push (MOCKED)",
+    "Default preferences: 24h check-in/out enabled, 2h check-out disabled, booking confirmations enabled"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_auto_reminders.py",
+    "/app/backend/routers/moego.py"
+  ],
+  "success_rate": {
+    "backend": "100% (15/15 tests passed)",
+    "frontend": "100% - Reminders tab renders correctly with all toggles functional"
+  },
+  "test_credentials": {
+    "admin": {"email": "admin@test.com", "password": "Test123!"},
+    "customer": {"email": "customer@test.com", "password": "Test123!"}
+  },
+  "seed_data_creation": "No seed data created - tested with existing users",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Auto-Reminders feature fully tested. All reminder preference endpoints working. Reminders auto-schedule on booking confirmation/approval. Push notifications MOCKED (requires browser subscription).",
+  "features_tested": {
+    "reminder_preferences": {
+      "get_preferences": {"status": "PASS", "endpoint": "GET /api/moego/reminders/preferences"},
+      "update_preferences": {"status": "PASS", "endpoint": "PUT /api/moego/reminders/preferences"},
+      "unauthorized_access": {"status": "PASS", "details": "Returns 401/403 correctly"}
+    },
+    "scheduled_reminders": {
+      "get_scheduled": {"status": "PASS", "endpoint": "GET /api/moego/reminders/scheduled"},
+      "filter_by_booking": {"status": "PASS", "endpoint": "GET /api/moego/reminders/scheduled?booking_id=xxx"}
+    },
+    "admin_endpoints": {
+      "process_reminders": {"status": "PASS", "endpoint": "POST /api/moego/reminders/process"},
+      "get_pending": {"status": "PASS", "endpoint": "GET /api/moego/reminders/pending"},
+      "customer_forbidden": {"status": "PASS", "details": "Returns 403 for non-admin users"}
+    },
+    "booking_reminders": {
+      "schedule_for_booking": {"status": "PASS", "endpoint": "POST /api/moego/reminders/schedule/{booking_id}"},
+      "cancel_for_booking": {"status": "PASS", "endpoint": "DELETE /api/moego/reminders/cancel/{booking_id}"},
+      "nonexistent_booking": {"status": "PASS", "details": "Returns 404 correctly"}
+    },
+    "frontend_ui": {
+      "customer_portal_page": {"status": "PASS", "route": "/customer/portal"},
+      "reminders_tab": {"status": "PASS", "details": "Tab accessible and displays correctly"},
+      "toggle_switches": {
+        "check_in_24h": {"status": "PASS", "data-testid": "reminder-checkin-24h"},
+        "check_in_2h": {"status": "PASS", "data-testid": "reminder-checkin-2h"},
+        "check_out_24h": {"status": "PASS", "data-testid": "reminder-checkout-24h"},
+        "check_out_2h": {"status": "PASS", "data-testid": "reminder-checkout-2h"},
+        "booking_confirmation": {"status": "PASS", "data-testid": "reminder-booking-confirm"},
+        "payment_due": {"status": "PASS", "data-testid": "reminder-payment-due"}
+      },
+      "toggle_interaction": {"status": "PASS", "details": "Toggles update preferences via API and show toast notification"},
+      "info_card": {"status": "PASS", "details": "How reminders work info card displayed"}
+    }
+  },
+  "bugs_fixed": [
+    {
+      "file": "/app/backend/routers/moego.py",
+      "issue": "schedule/cancel reminder endpoints used wrong MongoDB collection (lodging_bookings instead of bookings)",
+      "fix": "Changed to use db.bookings collection to match main booking system"
+    }
+  ],
+  "mocked_apis": {
+    "push_notifications": "MOCKED - Web Push requires browser subscription",
+    "square_payments": "MOCKED - No SQUARE_ACCESS_TOKEN configured"
+  }
+}
