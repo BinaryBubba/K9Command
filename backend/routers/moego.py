@@ -1,6 +1,6 @@
 """
-MoeGo Parity Router - Phase 1
-Handles kennels, time slots, coupons, card-on-file, eligibility
+MoeGo Parity Router - Phase 1 & 2
+Handles kennels, time slots, coupons, card-on-file, eligibility, bookings, operations
 """
 from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -27,6 +27,14 @@ from models import (
     DogOnSite, DailyOperationsSummary,
 )
 from auth import get_current_user
+from services.notifications import (
+    NotificationService,
+    NotificationChannel,
+    notify_booking_auto_blocked,
+    notify_admin_pending_approval,
+    notify_booking_approved,
+    notify_booking_rejected
+)
 
 router = APIRouter(prefix="/api/moego", tags=["MoeGo Parity"])
 security = HTTPBearer()
