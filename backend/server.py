@@ -379,6 +379,59 @@ async def get_dog(dog_id: str, credentials: HTTPAuthorizationCredentials = Depen
     
     return DogResponse(**dog_doc)
 
+@api_router.patch("/dogs/{dog_id}", response_model=DogResponse)
+async def update_dog(
+    dog_id: str,
+    update_data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Update dog profile - customers can only update their own dogs"""
+    user = await get_current_user(credentials, database)
+    
+    dog_doc = await database.dogs.find_one({"id": dog_id}, {"_id": 0})
+    if not dog_doc:
+        raise HTTPException(status_code=404, detail="Dog not found")
+    
+    # Access check
+    if user.role == UserRole.CUSTOMER and dog_doc.get('household_id') != user.household_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Allowed fields for update
+    allowed_fields = [
+        'name', 'breed', 'age', 'birthday', 'weight', 'size',
+        'feeding_instructions', 'feedingInstructions',
+        'medications', 'behavior_notes', 'behaviorNotes',
+        'special_needs', 'specialNeeds', 'notes'
+    ]
+    
+    update_doc = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    for field in allowed_fields:
+        if field in update_data and update_data[field] is not None:
+            # Normalize field names to snake_case
+            normalized_field = field
+            if field == 'feedingInstructions':
+                normalized_field = 'feeding_instructions'
+            elif field == 'behaviorNotes':
+                normalized_field = 'behavior_notes'
+            elif field == 'specialNeeds':
+                normalized_field = 'special_needs'
+            update_doc[normalized_field] = update_data[field]
+    
+    result = await database.dogs.update_one(
+        {"id": dog_id},
+        {"$set": update_doc}
+    )
+    
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Dog not found")
+    
+    # Return updated dog
+    updated_dog = await database.dogs.find_one({"id": dog_id}, {"_id": 0})
+    await create_audit_log(user.id, AuditAction.UPDATE, "dog", dog_id)
+    
+    return DogResponse(**updated_dog)
+
 @api_router.post("/dogs/{dog_id}/upload-photo")
 async def upload_dog_photo(
     dog_id: str,
