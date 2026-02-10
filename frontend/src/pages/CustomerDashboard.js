@@ -439,6 +439,53 @@ const CustomerDashboard = () => {
           </CardContent>
         </Card>
 
+        {/* Today's Agenda - Only show if there are agenda items */}
+        {todayAgenda.length > 0 && (
+          <Card data-testid="todays-agenda-section" className="bg-white rounded-2xl border border-border/50 shadow-sm mb-8">
+            <CardHeader className="border-b border-border/40 bg-gradient-to-r from-primary/5 to-secondary/5">
+              <CardTitle className="text-2xl font-serif flex items-center gap-2">
+                <ClockIcon className="text-primary" />
+                Today's Schedule for Your Pups
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              </p>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="space-y-4">
+                {todayAgenda.map((item, idx) => {
+                  const IconComponent = item.icon === 'sun' ? SunIcon : 
+                                       item.icon === 'utensils' ? UtensilsIcon : 
+                                       item.icon === 'activity' ? ActivityIcon : 
+                                       item.icon === 'check' ? CheckIcon : ClockIcon;
+                  const isPast = new Date(`${new Date().toDateString()} ${item.time}`) < new Date();
+                  
+                  return (
+                    <div 
+                      key={idx} 
+                      className={`flex items-start gap-4 p-4 rounded-xl transition-all ${isPast ? 'bg-muted/30 opacity-60' : 'bg-[#F9F7F2] hover:shadow-sm'}`}
+                    >
+                      <div className={`p-2 rounded-full ${isPast ? 'bg-muted' : 'bg-primary/10'}`}>
+                        <IconComponent size={20} className={isPast ? 'text-muted-foreground' : 'text-primary'} />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{item.title}</span>
+                          <Badge variant={isPast ? 'secondary' : 'outline'} className="text-xs">
+                            {item.time}
+                          </Badge>
+                          {isPast && <Badge variant="secondary" className="text-xs">Completed</Badge>}
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Recent Updates */}
         <Card data-testid="recent-updates-section" className="bg-white rounded-2xl border border-border/50 shadow-sm mb-8">
           <CardHeader className="border-b border-border/40">
