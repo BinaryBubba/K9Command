@@ -642,4 +642,4 @@ const apiImpl = {
 // ========================
 export const dataClient = MODE === 'api' ? apiImpl : mock;
 export const dataMode = MODE;
-export { toISODate, normalizeBooking };
+export { normalizeBooking };
