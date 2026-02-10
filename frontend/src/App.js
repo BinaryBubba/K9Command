@@ -34,6 +34,14 @@ import ScheduleViewPage from './pages/ScheduleViewPage';
 import KioskModePage from './pages/KioskModePage';
 import AdminTimesheetDashboard from './pages/AdminTimesheetDashboard';
 
+// Phase 3 - Forms, Tasks, HR Pages
+import FormBuilderPage from './pages/FormBuilderPage';
+import FormsManagementPage from './pages/FormsManagementPage';
+import FormSubmissionPage from './pages/FormSubmissionPage';
+import StaffFormsPage from './pages/StaffFormsPage';
+import TaskDashboardPage from './pages/TaskDashboardPage';
+import TimeOffPage from './pages/TimeOffPage';
+
 // Store
 import useAuthStore from './store/authStore';
 
