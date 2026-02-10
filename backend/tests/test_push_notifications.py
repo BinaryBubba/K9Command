@@ -27,7 +27,7 @@ class TestPushNotificationEndpoints:
             "password": self.admin_password
         })
         if response.status_code == 200:
-            return response.json().get("access_token")
+            return response.json().get("token")
         return None
     
     def get_auth_headers(self, token):
@@ -336,7 +336,7 @@ class TestPushNotificationIntegration:
             "password": self.admin_password
         })
         if response.status_code == 200:
-            return response.json().get("access_token")
+            return response.json().get("token")
         return None
     
     def get_auth_headers(self, token):
