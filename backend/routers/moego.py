@@ -1536,6 +1536,16 @@ async def reject_booking(
         dog_names=dog_names
     )
     
+    # Send push notification to customer
+    await send_booking_status_push(
+        db=db,
+        user_id=booking.get('customer_id'),
+        status="rejected",
+        booking_id=booking_id,
+        dog_names=dog_names,
+        extra_info=reason
+    )
+    
     return {"message": "Booking rejected", "booking_id": booking_id}
 
 
