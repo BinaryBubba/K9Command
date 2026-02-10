@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="6" failures="15" skipped="0" tests="21" time="7.828" timestamp="2026-02-10T19:48:40.160029+00:00" hostname="agent-env-04aa737a-68fb-4f0c-9251-5972ff3a28ef"><testcase classname="backend.tests.test_moego_phase4_pos_crm.TestInventoryManagement" name="test_create_product" time="0.475"><failure message="AssertionError: Create product failed: {&quot;detail&quot;:&quot;Invalid authentication credentials&quot;}&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_moego_phase4_pos_crm.py:55: in test_create_product
+    assert response.status_code == 200, f"Create product failed: {response.text}"
+E   AssertionError: Create product failed: {"detail":"Invalid authentication credentials"}
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_moego_phase4_pos_crm.TestInventoryManagement" name="test_list_products" time="0.366"><failure message="AssertionError: List products failed: {&quot;detail&quot;:&quot;Invalid authentication credentials&quot;}&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_moego_phase4_pos_crm.py:73: in test_list_products
+    assert response.status_code == 200, f"List products failed: {response.text}"
+E   AssertionError: List products failed: {"detail":"Invalid authentication credentials"}
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_moego_phase4_pos_crm.TestInventoryManagement" name="test_get_product_by_id" time="0.330"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_moego_phase4_pos_crm.py:92: in test_get_product_by_id
+    assert create_res.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_moego_phase4_pos_crm.TestInventoryManagement" name="test_update_product" time="0.348"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_moego_phase4_pos_crm.py:117: in test_update_product
+    assert create_res.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_moego_phase4_pos_crm.TestInventoryManagement" name="test_adjust_inventory" time="0.361"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_moego_phase4_pos_crm.py:146: in test_adjust_inventory
+    assert create_res.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_moego_phase4_pos_crm.TestInventoryManagement" name="test_low_stock_alert" time="0.387"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_moego_phase4_pos_crm.py:186: in test_low_stock_alert
+    assert create_res.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_moego_phase4_pos_crm.TestPOSCheckout" name="test_pos_transaction_cash" time="0.343"><error message="failed on setup with &quot;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code&quot;">backend/tests/test_moego_phase4_pos_crm.py:228: in setup
+    assert create_res.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</error></testcase><testcase classname="backend.tests.test_moego_phase4_pos_crm.TestPOSCheckout" name="test_pos_transaction_card" time="0.328"><error message="failed on setup with &quot;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code&quot;">backend/tests/test_moego_phase4_pos_crm.py:228: in setup
+    assert create_res.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</error></testcase><testcase classname="backend.tests.test_moego_phase4_pos_crm.TestPOSCheckout" name="test_pos_transaction_with_customer" time="0.352"><error message="failed on setup with &quot;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code&quot;">backend/tests/test_moego_phase4_pos_crm.py:228: in setup
+    assert create_res.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</error></testcase><testcase classname="backend.tests.test_moego_phase4_pos_crm.TestPOSCheckout" name="test_get_transaction" time="0.451"><error message="failed on setup with &quot;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code&quot;">backend/tests/test_moego_phase4_pos_crm.py:228: in setup
+    assert create_res.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</error></testcase><testcase classname="backend.tests.test_moego_phase4_pos_crm.TestPOSCheckout" name="test_daily_sales" time="0.380"><error message="failed on setup with &quot;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code&quot;">backend/tests/test_moego_phase4_pos_crm.py:228: in setup
+    assert create_res.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</error></testcase><testcase classname="backend.tests.test_moego_phase4_pos_crm.TestPOSCheckout" name="test_inventory_deduction_after_sale" time="0.373"><error message="failed on setup with &quot;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code&quot;">backend/tests/test_moego_phase4_pos_crm.py:228: in setup
+    assert create_res.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</error></testcase><testcase classname="backend.tests.test_moego_phase4_pos_crm.TestCRMLeads" name="test_create_lead" time="0.338"><failure message="AssertionError: Create lead failed: {&quot;detail&quot;:&quot;Invalid authentication credentials&quot;}&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_moego_phase4_pos_crm.py:406: in test_create_lead
+    assert response.status_code == 200, f"Create lead failed: {response.text}"
+E   AssertionError: Create lead failed: {"detail":"Invalid authentication credentials"}
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_moego_phase4_pos_crm.TestCRMLeads" name="test_list_leads" time="0.362"><failure message="AssertionError: List leads failed: {&quot;detail&quot;:&quot;Invalid authentication credentials&quot;}&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_moego_phase4_pos_crm.py:423: in test_list_leads
+    assert response.status_code == 200, f"List leads failed: {response.text}"
+E   AssertionError: List leads failed: {"detail":"Invalid authentication credentials"}
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_moego_phase4_pos_crm.TestCRMLeads" name="test_list_leads_with_filters" time="0.348"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_moego_phase4_pos_crm.py:434: in test_list_leads_with_filters
+    assert response.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_moego_phase4_pos_crm.TestCRMLeads" name="test_update_lead_status" time="0.309"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_moego_phase4_pos_crm.py:450: in test_update_lead_status
+    assert create_res.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_moego_phase4_pos_crm.TestCRMLeads" name="test_convert_lead_to_customer" time="0.283"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_moego_phase4_pos_crm.py:485: in test_convert_lead_to_customer
+    assert create_res.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_moego_phase4_pos_crm.TestCRMLeads" name="test_mark_lead_as_lost" time="0.364"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_moego_phase4_pos_crm.py:505: in test_mark_lead_as_lost
+    assert create_res.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_moego_phase4_pos_crm.TestCRMLeads" name="test_retention_metrics" time="0.301"><failure message="AssertionError: Get retention metrics failed: {&quot;detail&quot;:&quot;Invalid authentication credentials&quot;}&#10;assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_moego_phase4_pos_crm.py:520: in test_retention_metrics
+    assert response.status_code == 200, f"Get retention metrics failed: {response.text}"
+E   AssertionError: Get retention metrics failed: {"detail":"Invalid authentication credentials"}
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_moego_phase4_pos_crm.TestIntegration" name="test_full_pos_workflow" time="0.277"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_moego_phase4_pos_crm.py:562: in test_full_pos_workflow
+    assert create_res.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_moego_phase4_pos_crm.TestIntegration" name="test_full_lead_workflow" time="0.283"><failure message="assert 401 == 200&#10; +  where 401 = &lt;Response [401]&gt;.status_code">backend/tests/test_moego_phase4_pos_crm.py:600: in test_full_lead_workflow
+    assert create_res.status_code == 200
+E   assert 401 == 200
+E    +  where 401 = &lt;Response [401]&gt;.status_code</failure></testcase></testsuite></testsuites>
