@@ -583,6 +583,27 @@ async def get_bookings(credentials: HTTPAuthorizationCredentials = Depends(secur
     
     return [BookingResponse(**booking) for booking in bookings]
 
+@api_router.get("/bookings/{booking_id}", response_model=BookingResponse)
+async def get_booking(booking_id: str, credentials: HTTPAuthorizationCredentials = Depends(security), database=Depends(get_db)):
+    """Get a single booking by ID"""
+    user = await get_current_user(credentials, database)
+    
+    booking = await database.bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    # Check access - customers can only see their own bookings
+    if user.role == UserRole.CUSTOMER and booking.get("household_id") != user.household_id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    # Deserialize dates
+    if isinstance(booking.get('check_in_date'), str):
+        booking['check_in_date'] = datetime.fromisoformat(booking['check_in_date'])
+    if isinstance(booking.get('check_out_date'), str):
+        booking['check_out_date'] = datetime.fromisoformat(booking['check_out_date'])
+    
+    return BookingResponse(**booking)
+
 @api_router.patch("/bookings/{booking_id}/status")
 async def update_booking_status(booking_id: str, status: BookingStatus, credentials: HTTPAuthorizationCredentials = Depends(security), database=Depends(get_db)):
     user = await get_current_user(credentials, database)
