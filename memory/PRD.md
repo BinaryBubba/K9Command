@@ -19,7 +19,7 @@ Single location first, multi-location capable by design.
 
 ---
 
-## MOEGO PARITY - PHASE 1 ✅ COMPLETE (Core Data Models & Rules)
+## K9COMMAND - PHASE 1 ✅ COMPLETE (Core Data Models & Rules)
 
 ### Kennel/Run Management
 - ✅ Kennel types (run, suite, crate, luxury)
@@ -31,11 +31,11 @@ Single location first, multi-location capable by design.
 
 **Endpoints:**
 ```
-GET  /api/moego/kennels - List all kennels
-POST /api/moego/kennels - Create kennel (admin)
-PATCH /api/moego/kennels/{id} - Update kennel
-DELETE /api/moego/kennels/{id} - Deactivate kennel
-GET  /api/moego/kennels/availability/{location_id} - Check availability
+GET  /api/k9/kennels - List all kennels
+POST /api/k9/kennels - Create kennel (admin)
+PATCH /api/k9/kennels/{id} - Update kennel
+DELETE /api/k9/kennels/{id} - Deactivate kennel
+GET  /api/k9/kennels/availability/{location_id} - Check availability
 ```
 
 ### Time Slots
@@ -46,10 +46,10 @@ GET  /api/moego/kennels/availability/{location_id} - Check availability
 
 **Endpoints:**
 ```
-GET  /api/moego/slots - List time slots
-POST /api/moego/slots - Create slot (admin)
-PATCH /api/moego/slots/{id} - Update slot
-GET  /api/moego/slots/availability/{location_id} - Slot availability for date
+GET  /api/k9/slots - List time slots
+POST /api/k9/slots - Create slot (admin)
+PATCH /api/k9/slots/{id} - Update slot
+GET  /api/k9/slots/availability/{location_id} - Slot availability for date
 ```
 
 ### Coupon Codes
@@ -62,11 +62,11 @@ GET  /api/moego/slots/availability/{location_id} - Slot availability for date
 
 **Endpoints:**
 ```
-GET  /api/moego/coupons - List coupons (admin)
-POST /api/moego/coupons - Create coupon (admin)
-PATCH /api/moego/coupons/{id} - Update coupon
-DELETE /api/moego/coupons/{id} - Deactivate coupon
-POST /api/moego/coupons/validate - Validate & calculate discount
+GET  /api/k9/coupons - List coupons (admin)
+POST /api/k9/coupons - Create coupon (admin)
+PATCH /api/k9/coupons/{id} - Update coupon
+DELETE /api/k9/coupons/{id} - Deactivate coupon
+POST /api/k9/coupons/validate - Validate & calculate discount
 ```
 
 ### Eligibility Rules
@@ -79,9 +79,9 @@ POST /api/moego/coupons/validate - Validate & calculate discount
 
 **Endpoints:**
 ```
-GET  /api/moego/eligibility-rules - List rules
-POST /api/moego/eligibility-rules - Create rule (admin)
-POST /api/moego/eligibility/check - Check dog eligibility
+GET  /api/k9/eligibility-rules - List rules
+POST /api/k9/eligibility-rules - Create rule (admin)
+POST /api/k9/eligibility/check - Check dog eligibility
 ```
 
 ### Waitlist
@@ -92,10 +92,10 @@ POST /api/moego/eligibility/check - Check dog eligibility
 
 **Endpoints:**
 ```
-GET  /api/moego/waitlist - List waitlist entries
-POST /api/moego/waitlist - Join waitlist
-POST /api/moego/waitlist/{id}/offer - Offer spot (admin)
-POST /api/moego/waitlist/{id}/respond - Accept/decline offer
+GET  /api/k9/waitlist - List waitlist entries
+POST /api/k9/waitlist - Join waitlist
+POST /api/k9/waitlist/{id}/offer - Offer spot (admin)
+POST /api/k9/waitlist/{id}/respond - Accept/decline offer
 ```
 
 ### Daily Operations
@@ -105,8 +105,8 @@ POST /api/moego/waitlist/{id}/respond - Accept/decline offer
 
 **Endpoints:**
 ```
-GET  /api/moego/operations/dogs-on-site - List dogs currently on site
-GET  /api/moego/operations/summary - Daily operations summary
+GET  /api/k9/operations/dogs-on-site - List dogs currently on site
+GET  /api/k9/operations/summary - Daily operations summary
 ```
 
 ### Frontend Pages (Phase 1)
@@ -116,7 +116,7 @@ GET  /api/moego/operations/summary - Daily operations summary
 
 ---
 
-## CONNECTEAM PARITY - PHASE 1 ✅ COMPLETE (Data Models & Rules)
+## HR MANAGEMENT - PHASE 1 ✅ COMPLETE (Data Models & Rules)
 
 ### GPS Time Clock & Attendance
 - ✅ GPS clock in/out with coordinate capture
@@ -272,7 +272,7 @@ GET  /api/comms/knowledge/categories/list - List categories
 
 ---
 
-## CONNECTEAM PARITY - PHASE 2 ✅ COMPLETE (Time Clock & Scheduling)
+## HR MANAGEMENT - PHASE 2 ✅ COMPLETE (Time Clock & Scheduling)
 
 ### Backend (Completed)
 - ✅ Kiosk mode for shared device clock in/out
@@ -300,7 +300,7 @@ GET  /api/comms/knowledge/categories/list - List categories
 
 ---
 
-## CONNECTEAM PARITY - PHASE 3 ✅ COMPLETE (Tasks, Forms, HR)
+## HR MANAGEMENT - PHASE 3 ✅ COMPLETE (Tasks, Forms, HR)
 
 ### Backend (Completed - Previous Session)
 - ✅ Form templates API with all field types
@@ -325,7 +325,7 @@ GET  /api/comms/knowledge/categories/list - List categories
 
 ---
 
-## MOEGO PARITY - PHASE 2 (Booking + Ops Views) ✅ COMPLETE
+## K9COMMAND - PHASE 2 (Booking + Ops Views) ✅ COMPLETE
 
 ### Implemented (Dec 2025)
 - [x] Smart booking API with eligibility checks and auto-block logic
@@ -352,20 +352,20 @@ GET  /api/comms/knowledge/categories/list - List categories
   - Admin notified when new booking requires approval
   - Framework for future email/SMS (MOCKED - not yet integrated)
 - [x] Backend APIs:
-  - POST /api/moego/bookings/smart - Smart booking with eligibility
-  - GET /api/moego/operations/check-ins - Today's check-ins
-  - GET /api/moego/operations/check-outs - Today's check-outs  
-  - GET /api/moego/operations/baths-due - Baths due today
-  - POST /api/moego/operations/check-in/{id} - Perform check-in
-  - POST /api/moego/operations/check-out/{id} - Perform check-out
-  - POST /api/moego/operations/bath/{id} - Mark bath complete
-  - GET /api/moego/bookings/pending-approval - Pending approvals
-  - POST /api/moego/bookings/{id}/approve - Approve booking
-  - POST /api/moego/bookings/{id}/reject - Reject booking
-  - GET /api/moego/notifications - User notifications
-  - GET /api/moego/notifications/unread-count - Unread count
-  - POST /api/moego/notifications/{id}/read - Mark as read
-  - POST /api/moego/notifications/mark-all-read - Mark all read
+  - POST /api/k9/bookings/smart - Smart booking with eligibility
+  - GET /api/k9/operations/check-ins - Today's check-ins
+  - GET /api/k9/operations/check-outs - Today's check-outs  
+  - GET /api/k9/operations/baths-due - Baths due today
+  - POST /api/k9/operations/check-in/{id} - Perform check-in
+  - POST /api/k9/operations/check-out/{id} - Perform check-out
+  - POST /api/k9/operations/bath/{id} - Mark bath complete
+  - GET /api/k9/bookings/pending-approval - Pending approvals
+  - POST /api/k9/bookings/{id}/approve - Approve booking
+  - POST /api/k9/bookings/{id}/reject - Reject booking
+  - GET /api/k9/notifications - User notifications
+  - GET /api/k9/notifications/unread-count - Unread count
+  - POST /api/k9/notifications/{id}/read - Mark as read
+  - POST /api/k9/notifications/mark-all-read - Mark all read
 
 ### Pending
 - [ ] Waitlist management UI
@@ -379,12 +379,12 @@ GET  /api/comms/knowledge/categories/list - List categories
 - [x] PushNotificationSettings component integrated in Customer Dashboard
 - [x] usePushNotifications React hook for subscription management
 - [x] Backend APIs:
-  - GET /api/moego/push/vapid-key - Get VAPID public key
-  - POST /api/moego/push/subscribe/web - Subscribe to Web Push
-  - POST /api/moego/push/subscribe/fcm - Subscribe to FCM
-  - GET /api/moego/push/subscriptions - Get user subscriptions
-  - DELETE /api/moego/push/unsubscribe/{id} - Unsubscribe
-  - POST /api/moego/push/test - Send test notification
+  - GET /api/k9/push/vapid-key - Get VAPID public key
+  - POST /api/k9/push/subscribe/web - Subscribe to Web Push
+  - POST /api/k9/push/subscribe/fcm - Subscribe to FCM
+  - GET /api/k9/push/subscriptions - Get user subscriptions
+  - DELETE /api/k9/push/unsubscribe/{id} - Unsubscribe
+  - POST /api/k9/push/test - Send test notification
 - [x] Push notifications sent for:
   - Booking confirmed
   - Booking pending approval (auto-blocked)
@@ -394,7 +394,7 @@ GET  /api/comms/knowledge/categories/list - List categories
 
 ---
 
-## MOEGO PARITY - PHASE 3 (Payments & Portal) ✅ COMPLETE
+## K9COMMAND - PHASE 3 (Payments & Portal) ✅ COMPLETE
 
 ### Implemented (Dec 2025)
 - [x] Square card-on-file (vaulting) - save/retrieve/delete customer cards
@@ -407,19 +407,19 @@ GET  /api/comms/knowledge/categories/list - List categories
   - Saved payment methods management
   - Invoice/receipt listing
 - [x] Backend APIs:
-  - GET /api/moego/payments/config - Payment configuration
-  - POST /api/moego/payments/cards - Save card on file
-  - GET /api/moego/payments/cards - Get saved cards
-  - DELETE /api/moego/payments/cards/{id} - Delete card
-  - POST /api/moego/payments/deposit-hold - Create pre-auth hold
-  - POST /api/moego/payments/capture/{id} - Capture hold
-  - POST /api/moego/payments/cancel/{id} - Cancel hold
-  - POST /api/moego/payments/charge - Direct payment
-  - POST /api/moego/payments/refund - Process refund
-  - GET /api/moego/portal/upcoming - Upcoming bookings
-  - GET /api/moego/portal/service-history - Past bookings
-  - GET /api/moego/portal/invoices - Payment receipts
-  - POST /api/moego/portal/rebook/{id} - One-click rebooking
+  - GET /api/k9/payments/config - Payment configuration
+  - POST /api/k9/payments/cards - Save card on file
+  - GET /api/k9/payments/cards - Get saved cards
+  - DELETE /api/k9/payments/cards/{id} - Delete card
+  - POST /api/k9/payments/deposit-hold - Create pre-auth hold
+  - POST /api/k9/payments/capture/{id} - Capture hold
+  - POST /api/k9/payments/cancel/{id} - Cancel hold
+  - POST /api/k9/payments/charge - Direct payment
+  - POST /api/k9/payments/refund - Process refund
+  - GET /api/k9/portal/upcoming - Upcoming bookings
+  - GET /api/k9/portal/service-history - Past bookings
+  - GET /api/k9/portal/invoices - Payment receipts
+  - POST /api/k9/portal/rebook/{id} - One-click rebooking
 
 ### Notes
 - **MOCK MODE**: Square API runs in mock mode when SQUARE_ACCESS_TOKEN is not configured
@@ -427,7 +427,7 @@ GET  /api/comms/knowledge/categories/list - List categories
 
 ---
 
-## MOEGO PARITY - PHASE 4 (POS & Growth) ✅ COMPLETE
+## K9COMMAND - PHASE 4 (POS & Growth) ✅ COMPLETE
 
 ### Implemented (Dec 2025)
 - [x] Retail inventory catalog with SKUs, categories, pricing
@@ -458,21 +458,21 @@ GET  /api/comms/knowledge/categories/list - List categories
   - Customer Lifetime Value (LTV)
   - Lifecycle distribution (lead/new/active/at_risk/lapsed/churned)
 - [x] Backend APIs:
-  - POST /api/moego/inventory/products - Create product
-  - GET /api/moego/inventory/products - List products with filters
-  - GET /api/moego/inventory/products/{id} - Get single product
-  - PUT /api/moego/inventory/products/{id} - Update product
-  - POST /api/moego/inventory/adjust - Adjust inventory with audit
-  - GET /api/moego/inventory/low-stock - Low stock alerts
-  - POST /api/moego/pos/transaction - Process POS transaction
-  - GET /api/moego/pos/transaction/{id} - Get transaction
-  - GET /api/moego/pos/daily-sales - Daily sales summary
-  - POST /api/moego/crm/leads - Create lead
-  - GET /api/moego/crm/leads - List leads with filters
-  - PUT /api/moego/crm/leads/{id}/status - Update lead status
-  - POST /api/moego/crm/leads/{id}/convert - Convert to customer
-  - GET /api/moego/crm/customers/{id}/metrics - Customer CRM metrics
-  - GET /api/moego/crm/retention-metrics - Overall retention stats
+  - POST /api/k9/inventory/products - Create product
+  - GET /api/k9/inventory/products - List products with filters
+  - GET /api/k9/inventory/products/{id} - Get single product
+  - PUT /api/k9/inventory/products/{id} - Update product
+  - POST /api/k9/inventory/adjust - Adjust inventory with audit
+  - GET /api/k9/inventory/low-stock - Low stock alerts
+  - POST /api/k9/pos/transaction - Process POS transaction
+  - GET /api/k9/pos/transaction/{id} - Get transaction
+  - GET /api/k9/pos/daily-sales - Daily sales summary
+  - POST /api/k9/crm/leads - Create lead
+  - GET /api/k9/crm/leads - List leads with filters
+  - PUT /api/k9/crm/leads/{id}/status - Update lead status
+  - POST /api/k9/crm/leads/{id}/convert - Convert to customer
+  - GET /api/k9/crm/customers/{id}/metrics - Customer CRM metrics
+  - GET /api/k9/crm/retention-metrics - Overall retention stats
 
 ### Notes
 - **MOCK MODE**: Square card_on_file payments use mock when SQUARE_ACCESS_TOKEN not configured
@@ -499,13 +499,13 @@ GET  /api/comms/knowledge/categories/list - List categories
 
 ### Backend APIs
 ```
-GET  /api/moego/reminders/preferences - Get user preferences
-PUT  /api/moego/reminders/preferences - Update preferences
-GET  /api/moego/reminders/scheduled - Get scheduled reminders
-POST /api/moego/reminders/schedule/{booking_id} - Manual schedule
-DELETE /api/moego/reminders/cancel/{booking_id} - Cancel reminders
-POST /api/moego/reminders/process - Process due reminders (admin)
-GET  /api/moego/reminders/pending - View pending reminders (admin)
+GET  /api/k9/reminders/preferences - Get user preferences
+PUT  /api/k9/reminders/preferences - Update preferences
+GET  /api/k9/reminders/scheduled - Get scheduled reminders
+POST /api/k9/reminders/schedule/{booking_id} - Manual schedule
+DELETE /api/k9/reminders/cancel/{booking_id} - Cancel reminders
+POST /api/k9/reminders/process - Process due reminders (admin)
+GET  /api/k9/reminders/pending - View pending reminders (admin)
 ```
 
 ### Notes
@@ -515,7 +515,7 @@ GET  /api/moego/reminders/pending - View pending reminders (admin)
 
 ---
 
-## MOEGO PARITY - PHASE 5 (Mobile & Integrations)
+## K9COMMAND - PHASE 5 (Mobile & Integrations)
 
 ### Pending Implementation (Architectural Support)
 - [ ] Mobile grooming routes (if needed later)
@@ -525,7 +525,7 @@ GET  /api/moego/reminders/pending - View pending reminders (admin)
 
 ---
 
-## CONNECTEAM PARITY - PHASE 4 (Communication & Reporting)
+## HR MANAGEMENT - PHASE 4 (Communication & Reporting)
 
 ### Pending Implementation
 - [ ] Announcements feed UI
@@ -536,7 +536,7 @@ GET  /api/moego/reminders/pending - View pending reminders (admin)
 
 ---
 
-## CONNECTEAM PARITY - PHASE 5 (Automation API)
+## HR MANAGEMENT - PHASE 5 (Automation API)
 
 ### Pending Implementation
 - [ ] Event model and trigger registry
@@ -582,7 +582,7 @@ GET  /api/moego/reminders/pending - View pending reminders (admin)
 
 ## Testing
 - **Phase 1 K9Command:** `/app/test_reports/iteration_4.json` - 47/47 passed
-- **Phase 1 Connecteam:** `/app/test_reports/iteration_5.json` - 53/53 passed
+- **Phase 1 HR System:** `/app/test_reports/iteration_5.json` - 53/53 passed
 - **Test Files:** `/app/backend/tests/test_connecteam_phase1.py`
 
 ---
