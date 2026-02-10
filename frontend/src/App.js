@@ -62,6 +62,7 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/kiosk" element={<KioskModePage />} />
 
           {/* Customer Routes */}
           <Route
