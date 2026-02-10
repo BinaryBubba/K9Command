@@ -1,131 +1,134 @@
-# Kennel Operations Platform - PRD
+# K9Command - PRD
 
 ## Original Problem Statement
-Build a comprehensive "Kennel Operations 'Single Source of Truth' Platform". This web-first application aims to replace existing tools like Rover and Connecteam by consolidating all business operations into one system.
+K9Command is a single-facility, staff-operated dog boarding/daycare platform with customer self-service, internal staff operations tooling, and automation-first design. The goal is Rover-parity for a single facility.
 
-## Current Tech Stack
-- **Frontend:** React 18, Tailwind CSS, Shadcn/UI, Zustand, react-router-dom, recharts
-- **Backend:** FastAPI with Pydantic
-- **Database:** MongoDB (Motor async driver)
-- **Auth:** JWT-based multi-role authentication (Customer, Staff, Admin)
-- **Payments:** Square SDK (with mock fallback)
+## Tech Stack
+- **Frontend:** React 18, Tailwind CSS, Shadcn/UI, Zustand
+- **Backend:** FastAPI with Pydantic, MongoDB (Motor async)
+- **Auth:** JWT multi-role (Customer, Staff, Admin)
+- **Payments:** Square SDK (primary), Crypto infrastructure (USDC - deferred)
 
-## Migration Plan (PENDING)
-The user requested migration to a self-hosted stack:
-- PostgreSQL (replacing MongoDB)
-- Redis (for caching/sessions)
-- Alembic (schema migrations)
+---
 
-**Note:** This migration was started but not completed due to environment constraints. The PostgreSQL files are created but the backend currently runs on MongoDB.
+## PHASE 1 - DATA & RULES FOUNDATION ✅ COMPLETE
 
-## Core Modules
+### New Models Implemented
+1. **ServiceType** - Boarding, Daycare, etc. with configurable pricing
+2. **AddOn** - Extra services (Bath $40, Transport $25, Playtime $6/day, Feeding $6/day)
+3. **CapacityRule** - Soft capacity enforcement with buffer
+4. **PricingRule** - Weekend, holiday, seasonal, blackout rules
+5. **CancellationPolicy** - Tiered refund policies (7d=100%, 3d=50%, <3d=0%)
+6. **SystemSetting** - Admin-configurable settings (deposit %, tax rate)
+7. **Payment** - Payment transaction records
+8. **Invoice** - Booking invoices with line items
 
-### 1. Authentication & Authorization ✅
-- Multi-role JWT auth (Customer, Staff, Admin)
-- Role-based route protection
-- Password reset flow
+### Booking Model Updates
+- `service_type_id` - Link to service type
+- `add_ons[]` - Selected add-ons with quantities
+- `deposit_amount`, `deposit_paid`, `deposit_paid_at`
+- `balance_due`, `balance_paid`, `balance_paid_at`
+- `requires_approval` - For over-capacity bookings
+- `pricing_rules_applied[]` - Audit trail
 
-### 2. Customer Portal ✅
-- Dashboard with stats
-- Dog management (add/edit dogs)
-- Booking creation flow
-- **NEW:** Calendar page (mock data client)
-- **NEW:** Payments page (Square + Crypto coming soon)
-- Daily updates viewing
-
-### 3. Staff Portal ✅
-- Dashboard with bookings
-- Task management
-- Timesheet (clock in/out)
-- Internal chat
-
-### 4. Admin Portal ✅
-- Customer/Staff management
-- Booking CRUD
-- Timesheet oversight
-- Revenue analytics dashboard
-- Incident tracking
-
-## What's Been Implemented
-
-### February 10, 2026
-- Added frontend data adapter (`/data/client.js`) with mock mode for frontend development
-- Created Customer Calendar page (`/customer/calendar`) with day/week views
-- Created Customer Payments page (`/customer/payments`) with Square and Crypto (coming soon) options
-- Added Calendar and Payments quick action cards to Customer Dashboard
-
-### Previous Sessions
-- Full authentication system
-- All three portals (Customer, Staff, Admin)
-- Revenue analytics dashboard
-- Timesheet system with modification requests
-- Internal chat system
-- Square SDK integration
-
-## Known Issues
-
-### P0 - Critical
-1. **Customer Booking Flow** - May fail under certain conditions. Needs verification.
-
-### P1 - Important
-1. **Staff Booking Creation** - Needs new flow: search customer → select dogs → create booking → email invoice
-
-## File Structure
+### New Endpoints
 ```
-/app/
-├── backend/
-│   ├── server.py         # FastAPI endpoints (MongoDB)
-│   ├── auth.py           # JWT authentication
-│   ├── models.py         # Pydantic models
-│   ├── database.py       # PostgreSQL config (for future migration)
-│   ├── db_models.py      # SQLAlchemy models (for future migration)
-│   ├── schemas.py        # Pydantic schemas (for future migration)
-│   └── cache_service.py  # Redis cache service (for future migration)
-├── frontend/
-│   ├── src/
-│   │   ├── data/
-│   │   │   └── client.js         # NEW: Mock/API data adapter
-│   │   ├── pages/
-│   │   │   ├── CustomerCalendarPage.js  # NEW
-│   │   │   ├── CustomerPaymentsPage.js  # NEW
-│   │   │   ├── CustomerDashboard.js     # Updated with new cards
-│   │   │   └── ... (other pages)
-│   │   └── App.js               # Updated with new routes
-│   └── package.json
-└── memory/
-    └── PRD.md
+GET  /api/service-types
+POST /api/admin/service-types
+PATCH/DELETE /api/admin/service-types/{id}
+
+GET  /api/add-ons
+POST /api/admin/add-ons
+PATCH/DELETE /api/admin/add-ons/{id}
+
+GET  /api/admin/capacity-rules
+POST /api/admin/capacity-rules
+PATCH/DELETE /api/admin/capacity-rules/{id}
+
+GET  /api/admin/pricing-rules
+POST /api/admin/pricing-rules
+PATCH/DELETE /api/admin/pricing-rules/{id}
+
+GET  /api/cancellation-policies
+POST /api/admin/cancellation-policies
+PATCH/DELETE /api/admin/cancellation-policies/{id}
+
+GET  /api/admin/settings
+PATCH /api/admin/settings/{key}
+
+POST /api/pricing/calculate - Server-side price engine
+
+GET  /api/payments/providers
+POST /api/payments/deposit
+POST /api/payments/balance
+GET  /api/payments/history
+
+POST /api/bookings/{id}/cancel - Policy-aware cancellation
+
+GET  /api/invoices
+GET  /api/invoices/{id}
 ```
 
-## Environment Variables
-### Backend (.env)
-- `MONGO_URL` - MongoDB connection
-- `DB_NAME` - Database name
-- `JWT_SECRET` - JWT secret key
-- `SQUARE_ACCESS_TOKEN` - Square API (optional)
-- `DATABASE_URL` - PostgreSQL (for future migration)
-- `REDIS_URL` - Redis (for future migration)
+### Default Data Seeded
+- 2 Service Types: Standard Boarding ($50/dog/day), Daycare ($35/dog)
+- 4 Add-Ons: Extra Playtime, Bath, Transport, Feeding
+- 3 Cancellation Policies: 7-day, 3-day, last-minute
+- 1 Pricing Rule: Weekend surcharge (15%)
+- System Settings: deposit_percentage=50, tax_rate=0, etc.
 
-### Frontend (.env)
-- `REACT_APP_BACKEND_URL` - API endpoint
-- `REACT_APP_DATA_MODE` - "mock" or "api" (default: mock)
+### Backend Files
+- `/app/backend/pricing_engine.py` - Authoritative pricing calculation
+- `/app/backend/payment_service.py` - Payment abstraction (Square + Crypto infrastructure)
+- `/app/backend/models.py` - All Phase 1 models
+- `/app/backend/server.py` - All Phase 1 endpoints
 
-## Upcoming Tasks
+---
 
-### P1 - High Priority
-1. Verify/fix customer booking flow
-2. Implement staff booking creation with customer search
-3. Complete PostgreSQL migration when proper environment available
+## PHASE 2 - STAFF OPERATIONS 🔜 NEXT
 
-### P2 - Medium Priority
-1. Staff shift scheduler UI
-2. Photo upload feature
-3. AI-generated daily summaries (GPT-5.2)
+### Required Features
+1. Daily capacity dashboard ("Dogs on site today")
+2. Upcoming arrivals/departures view
+3. Booking approval queue
+4. Dog ↔ Staff assignment
+5. Play groups / compatibility
+6. Feeding schedule display
 
-### P3 - Future
-- Crypto payments (USDC integration)
-- Native mobile apps
-- Photo watermarking and purchase system
+### Required Models
+- StaffAssignment (dog_id, staff_id, date)
+- PlayGroup (dogs[], compatibility_notes)
+- FeedingSchedule (dog_id, times[], instructions)
+
+---
+
+## PHASE 3 - CUSTOMER UX COMPLETION
+
+### Required Features
+1. Multi-step booking with add-ons selection
+2. Booking modification (policy-aware)
+3. Payment history & downloadable receipts
+4. Calendar polish
+
+---
+
+## PHASE 4 - AUTOMATION
+
+### Required Features
+1. Notification triggers
+2. Task scaffolding
+3. Event logging for automation
+
+---
+
+## PHASE 5 - MESSAGING (DEFERRED)
+
+---
 
 ## Test Accounts
 - Customer: `testcustomer@example.com` / `Test123!`
-- Register new accounts via `/auth`
+
+## Key Business Rules
+- SOFT CAPACITY: Over-capacity bookings allowed but require approval
+- 50% DEPOSIT default (admin-configurable)
+- Weekend surcharge: 15%
+- All pricing server-side (never trust frontend)
