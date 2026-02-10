@@ -446,6 +446,140 @@ export default function CustomerPortalPage() {
               )}
             </div>
           </TabsContent>
+
+          {/* Reminders Tab */}
+          <TabsContent value="reminders">
+            <div className="space-y-6">
+              <Card className="bg-white">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BellRingIcon size={20} className="text-primary" />
+                    Reminder Preferences
+                  </CardTitle>
+                  <CardDescription>
+                    Choose when and how you'd like to receive booking reminders
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Check-in Reminders */}
+                  <div className="space-y-4">
+                    <h4 className="font-medium text-primary flex items-center gap-2">
+                      <CalendarIcon size={16} />
+                      Check-in Reminders
+                    </h4>
+                    <div className="space-y-3 pl-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">24 hours before check-in</p>
+                          <p className="text-sm text-muted-foreground">Get a reminder the day before</p>
+                        </div>
+                        <Switch
+                          checked={reminderPrefs.check_in_24h}
+                          onCheckedChange={(checked) => updateReminderPref('check_in_24h', checked)}
+                          disabled={reminderLoading}
+                          data-testid="reminder-checkin-24h"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">2 hours before check-in</p>
+                          <p className="text-sm text-muted-foreground">Last-minute reminder</p>
+                        </div>
+                        <Switch
+                          checked={reminderPrefs.check_in_2h}
+                          onCheckedChange={(checked) => updateReminderPref('check_in_2h', checked)}
+                          disabled={reminderLoading}
+                          data-testid="reminder-checkin-2h"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Check-out Reminders */}
+                  <div className="space-y-4 border-t pt-6">
+                    <h4 className="font-medium text-primary flex items-center gap-2">
+                      <HomeIcon size={16} />
+                      Check-out Reminders
+                    </h4>
+                    <div className="space-y-3 pl-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">24 hours before pick-up</p>
+                          <p className="text-sm text-muted-foreground">Reminder the day before pick-up</p>
+                        </div>
+                        <Switch
+                          checked={reminderPrefs.check_out_24h}
+                          onCheckedChange={(checked) => updateReminderPref('check_out_24h', checked)}
+                          disabled={reminderLoading}
+                          data-testid="reminder-checkout-24h"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">2 hours before pick-up</p>
+                          <p className="text-sm text-muted-foreground">Last-minute pick-up reminder</p>
+                        </div>
+                        <Switch
+                          checked={reminderPrefs.check_out_2h}
+                          onCheckedChange={(checked) => updateReminderPref('check_out_2h', checked)}
+                          disabled={reminderLoading}
+                          data-testid="reminder-checkout-2h"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Other Notifications */}
+                  <div className="space-y-4 border-t pt-6">
+                    <h4 className="font-medium text-primary flex items-center gap-2">
+                      <BellIcon size={16} />
+                      Other Notifications
+                    </h4>
+                    <div className="space-y-3 pl-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">Booking confirmations</p>
+                          <p className="text-sm text-muted-foreground">Notification when booking is confirmed</p>
+                        </div>
+                        <Switch
+                          checked={reminderPrefs.booking_confirmation}
+                          onCheckedChange={(checked) => updateReminderPref('booking_confirmation', checked)}
+                          disabled={reminderLoading}
+                          data-testid="reminder-booking-confirm"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">Payment reminders</p>
+                          <p className="text-sm text-muted-foreground">Reminder when payment is due</p>
+                        </div>
+                        <Switch
+                          checked={reminderPrefs.payment_due}
+                          onCheckedChange={(checked) => updateReminderPref('payment_due', checked)}
+                          disabled={reminderLoading}
+                          data-testid="reminder-payment-due"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Info Card */}
+              <Card className="bg-blue-50 border-blue-200">
+                <CardContent className="p-4 flex items-start gap-3">
+                  <AlertCircleIcon size={20} className="text-blue-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-blue-900">How reminders work</p>
+                    <p className="text-sm text-blue-700">
+                      Reminders are sent via in-app notifications and push notifications (if enabled in your browser).
+                      They're automatically scheduled when your booking is confirmed.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
         </Tabs>
       </main>
 
