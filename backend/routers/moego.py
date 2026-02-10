@@ -2064,3 +2064,445 @@ async def test_push_notification(
         "message": f"Test notification sent to {total_sent} device(s)",
         "results": results
     }
+
+
+
+# ==================== PAYMENTS (Phase 3) ====================
+
+from services.payments import (
+    SquarePaymentService,
+    SavedCardCreate,
+    DepositHoldCreate,
+    PaymentCreate,
+    RefundCreate
+)
+
+
+@router.get("/payments/config")
+async def get_payment_config():
+    """Get Square payment configuration for frontend"""
+    db = get_db()
+    service = SquarePaymentService(db)
+    return service.get_config()
+
+
+@router.post("/payments/cards")
+async def save_card(
+    data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Save a card on file for the current user"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    
+    # Get user email
+    user_doc = await db.users.find_one({"id": user.id}, {"_id": 0, "email": 1})
+    
+    service = SquarePaymentService(db)
+    card_data = SavedCardCreate(
+        source_id=data.get('source_id', ''),
+        customer_id=user.id,
+        customer_email=user_doc.get('email', ''),
+        cardholder_name=data.get('cardholder_name'),
+        billing_postal_code=data.get('postal_code')
+    )
+    
+    try:
+        result = await service.save_card(card_data)
+        return {
+            "message": "Card saved successfully",
+            "card": result.dict()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/payments/cards")
+async def get_my_cards(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get all saved cards for current user"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    
+    service = SquarePaymentService(db)
+    cards = await service.get_customer_cards(user.id)
+    
+    return {
+        "cards": [c.dict() for c in cards],
+        "count": len(cards)
+    }
+
+
+@router.delete("/payments/cards/{card_id}")
+async def delete_card(
+    card_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Delete/disable a saved card"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    
+    service = SquarePaymentService(db)
+    success = await service.delete_card(user.id, card_id)
+    
+    if not success:
+        raise HTTPException(status_code=404, detail="Card not found")
+    
+    return {"message": "Card deleted"}
+
+
+@router.post("/payments/deposit-hold")
+async def create_deposit_hold(
+    data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Create a pre-authorization hold for a deposit"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    
+    service = SquarePaymentService(db)
+    hold_data = DepositHoldCreate(
+        customer_id=user.id,
+        card_id=data.get('card_id'),
+        booking_id=data.get('booking_id'),
+        amount_cents=data.get('amount_cents', 0),
+        currency=data.get('currency', 'USD'),
+        note=data.get('note')
+    )
+    
+    try:
+        result = await service.create_deposit_hold(hold_data)
+        return {
+            "message": "Deposit hold created",
+            "authorization": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/payments/capture/{authorization_id}")
+async def capture_deposit(
+    authorization_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Capture a previously authorized deposit"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role not in [UserRole.ADMIN, UserRole.STAFF]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    service = SquarePaymentService(db)
+    
+    try:
+        result = await service.capture_authorization(authorization_id)
+        return {
+            "message": "Payment captured",
+            "result": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/payments/cancel/{authorization_id}")
+async def cancel_authorization(
+    authorization_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Cancel a pre-authorization hold"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role not in [UserRole.ADMIN, UserRole.STAFF]:
+        raise HTTPException(status_code=403, detail="Staff access required")
+    
+    service = SquarePaymentService(db)
+    
+    try:
+        result = await service.cancel_authorization(authorization_id)
+        return {
+            "message": "Authorization canceled",
+            "result": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/payments/charge")
+async def create_payment(
+    data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Create a direct payment (immediate charge)"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    
+    service = SquarePaymentService(db)
+    payment_data = PaymentCreate(
+        customer_id=user.id,
+        card_id=data.get('card_id'),
+        booking_id=data.get('booking_id'),
+        amount_cents=data.get('amount_cents', 0),
+        currency=data.get('currency', 'USD'),
+        note=data.get('note')
+    )
+    
+    try:
+        result = await service.create_payment(payment_data)
+        
+        # Update booking payment status
+        await db.bookings.update_one(
+            {"id": data.get('booking_id')},
+            {"$set": {
+                "payment_status": "paid",
+                "payment_id": result['id'],
+                "paid_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        
+        return {
+            "message": "Payment successful",
+            "payment": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/payments/refund")
+async def refund_payment(
+    data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Refund a completed payment"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    service = SquarePaymentService(db)
+    refund_data = RefundCreate(
+        payment_id=data.get('payment_id'),
+        amount_cents=data.get('amount_cents', 0),
+        reason=data.get('reason')
+    )
+    
+    try:
+        result = await service.refund_payment(refund_data)
+        return {
+            "message": "Refund processed",
+            "refund": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/payments/booking/{booking_id}")
+async def get_booking_payments(
+    booking_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get all payment activity for a booking"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    
+    service = SquarePaymentService(db)
+    result = await service.get_booking_payments(booking_id)
+    
+    return result
+
+
+# ==================== CUSTOMER PORTAL ====================
+
+@router.get("/portal/service-history")
+async def get_service_history(
+    limit: int = 20,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get customer's service history (past bookings)"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    
+    bookings = await db.bookings.find(
+        {"customer_id": user.id, "status": {"$in": ["checked_out", "completed"]}},
+        {"_id": 0}
+    ).sort("check_out_date", -1).limit(limit).to_list(limit)
+    
+    # Enrich with dog names
+    for booking in bookings:
+        dog_ids = booking.get('dog_ids', [])
+        if dog_ids:
+            dogs = await db.dogs.find(
+                {"id": {"$in": dog_ids}},
+                {"_id": 0, "id": 1, "name": 1}
+            ).to_list(len(dog_ids))
+            booking['dogs'] = dogs
+    
+    return {
+        "history": bookings,
+        "count": len(bookings)
+    }
+
+
+@router.get("/portal/upcoming")
+async def get_upcoming_bookings(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get customer's upcoming bookings"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    
+    bookings = await db.bookings.find(
+        {
+            "customer_id": user.id,
+            "status": {"$in": ["confirmed", "pending_approval", "checked_in"]},
+            "check_in_date": {"$gte": today}
+        },
+        {"_id": 0}
+    ).sort("check_in_date", 1).to_list(20)
+    
+    # Enrich with dog names and kennel info
+    for booking in bookings:
+        dog_ids = booking.get('dog_ids', [])
+        if dog_ids:
+            dogs = await db.dogs.find(
+                {"id": {"$in": dog_ids}},
+                {"_id": 0, "id": 1, "name": 1}
+            ).to_list(len(dog_ids))
+            booking['dogs'] = dogs
+        
+        if booking.get('kennel_id'):
+            kennel = await db.kennels.find_one(
+                {"id": booking['kennel_id']},
+                {"_id": 0, "name": 1, "kennel_type": 1}
+            )
+            booking['kennel'] = kennel
+    
+    return {
+        "upcoming": bookings,
+        "count": len(bookings)
+    }
+
+
+@router.post("/portal/rebook/{booking_id}")
+async def rebook_from_history(
+    booking_id: str,
+    data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Create a new booking based on a previous one (one-click rebooking)"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    
+    # Get original booking
+    original = await db.bookings.find_one(
+        {"id": booking_id, "customer_id": user.id},
+        {"_id": 0}
+    )
+    
+    if not original:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    # Create new booking with same details but new dates
+    new_booking_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    
+    check_in_date = data.get('check_in_date')
+    check_out_date = data.get('check_out_date')
+    
+    if not check_in_date or not check_out_date:
+        raise HTTPException(status_code=400, detail="Check-in and check-out dates required")
+    
+    # Calculate nights
+    check_in = datetime.fromisoformat(check_in_date.replace('Z', '+00:00'))
+    check_out = datetime.fromisoformat(check_out_date.replace('Z', '+00:00'))
+    nights = (check_out - check_in).days
+    
+    if nights <= 0:
+        raise HTTPException(status_code=400, detail="Invalid date range")
+    
+    # Calculate price (simplified)
+    base_price = 50.0
+    total_price = base_price * nights * len(original.get('dog_ids', []))
+    
+    new_booking = {
+        "id": new_booking_id,
+        "household_id": original.get('household_id'),
+        "customer_id": user.id,
+        "customer_name": original.get('customer_name'),
+        "customer_email": original.get('customer_email'),
+        "dog_ids": original.get('dog_ids', []),
+        "location_id": original.get('location_id'),
+        "check_in_date": check_in_date,
+        "check_out_date": check_out_date,
+        "nights": nights,
+        "status": "confirmed",
+        "accommodation_type": original.get('accommodation_type', 'room'),
+        "total_price": round(total_price, 2),
+        "bath_before_pickup": data.get('bath_before_pickup', original.get('bath_before_pickup', False)),
+        "bath_day": data.get('bath_day', original.get('bath_day')),
+        "notes": data.get('notes', ''),
+        "payment_status": "pending",
+        "rebooked_from": booking_id,
+        "created_at": now.isoformat(),
+        "updated_at": now.isoformat()
+    }
+    
+    await db.bookings.insert_one(new_booking)
+    new_booking.pop('_id', None)
+    
+    return {
+        "message": "Booking created from previous stay",
+        "booking": new_booking
+    }
+
+
+@router.get("/portal/invoices")
+async def get_invoices(
+    limit: int = 20,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get customer's invoices/receipts"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    
+    # Get payments for this customer
+    payments = await db.payments.find(
+        {"customer_id": user.id},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    
+    # Enrich with booking details
+    invoices = []
+    for payment in payments:
+        booking = await db.bookings.find_one(
+            {"id": payment.get('booking_id')},
+            {"_id": 0, "check_in_date": 1, "check_out_date": 1, "dog_ids": 1}
+        )
+        
+        dog_names = []
+        if booking and booking.get('dog_ids'):
+            dogs = await db.dogs.find(
+                {"id": {"$in": booking['dog_ids']}},
+                {"_id": 0, "name": 1}
+            ).to_list(10)
+            dog_names = [d['name'] for d in dogs]
+        
+        invoices.append({
+            "payment_id": payment['id'],
+            "amount_cents": payment['amount_cents'],
+            "currency": payment.get('currency', 'USD'),
+            "status": payment['status'],
+            "created_at": payment['created_at'],
+            "booking_id": payment.get('booking_id'),
+            "check_in_date": booking.get('check_in_date') if booking else None,
+            "check_out_date": booking.get('check_out_date') if booking else None,
+            "dog_names": dog_names,
+            "receipt_url": payment.get('receipt_url')
+        })
+    
+    return {
+        "invoices": invoices,
+        "count": len(invoices)
+    }
+
