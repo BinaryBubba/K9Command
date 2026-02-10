@@ -456,6 +456,30 @@ function App() {
             }
           />
           <Route
+            path="/admin/inventory"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <InventoryManagementPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/pos"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'staff']}>
+                <POSCheckoutPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/crm"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <CustomerLeadsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/admin/*"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
