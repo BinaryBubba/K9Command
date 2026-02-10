@@ -41,6 +41,10 @@ from services.push_notifications import (
     send_booking_status_push,
     send_admin_alert_push
 )
+from services.reminders import (
+    ReminderService,
+    schedule_reminders_for_booking
+)
 
 router = APIRouter(prefix="/api/moego", tags=["MoeGo Parity"])
 security = HTTPBearer()
