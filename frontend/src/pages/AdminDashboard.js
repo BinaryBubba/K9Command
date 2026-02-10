@@ -368,6 +368,26 @@ const AdminDashboard = () => {
               <p className="text-sm text-muted-foreground text-center">Track customer lifecycle</p>
             </CardContent>
           </Card>
+
+          <Card data-testid="admin-nav-email-templates" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/email-templates')}>
+            <CardContent className="p-8">
+              <div className="w-16 h-16 rounded-full bg-blue-100 mx-auto mb-4 flex items-center justify-center">
+                <MailIcon className="text-blue-600" size={32} />
+              </div>
+              <h3 className="text-xl font-serif font-semibold text-center mb-2">Email Templates</h3>
+              <p className="text-sm text-muted-foreground text-center">Manage notifications</p>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="admin-nav-staff-management" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/staff-management')}>
+            <CardContent className="p-8">
+              <div className="w-16 h-16 rounded-full bg-amber-100 mx-auto mb-4 flex items-center justify-center">
+                <UsersRoundIcon className="text-amber-600" size={32} />
+              </div>
+              <h3 className="text-xl font-serif font-semibold text-center mb-2">Staff Management</h3>
+              <p className="text-sm text-muted-foreground text-center">Approve staff requests</p>
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>
