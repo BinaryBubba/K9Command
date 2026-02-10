@@ -1871,7 +1871,14 @@ async def create_customer(
         role=UserRole.CUSTOMER,
         household_id=household_id,
         phone=customer_data.get('phone'),
-        is_active=customer_data.get('is_active', True)
+        is_active=customer_data.get('is_active', True),
+        address=customer_data.get('address'),
+        city=customer_data.get('city'),
+        state=customer_data.get('state'),
+        zip_code=customer_data.get('zip_code'),
+        emergency_contact=customer_data.get('emergency_contact'),
+        emergency_phone=customer_data.get('emergency_phone'),
+        notes=customer_data.get('notes')
     )
     
     doc = new_user.model_dump()
