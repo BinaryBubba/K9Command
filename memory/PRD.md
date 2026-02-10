@@ -15,7 +15,19 @@ Single location first, multi-location capable by design.
 - **Frontend:** React 18, Tailwind CSS, Shadcn/UI, Zustand
 - **Backend:** FastAPI with Pydantic, MongoDB (Motor async)
 - **Auth:** JWT multi-role (Customer, Staff, Admin)
-- **Payments:** Square SDK (card-on-file vaulting planned)
+- **Payments:** Square SDK (card-on-file vaulting)
+
+## API Architecture (Refactored Feb 2026)
+All K9Command APIs now use the `/api/k9` prefix. The backend has been refactored into 9 domain-specific routers:
+- `kennels.py` - Kennel/run management, time slots
+- `bookings.py` - Smart booking, eligibility, coupons, waitlist, approvals
+- `operations.py` - Check-in/out, daily ops, baths
+- `notifications.py` - In-app & push notifications
+- `payments.py` - Square payments, card vaulting
+- `portal.py` - Customer portal endpoints
+- `inventory.py` - Retail inventory & POS
+- `crm.py` - Leads & customer lifecycle
+- `reminders.py` - Auto-reminders
 
 ---
 
