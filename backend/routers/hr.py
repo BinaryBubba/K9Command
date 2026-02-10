@@ -212,7 +212,11 @@ async def create_time_off_request(
     # Check advance notice
     if policy.get('advance_notice_days', 0) > 0:
         min_start = datetime.now(timezone.utc) + timedelta(days=policy['advance_notice_days'])
-        if data.start_date < min_start:
+        # Ensure start_date is timezone-aware for comparison
+        start_date_aware = data.start_date
+        if start_date_aware.tzinfo is None:
+            start_date_aware = start_date_aware.replace(tzinfo=timezone.utc)
+        if start_date_aware < min_start:
             raise HTTPException(
                 status_code=400, 
                 detail=f"Request must be at least {policy['advance_notice_days']} days in advance"
