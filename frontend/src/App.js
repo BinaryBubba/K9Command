@@ -47,6 +47,10 @@ import KennelManagementPage from './pages/KennelManagementPage';
 import DailyOpsPage from './pages/DailyOpsPage';
 import CouponManagementPage from './pages/CouponManagementPage';
 
+// MoeGo Parity - Phase 2 Pages
+import LodgingMapPage from './pages/LodgingMapPage';
+import CheckInOutPage from './pages/CheckInOutPage';
+
 // Store
 import useAuthStore from './store/authStore';
 
