@@ -99,7 +99,7 @@ export function usePushNotifications() {
       await navigator.serviceWorker.ready;
       
       // Get VAPID public key from server
-      const vapidRes = await api.get('/moego/push/vapid-key');
+      const vapidRes = await api.get('/k9/push/vapid-key');
       const vapidPublicKey = vapidRes.data.vapid_public_key;
       
       if (!vapidPublicKey) {
@@ -114,7 +114,7 @@ export function usePushNotifications() {
       
       // Send subscription to server
       const subscriptionJson = pushSubscription.toJSON();
-      await api.post('/moego/push/subscribe/web', {
+      await api.post('/k9/push/subscribe/web', {
         subscription: {
           endpoint: subscriptionJson.endpoint,
           keys: subscriptionJson.keys
@@ -163,7 +163,7 @@ export function usePushNotifications() {
   // Send test notification
   const sendTest = useCallback(async () => {
     try {
-      const res = await api.post('/moego/push/test');
+      const res = await api.post('/k9/push/test');
       return res.data;
     } catch (e) {
       console.error('Test notification error:', e);

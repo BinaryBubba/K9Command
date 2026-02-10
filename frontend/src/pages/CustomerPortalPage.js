@@ -75,9 +75,9 @@ export default function CustomerPortalPage() {
     setLoading(true);
     try {
       const [upcomingRes, historyRes, invoicesRes] = await Promise.all([
-        api.get('/moego/portal/upcoming'),
-        api.get('/moego/portal/service-history'),
-        api.get('/moego/portal/invoices')
+        api.get('/k9/portal/upcoming'),
+        api.get('/k9/portal/service-history'),
+        api.get('/k9/portal/invoices')
       ]);
       
       setUpcoming(upcomingRes.data.upcoming || []);
@@ -93,7 +93,7 @@ export default function CustomerPortalPage() {
   
   const loadReminderPrefs = async () => {
     try {
-      const res = await api.get('/moego/reminders/preferences');
+      const res = await api.get('/k9/reminders/preferences');
       setReminderPrefs(res.data);
     } catch (error) {
       console.error('Failed to load reminder preferences:', error);
@@ -106,7 +106,7 @@ export default function CustomerPortalPage() {
     setReminderLoading(true);
     
     try {
-      await api.put('/moego/reminders/preferences', { [key]: value });
+      await api.put('/k9/reminders/preferences', { [key]: value });
       toast.success('Preference updated');
     } catch (error) {
       toast.error('Failed to update preference');
@@ -131,7 +131,7 @@ export default function CustomerPortalPage() {
     
     setRebookLoading(true);
     try {
-      await api.post(`/moego/portal/rebook/${rebookingFrom.id}`, {
+      await api.post(`/k9/portal/rebook/${rebookingFrom.id}`, {
         check_in_date: new Date(rebookCheckIn).toISOString(),
         check_out_date: new Date(rebookCheckOut).toISOString()
       });

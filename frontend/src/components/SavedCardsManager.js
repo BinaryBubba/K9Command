@@ -45,7 +45,7 @@ const SavedCardsManager = ({ onCardSelect, selectedCardId, showAddOnly = false }
 
   const loadPaymentConfig = async () => {
     try {
-      const res = await api.get('/moego/payments/config');
+      const res = await api.get('/k9/payments/config');
       setPaymentConfig(res.data);
     } catch (error) {
       console.error('Failed to load payment config:', error);
@@ -55,7 +55,7 @@ const SavedCardsManager = ({ onCardSelect, selectedCardId, showAddOnly = false }
   const loadCards = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/moego/payments/cards');
+      const res = await api.get('/k9/payments/cards');
       setCards(res.data.cards || []);
       
       // Auto-select first card if none selected
@@ -79,7 +79,7 @@ const SavedCardsManager = ({ onCardSelect, selectedCardId, showAddOnly = false }
     try {
       // In mock mode, we simulate tokenization
       // In production with Square, use Square Web Payments SDK
-      await api.post('/moego/payments/cards', {
+      await api.post('/k9/payments/cards', {
         source_id: `mock_token_${Date.now()}`,
         cardholder_name: 'Card Holder',
         postal_code: postalCode
@@ -98,7 +98,7 @@ const SavedCardsManager = ({ onCardSelect, selectedCardId, showAddOnly = false }
 
   const handleDeleteCard = async (cardId) => {
     try {
-      await api.delete(`/moego/payments/cards/${cardId}`);
+      await api.delete(`/k9/payments/cards/${cardId}`);
       toast.success('Card removed');
       loadCards();
     } catch (error) {

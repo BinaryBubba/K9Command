@@ -67,9 +67,9 @@ export default function CheckInOutPage() {
     setLoading(true);
     try {
       const [checkInsRes, checkOutsRes, bathsRes] = await Promise.all([
-        api.get(`/moego/operations/check-ins?location_id=main&date=${selectedDate}`),
-        api.get(`/moego/operations/check-outs?location_id=main&date=${selectedDate}`),
-        api.get(`/moego/operations/baths-due?location_id=main&date=${selectedDate}`)
+        api.get(`/k9/operations/check-ins?location_id=main&date=${selectedDate}`),
+        api.get(`/k9/operations/check-outs?location_id=main&date=${selectedDate}`),
+        api.get(`/k9/operations/baths-due?location_id=main&date=${selectedDate}`)
       ]);
       
       setCheckIns(checkInsRes.data);
@@ -103,7 +103,7 @@ export default function CheckInOutPage() {
     if (!selectedBooking) return;
     
     try {
-      await api.post(`/moego/operations/check-in/${selectedBooking.booking_id}`, {
+      await api.post(`/k9/operations/check-in/${selectedBooking.booking_id}`, {
         notes: checkInNotes,
         items_received: checkInItems
       });
@@ -120,7 +120,7 @@ export default function CheckInOutPage() {
     if (!selectedBooking) return;
     
     try {
-      await api.post(`/moego/operations/check-out/${selectedBooking.booking_id}`, {
+      await api.post(`/k9/operations/check-out/${selectedBooking.booking_id}`, {
         notes: checkOutNotes,
         items_returned: checkOutItems,
         payment_collected: paymentCollected,
@@ -137,7 +137,7 @@ export default function CheckInOutPage() {
 
   const markBathComplete = async (bookingId) => {
     try {
-      await api.post(`/moego/operations/bath/${bookingId}`);
+      await api.post(`/k9/operations/bath/${bookingId}`);
       toast.success('Bath marked as completed');
       loadData();
     } catch (error) {

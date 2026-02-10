@@ -101,7 +101,7 @@ export default function CustomerLeadsPage() {
       if (filterStatus) params.append('status', filterStatus);
       if (filterSource) params.append('source', filterSource);
       
-      const res = await api.get(`/moego/crm/leads?${params.toString()}`);
+      const res = await api.get(`/k9/crm/leads?${params.toString()}`);
       setLeads(res.data.leads || []);
     } catch (error) {
       toast.error('Failed to load leads');
@@ -112,7 +112,7 @@ export default function CustomerLeadsPage() {
 
   const loadRetentionMetrics = async () => {
     try {
-      const res = await api.get('/moego/crm/retention-metrics');
+      const res = await api.get('/k9/crm/retention-metrics');
       setRetentionMetrics(res.data);
     } catch (error) {
       console.error('Failed to load retention metrics:', error);
@@ -133,7 +133,7 @@ export default function CustomerLeadsPage() {
         notes: newLead.dog_info.notes
       } : null;
       
-      await api.post('/moego/crm/leads', {
+      await api.post('/k9/crm/leads', {
         name: newLead.name,
         email: newLead.email || null,
         phone: newLead.phone || null,
@@ -153,7 +153,7 @@ export default function CustomerLeadsPage() {
 
   const handleUpdateStatus = async (leadId, newStatus, notes = '') => {
     try {
-      await api.put(`/moego/crm/leads/${leadId}/status`, {
+      await api.put(`/k9/crm/leads/${leadId}/status`, {
         status: newStatus,
         notes: notes || undefined
       });
@@ -169,7 +169,7 @@ export default function CustomerLeadsPage() {
 
   const handleConvertLead = async (leadId) => {
     try {
-      await api.post(`/moego/crm/leads/${leadId}/convert`);
+      await api.post(`/k9/crm/leads/${leadId}/convert`);
       toast.success('Lead converted to customer!');
       loadLeads();
       loadRetentionMetrics();

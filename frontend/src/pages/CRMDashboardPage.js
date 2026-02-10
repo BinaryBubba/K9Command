@@ -63,8 +63,8 @@ export default function CRMDashboardPage() {
     setLoading(true);
     try {
       const [leadsRes, metricsRes] = await Promise.all([
-        api.get('/moego/crm/leads'),
-        api.get('/moego/crm/retention-metrics')
+        api.get('/k9/crm/leads'),
+        api.get('/k9/crm/retention-metrics')
       ]);
       setLeads(leadsRes.data.leads || []);
       setRetentionMetrics(metricsRes.data);
@@ -82,7 +82,7 @@ export default function CRMDashboardPage() {
     }
     
     try {
-      await api.post('/moego/crm/leads', newLead);
+      await api.post('/k9/crm/leads', newLead);
       toast.success('Lead added');
       setShowAddLead(false);
       setNewLead({ name: '', email: '', phone: '', source: 'walk_in', notes: '' });
@@ -94,7 +94,7 @@ export default function CRMDashboardPage() {
 
   const updateLeadStatus = async (leadId, status) => {
     try {
-      await api.put(`/moego/crm/leads/${leadId}/status`, { status });
+      await api.put(`/k9/crm/leads/${leadId}/status`, { status });
       toast.success('Lead updated');
       loadData();
     } catch (error) {
@@ -104,7 +104,7 @@ export default function CRMDashboardPage() {
 
   const convertLead = async (leadId) => {
     try {
-      await api.post(`/moego/crm/leads/${leadId}/convert`);
+      await api.post(`/k9/crm/leads/${leadId}/convert`);
       toast.success('Lead converted to customer');
       loadData();
     } catch (error) {

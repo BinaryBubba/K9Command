@@ -52,7 +52,7 @@ export default function POSCheckoutPage() {
   const loadProducts = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/moego/inventory/products?active_only=true');
+      const res = await api.get('/k9/inventory/products?active_only=true');
       setProducts(res.data.products?.filter(p => p.quantity > 0) || []);
     } catch (error) {
       toast.error('Failed to load products');
@@ -76,7 +76,7 @@ export default function POSCheckoutPage() {
 
   const loadCustomerCards = async (customerId) => {
     try {
-      const res = await api.get('/moego/payments/cards', {
+      const res = await api.get('/k9/payments/cards', {
         params: { customer_id: customerId }
       });
       setSavedCards(res.data.cards || []);
@@ -179,7 +179,7 @@ export default function POSCheckoutPage() {
         payload.card_id = selectedCardId;
       }
       
-      const res = await api.post('/moego/pos/transaction', payload);
+      const res = await api.post('/k9/pos/transaction', payload);
       
       setLastTransaction(res.data.transaction);
       setShowReceipt(true);

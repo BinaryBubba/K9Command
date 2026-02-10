@@ -43,8 +43,8 @@ export default function BookingApprovalPage() {
     setLoading(true);
     try {
       const [bookingsRes, kennelsRes] = await Promise.all([
-        api.get('/moego/bookings/pending-approval'),
-        api.get('/moego/kennels')
+        api.get('/k9/bookings/pending-approval'),
+        api.get('/k9/kennels')
       ]);
       
       setPendingBookings(bookingsRes.data);
@@ -74,7 +74,7 @@ export default function BookingApprovalPage() {
     if (!selectedBooking) return;
     
     try {
-      await api.post(`/moego/bookings/${selectedBooking.id}/approve`, null, {
+      await api.post(`/k9/bookings/${selectedBooking.id}/approve`, null, {
         params: {
           kennel_id: selectedKennel || undefined,
           notes: approvalNotes || undefined
@@ -96,7 +96,7 @@ export default function BookingApprovalPage() {
     }
     
     try {
-      await api.post(`/moego/bookings/${selectedBooking.id}/reject`, null, {
+      await api.post(`/k9/bookings/${selectedBooking.id}/reject`, null, {
         params: { reason: rejectionReason }
       });
       

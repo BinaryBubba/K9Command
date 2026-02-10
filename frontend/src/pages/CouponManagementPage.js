@@ -63,7 +63,7 @@ export default function CouponManagementPage() {
   const loadCoupons = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/moego/coupons');
+      const response = await api.get('/k9/coupons');
       setCoupons(response.data);
     } catch (error) {
       toast.error('Failed to load coupons');
@@ -95,10 +95,10 @@ export default function CouponManagementPage() {
       };
 
       if (editingCoupon) {
-        await api.patch(`/moego/coupons/${editingCoupon.id}`, payload);
+        await api.patch(`/k9/coupons/${editingCoupon.id}`, payload);
         toast.success('Coupon updated');
       } else {
-        await api.post('/moego/coupons', payload);
+        await api.post('/k9/coupons', payload);
         toast.success('Coupon created');
       }
       
@@ -115,7 +115,7 @@ export default function CouponManagementPage() {
     if (!window.confirm('Are you sure you want to deactivate this coupon?')) return;
     
     try {
-      await api.delete(`/moego/coupons/${couponId}`);
+      await api.delete(`/k9/coupons/${couponId}`);
       toast.success('Coupon deactivated');
       loadCoupons();
     } catch (error) {

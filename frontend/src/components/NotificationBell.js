@@ -35,7 +35,7 @@ const NotificationBell = () => {
 
   const fetchUnreadCount = async () => {
     try {
-      const res = await api.get('/moego/notifications/unread-count');
+      const res = await api.get('/k9/notifications/unread-count');
       setUnreadCount(res.data.unread_count);
     } catch (error) {
       // Silently fail - notifications are not critical
@@ -45,7 +45,7 @@ const NotificationBell = () => {
   const fetchNotifications = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/moego/notifications?limit=20');
+      const res = await api.get('/k9/notifications?limit=20');
       setNotifications(res.data);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
@@ -63,7 +63,7 @@ const NotificationBell = () => {
 
   const markAsRead = async (notificationId) => {
     try {
-      await api.post(`/moego/notifications/${notificationId}/read`);
+      await api.post(`/k9/notifications/${notificationId}/read`);
       setNotifications(prev => 
         prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n)
       );
@@ -75,7 +75,7 @@ const NotificationBell = () => {
 
   const markAllAsRead = async () => {
     try {
-      await api.post('/moego/notifications/mark-all-read');
+      await api.post('/k9/notifications/mark-all-read');
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
       setUnreadCount(0);
     } catch (error) {

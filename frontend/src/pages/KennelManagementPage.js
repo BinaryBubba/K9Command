@@ -83,7 +83,7 @@ export default function KennelManagementPage() {
   const loadKennels = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/moego/kennels');
+      const response = await api.get('/k9/kennels');
       setKennels(response.data);
     } catch (error) {
       toast.error('Failed to load kennels');
@@ -108,10 +108,10 @@ export default function KennelManagementPage() {
       };
 
       if (editingKennel) {
-        await api.patch(`/moego/kennels/${editingKennel.id}`, payload);
+        await api.patch(`/k9/kennels/${editingKennel.id}`, payload);
         toast.success('Kennel updated');
       } else {
-        await api.post('/moego/kennels', payload);
+        await api.post('/k9/kennels', payload);
         toast.success('Kennel created');
       }
       
@@ -128,7 +128,7 @@ export default function KennelManagementPage() {
     if (!window.confirm('Are you sure you want to deactivate this kennel?')) return;
     
     try {
-      await api.delete(`/moego/kennels/${kennelId}`);
+      await api.delete(`/k9/kennels/${kennelId}`);
       toast.success('Kennel deactivated');
       loadKennels();
     } catch (error) {

@@ -58,7 +58,7 @@ const BookStayPage = () => {
       const [dogsRes, locationsRes, kennelsRes] = await Promise.all([
         api.get('/dogs'),
         api.get('/locations'),
-        api.get('/moego/kennels').catch(() => ({ data: [] })),
+        api.get('/k9/kennels').catch(() => ({ data: [] })),
       ]);
       setDogs(dogsRes.data);
       setLocations(locationsRes.data);
@@ -219,7 +219,7 @@ const BookStayPage = () => {
         notes: formData.notes,
       };
 
-      const response = await api.post('/moego/bookings/smart', bookingData);
+      const response = await api.post('/k9/bookings/smart', bookingData);
       const result = response.data;
       
       setBookingResult(result);

@@ -58,8 +58,8 @@ export default function LodgingMapPage() {
     setLoading(true);
     try {
       const [kennelsRes, dogsRes] = await Promise.all([
-        api.get('/moego/kennels'),
-        api.get(`/moego/operations/dogs-on-site?location_id=main&date=${selectedDate}`)
+        api.get('/k9/kennels'),
+        api.get(`/k9/operations/dogs-on-site?location_id=main&date=${selectedDate}`)
       ]);
       
       // Map dogs to kennels
@@ -97,7 +97,7 @@ export default function LodgingMapPage() {
 
   const handleStatusChange = async (kennelId, newStatus) => {
     try {
-      await api.patch(`/moego/kennels/${kennelId}`, { status: newStatus });
+      await api.patch(`/k9/kennels/${kennelId}`, { status: newStatus });
       toast.success('Kennel status updated');
       loadData();
       setShowKennelModal(false);

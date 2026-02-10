@@ -42,8 +42,8 @@ export default function DailyOpsPage() {
     setLoading(true);
     try {
       const [summaryRes, dogsRes] = await Promise.all([
-        api.get(`/moego/operations/summary?location_id=main&date=${selectedDate}`),
-        api.get(`/moego/operations/dogs-on-site?location_id=main&date=${selectedDate}`)
+        api.get(`/k9/operations/summary?location_id=main&date=${selectedDate}`),
+        api.get(`/k9/operations/dogs-on-site?location_id=main&date=${selectedDate}`)
       ]);
       setSummary(summaryRes.data);
       setDogsOnSite(dogsRes.data);

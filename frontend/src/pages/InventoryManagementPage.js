@@ -61,7 +61,7 @@ export default function InventoryManagementPage() {
   const loadProducts = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/moego/inventory/products');
+      const res = await api.get('/k9/inventory/products');
       setProducts(res.data.products || []);
     } catch (error) {
       toast.error('Failed to load inventory');
@@ -72,7 +72,7 @@ export default function InventoryManagementPage() {
 
   const loadLowStock = async () => {
     try {
-      const res = await api.get('/moego/inventory/low-stock');
+      const res = await api.get('/k9/inventory/low-stock');
       setLowStockProducts(res.data.products || []);
     } catch (error) {
       console.error('Failed to load low stock:', error);
@@ -86,7 +86,7 @@ export default function InventoryManagementPage() {
     }
     
     try {
-      await api.post('/moego/inventory/products', {
+      await api.post('/k9/inventory/products', {
         ...newProduct,
         price_cents: Math.round(newProduct.price_cents * 100),
         cost_cents: newProduct.cost_cents ? Math.round(newProduct.cost_cents * 100) : null
@@ -111,7 +111,7 @@ export default function InventoryManagementPage() {
     }
     
     try {
-      await api.post('/moego/inventory/adjust', {
+      await api.post('/k9/inventory/adjust', {
         product_id: selectedProduct.id,
         quantity_change: adjustQuantity,
         reason: adjustReason || 'Manual adjustment'
