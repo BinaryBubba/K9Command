@@ -252,6 +252,10 @@ class BookingCreate(BaseModel):
     notes: Optional[str] = None
     special_request: Optional[str] = None
     needs_separate_playtime: bool = False
+    # Phase 1 additions
+    service_type_id: Optional[str] = None
+    add_on_ids: List[str] = []
+    add_on_quantities: Dict[str, int] = {}  # add_on_id -> quantity
 
 class BookingResponse(BaseDBModel):
     household_id: str
@@ -269,6 +273,19 @@ class BookingResponse(BaseDBModel):
     is_holiday_pricing: Optional[bool] = False
     needs_separate_playtime: Optional[bool] = False
     separate_playtime_fee: Optional[float] = 0.0
+    # Phase 1 additions
+    service_type_id: Optional[str] = None
+    add_ons: List[Dict[str, Any]] = []
+    subtotal: Optional[float] = 0.0
+    tax_amount: Optional[float] = 0.0
+    discount_amount: Optional[float] = 0.0
+    deposit_percentage: Optional[float] = 50.0
+    deposit_amount: Optional[float] = 0.0
+    deposit_paid: Optional[bool] = False
+    balance_due: Optional[float] = 0.0
+    balance_paid: Optional[bool] = False
+    requires_approval: Optional[bool] = False
+    invoice_id: Optional[str] = None
 
 # Daily Update Models
 class MediaItem(BaseModel):
