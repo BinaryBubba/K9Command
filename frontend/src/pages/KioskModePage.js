@@ -249,7 +249,7 @@ export default function KioskModePage() {
                   <Button
                     key={num}
                     variant="outline"
-                    className="h-14 text-2xl font-bold"
+                    className="h-14 text-2xl font-bold text-white border-slate-600 hover:bg-slate-700"
                     onClick={() => handlePinDigit(num.toString())}
                   >
                     {num}
@@ -257,21 +257,21 @@ export default function KioskModePage() {
                 ))}
                 <Button
                   variant="outline"
-                  className="h-14 text-sm"
+                  className="h-14 text-sm text-white border-slate-600 hover:bg-slate-700"
                   onClick={handlePinClear}
                 >
                   Clear
                 </Button>
                 <Button
                   variant="outline"
-                  className="h-14 text-2xl font-bold"
+                  className="h-14 text-2xl font-bold text-white border-slate-600 hover:bg-slate-700"
                   onClick={() => handlePinDigit('0')}
                 >
                   0
                 </Button>
                 <Button
                   variant="outline"
-                  className="h-14 text-sm"
+                  className="h-14 text-sm text-white border-slate-600 hover:bg-slate-700"
                   onClick={handlePinBackspace}
                 >
                   ←
