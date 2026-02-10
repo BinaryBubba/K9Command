@@ -684,14 +684,14 @@ class AddOnResponse(BaseDBModel):
     name: str
     description: Optional[str] = None
     price: float
-    price_type: PriceType
-    category: str
-    requires_staff_assignment: bool
-    max_quantity: int
-    active: bool
+    price_type: PriceType = PriceType.FLAT
+    category: str = "general"
+    requires_staff_assignment: bool = False
+    max_quantity: int = 1
+    active: bool = True
     location_id: Optional[str] = None
     service_type_ids: List[str] = []
-    sort_order: int
+    sort_order: int = 0
 
 
 # ==================== BOOKING ADD-ON (Junction) ====================
