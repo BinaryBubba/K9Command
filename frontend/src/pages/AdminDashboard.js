@@ -244,6 +244,36 @@ const AdminDashboard = () => {
               <p className="text-sm text-muted-foreground text-center">Chat with staff & customers</p>
             </CardContent>
           </Card>
+
+          <Card data-testid="admin-nav-forms" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/forms')}>
+            <CardContent className="p-8">
+              <div className="w-16 h-16 rounded-full bg-teal-100 mx-auto mb-4 flex items-center justify-center">
+                <FileTextIcon className="text-teal-600" size={32} />
+              </div>
+              <h3 className="text-xl font-serif font-semibold text-center mb-2">Forms Builder</h3>
+              <p className="text-sm text-muted-foreground text-center">Create & manage forms</p>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="admin-nav-tasks" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/tasks')}>
+            <CardContent className="p-8">
+              <div className="w-16 h-16 rounded-full bg-orange-100 mx-auto mb-4 flex items-center justify-center">
+                <ListTodoIcon className="text-orange-600" size={32} />
+              </div>
+              <h3 className="text-xl font-serif font-semibold text-center mb-2">Task Management</h3>
+              <p className="text-sm text-muted-foreground text-center">Assign & track tasks</p>
+            </CardContent>
+          </Card>
+
+          <Card data-testid="admin-nav-time-off" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/time-off')}>
+            <CardContent className="p-8">
+              <div className="w-16 h-16 rounded-full bg-pink-100 mx-auto mb-4 flex items-center justify-center">
+                <UmbrellaIcon className="text-pink-600" size={32} />
+              </div>
+              <h3 className="text-xl font-serif font-semibold text-center mb-2">Time Off</h3>
+              <p className="text-sm text-muted-foreground text-center">Review leave requests</p>
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>
