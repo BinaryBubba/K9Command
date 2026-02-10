@@ -158,7 +158,7 @@ async def create_pos_transaction(
         raise HTTPException(status_code=403, detail="Staff access required")
     
     service = POSService(db)
-    transaction = await service.create_transaction(data, user.id)
+    transaction = await service.process_transaction(data, user.id)
     
     return {"message": "Transaction completed", "transaction": transaction}
 
