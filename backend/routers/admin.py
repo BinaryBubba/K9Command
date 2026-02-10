@@ -144,17 +144,43 @@ async def approve_staff_request(
     request_id: str,
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
-    """Approve a staff account request"""
+    """Approve a staff account request and create the staff user account"""
     db = await get_db()
     user = await get_current_user(credentials, db)
     if user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Admin access required")
     
-    request = await db.staff_requests.find_one({"id": request_id})
+    request = await db.staff_requests.find_one({"id": request_id}, {"_id": 0})
     if not request:
         raise HTTPException(status_code=404, detail="Request not found")
     
+    if request.get("status") != "pending":
+        raise HTTPException(status_code=400, detail="Request already processed")
+    
     now = datetime.now(timezone.utc).isoformat()
+    
+    # Check if email already taken
+    existing = await db.users.find_one({"email": request.get("email")})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Create the staff user account
+    staff_id = str(uuid.uuid4())
+    staff_doc = {
+        "id": staff_id,
+        "email": request.get("email"),
+        "full_name": request.get("full_name"),
+        "phone": request.get("phone"),
+        "hashed_password": request.get("hashed_password"),
+        "role": "staff",
+        "is_active": True,
+        "staff_approved": True,
+        "approved_by": user.id,
+        "approved_at": now,
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.users.insert_one(staff_doc)
     
     # Update request status
     await db.staff_requests.update_one(
@@ -162,17 +188,16 @@ async def approve_staff_request(
         {"$set": {
             "status": "approved",
             "approved_by": user.id,
-            "approved_at": now
+            "approved_at": now,
+            "user_id": staff_id
         }}
     )
     
-    # Update user account to allow login
-    await db.users.update_one(
-        {"email": request.get("email")},
-        {"$set": {"staff_approved": True, "approved_at": now}}
-    )
-    
-    return {"message": "Staff request approved", "request_id": request_id}
+    return {
+        "message": "Staff request approved and account created",
+        "request_id": request_id,
+        "user_id": staff_id
+    }
 
 
 @router.post("/staff-requests/{request_id}/reject")
