@@ -62,9 +62,9 @@ export default function TaskDashboardPage() {
     setLoading(true);
     try {
       const [tasksRes, templatesRes, analyticsRes] = await Promise.all([
-        api.get('/api/tasks'),
-        api.get('/api/forms/task-templates').catch(() => ({ data: [] })),
-        api.get('/api/forms/analytics/tasks').catch(() => ({ data: {} }))
+        api.get('/tasks'),
+        api.get('/forms/task-templates').catch(() => ({ data: [] })),
+        api.get('/forms/analytics/tasks').catch(() => ({ data: {} }))
       ]);
       setTasks(tasksRes.data || []);
       setTemplates(templatesRes.data || []);
@@ -84,7 +84,7 @@ export default function TaskDashboardPage() {
     }
 
     try {
-      await api.post('/api/tasks', {
+      await api.post('/tasks', {
         ...newTask,
         status: 'pending'
       });
