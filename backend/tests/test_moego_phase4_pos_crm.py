@@ -547,7 +547,7 @@ class TestIntegration:
             "password": ADMIN_PASSWORD
         })
         assert login_res.status_code == 200
-        token = login_res.json().get("access_token")
+        token = login_res.json().get("token")  # API returns 'token' not 'access_token'
         self.session.headers.update({"Authorization": f"Bearer {token}"})
         yield
     
