@@ -329,6 +329,11 @@ GET  /api/comms/knowledge/categories/list - List categories
 
 ### Implemented (Dec 2025)
 - [x] Smart booking API with eligibility checks and auto-block logic
+- [x] Smart booking UI integrated into BookStayPage with:
+  - Bath Before Pickup add-on ($25/dog) with day selection (checkout/day before)
+  - Coupon code input (validated at checkout)
+  - Auto-block display when eligibility fails (Step 4 confirmation)
+  - Eligibility warnings and errors shown to customer
 - [x] Lodging map view (visual kennel grid) - `/admin/lodging-map`
   - Simple grid layout grouped by kennel type
   - Color-coded status (green=available, red=occupied)
@@ -341,6 +346,11 @@ GET  /api/comms/knowledge/categories/list - List categories
   - Review auto-blocked bookings
   - Approve with kennel assignment or reject with reason
 - [x] Bath scheduling (day of/day before checkout)
+- [x] In-App Notification System:
+  - NotificationBell component in dashboard headers
+  - Customer notified when booking auto-blocked, approved, or rejected
+  - Admin notified when new booking requires approval
+  - Framework for future email/SMS (MOCKED - not yet integrated)
 - [x] Backend APIs:
   - POST /api/moego/bookings/smart - Smart booking with eligibility
   - GET /api/moego/operations/check-ins - Today's check-ins
@@ -352,10 +362,14 @@ GET  /api/comms/knowledge/categories/list - List categories
   - GET /api/moego/bookings/pending-approval - Pending approvals
   - POST /api/moego/bookings/{id}/approve - Approve booking
   - POST /api/moego/bookings/{id}/reject - Reject booking
+  - GET /api/moego/notifications - User notifications
+  - GET /api/moego/notifications/unread-count - Unread count
+  - POST /api/moego/notifications/{id}/read - Mark as read
+  - POST /api/moego/notifications/mark-all-read - Mark all read
 
 ### Pending
 - [ ] Waitlist management UI
-- [ ] Smart booking UI integration into existing BookStayPage
+- [ ] Email/SMS notification integration (framework built, needs service integration)
 
 ---
 
