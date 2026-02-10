@@ -92,14 +92,14 @@ class TestInventoryManagement:
         assert create_res.status_code == 200
         product_id = create_res.json()["product"]["id"]
         
-        # Get the product
+        # Get the product - returns product directly, not wrapped
         response = self.session.get(f"{BASE_URL}/api/moego/inventory/products/{product_id}")
         assert response.status_code == 200, f"Get product failed: {response.text}"
         
         data = response.json()
-        assert "product" in data
-        assert data["product"]["id"] == product_id
-        assert data["product"]["sku"] == sku
+        # API returns product directly without wrapper
+        assert data["id"] == product_id
+        assert data["sku"] == sku
         print(f"✓ Retrieved product by ID: {product_id}")
     
     def test_update_product(self):
