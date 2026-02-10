@@ -923,15 +923,19 @@ class TestQuizzes:
     def test_create_quiz(self):
         """Create a quiz (admin only)"""
         headers = {"Authorization": f"Bearer {test_data['admin_token']}"}
+        
+        # Use course_id if available, otherwise None
+        course_id = test_data.get('course_id')
+        
         response = requests.post(f"{BASE_URL}/api/comms/quizzes", json={
             "title": "TEST_Safety Quiz",
             "description": "Test your safety knowledge",
-            "course_id": test_data['course_id'],
+            "course_id": course_id,
             "questions": [
                 {
                     "id": "q1",
-                    "question": "What is the first step in an emergency?",
-                    "question_type": "multiple_choice",
+                    "text": "What is the first step in an emergency?",
+                    "type": "multiple_choice",
                     "options": [
                         {"id": "a", "text": "Panic"},
                         {"id": "b", "text": "Stay calm and assess"},
@@ -942,8 +946,8 @@ class TestQuizzes:
                 },
                 {
                     "id": "q2",
-                    "question": "Safety is everyone's responsibility",
-                    "question_type": "true_false",
+                    "text": "Safety is everyone's responsibility",
+                    "type": "true_false",
                     "correct_answer": "true",
                     "points": 10
                 }
@@ -951,8 +955,7 @@ class TestQuizzes:
             "passing_score": 80,
             "time_limit_minutes": 30,
             "allow_retakes": True,
-            "max_retakes": 3,
-            "is_active": True
+            "max_attempts": 3
         }, headers=headers)
         
         assert response.status_code == 200, f"Create quiz failed: {response.text}"
@@ -963,15 +966,21 @@ class TestQuizzes:
         test_data['quiz_id'] = data['id']
         print(f"Created quiz: {test_data['quiz_id']}")
     
-    def test_list_quizzes(self):
-        """List quizzes"""
-        headers = {"Authorization": f"Bearer {test_data['admin_token']}"}
-        response = requests.get(f"{BASE_URL}/api/comms/quizzes", headers=headers)
+    def test_get_quiz(self):
+        """Get a quiz by ID"""
+        if 'quiz_id' not in test_data:
+            pytest.skip("Quiz not created")
         
-        assert response.status_code == 200, f"List quizzes failed: {response.text}"
+        headers = {"Authorization": f"Bearer {test_data['staff_token']}"}
+        response = requests.get(
+            f"{BASE_URL}/api/comms/quizzes/{test_data['quiz_id']}",
+            headers=headers
+        )
+        
+        assert response.status_code == 200, f"Get quiz failed: {response.text}"
         data = response.json()
-        assert isinstance(data, list)
-        print(f"Found {len(data)} quizzes")
+        assert data['id'] == test_data['quiz_id']
+        print(f"Retrieved quiz: {data['title']}")
 
 
 # ==================== KNOWLEDGE BASE TESTS ====================
