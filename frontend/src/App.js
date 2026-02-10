@@ -42,6 +42,11 @@ import StaffFormsPage from './pages/StaffFormsPage';
 import TaskDashboardPage from './pages/TaskDashboardPage';
 import TimeOffPage from './pages/TimeOffPage';
 
+// MoeGo Parity - Phase 1 Pages
+import KennelManagementPage from './pages/KennelManagementPage';
+import DailyOpsPage from './pages/DailyOpsPage';
+import CouponManagementPage from './pages/CouponManagementPage';
+
 // Store
 import useAuthStore from './store/authStore';
 
