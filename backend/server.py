@@ -3109,6 +3109,185 @@ async def update_system_setting(
     return {"message": "Setting updated", "key": key, "value": value}
 
 
+# ==================== SCHEDULING CONVENIENCE ENDPOINTS ====================
+
+@api_router.get("/schedules")
+async def list_schedules(
+    staff_id: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get staff schedules (admin sees all, staff sees own)"""
+    user = await get_current_user(credentials, database)
+    
+    query = {}
+    if user.role == UserRole.STAFF:
+        query["staff_id"] = user.id
+    elif staff_id:
+        query["staff_id"] = staff_id
+    
+    if start_date:
+        query["date"] = {"$gte": start_date}
+    if end_date:
+        if "date" not in query:
+            query["date"] = {}
+        query["date"]["$lte"] = end_date
+    
+    schedules = await database.staff_schedules.find(query, {"_id": 0}).sort("date", 1).to_list(500)
+    return schedules
+
+@api_router.get("/schedules/my-schedule")
+async def get_my_schedule(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get current staff member's schedule"""
+    user = await get_current_user(credentials, database)
+    
+    schedules = await database.staff_schedules.find(
+        {"staff_id": user.id},
+        {"_id": 0}
+    ).sort("date", 1).to_list(100)
+    return schedules
+
+@api_router.get("/time-off/requests")
+async def list_all_time_off_requests(
+    status: Optional[str] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """List time off requests (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    query = {}
+    if status:
+        query["status"] = status
+    
+    requests = await database.time_off_requests.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return requests
+
+@api_router.get("/time-off/my-requests")
+async def get_my_time_off_requests(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get current user's time off requests"""
+    user = await get_current_user(credentials, database)
+    
+    requests = await database.time_off_requests.find(
+        {"staff_id": user.id},
+        {"_id": 0}
+    ).sort("start_date", -1).to_list(100)
+    return requests
+
+@api_router.post("/time-off/requests")
+async def create_time_off_request(
+    request_data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Submit a new time off request"""
+    user = await get_current_user(credentials, database)
+    
+    request_id = str(uuid.uuid4())
+    doc = {
+        "id": request_id,
+        "staff_id": user.id,
+        "leave_type": request_data.get("leave_type", "vacation"),
+        "start_date": request_data.get("start_date"),
+        "end_date": request_data.get("end_date"),
+        "reason": request_data.get("reason", ""),
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await database.time_off_requests.insert_one(doc)
+    await create_audit_log(user.id, AuditAction.CREATE, "time_off_request", request_id)
+    
+    return {"message": "Time off request submitted", "id": request_id}
+
+@api_router.post("/time-off/requests/{request_id}/approve")
+async def approve_time_off_request(
+    request_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Approve a time off request (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    request = await database.time_off_requests.find_one({"id": request_id}, {"_id": 0})
+    if not request:
+        raise HTTPException(status_code=404, detail="Request not found")
+    
+    await database.time_off_requests.update_one(
+        {"id": request_id},
+        {"$set": {
+            "status": "approved",
+            "approved_by": user.id,
+            "approved_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    await create_audit_log(user.id, AuditAction.UPDATE, "time_off_request", request_id, {"action": "approve"})
+    
+    return {"message": "Time off request approved"}
+
+@api_router.post("/time-off/requests/{request_id}/reject")
+async def reject_time_off_request(
+    request_id: str,
+    data: Optional[dict] = None,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Reject a time off request (admin only)"""
+    user = await get_current_user(credentials, database)
+    if user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    request = await database.time_off_requests.find_one({"id": request_id}, {"_id": 0})
+    if not request:
+        raise HTTPException(status_code=404, detail="Request not found")
+    
+    reason = data.get("reason", "") if data else ""
+    
+    await database.time_off_requests.update_one(
+        {"id": request_id},
+        {"$set": {
+            "status": "rejected",
+            "rejected_by": user.id,
+            "rejection_reason": reason,
+            "rejected_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    await create_audit_log(user.id, AuditAction.UPDATE, "time_off_request", request_id, {"action": "reject"})
+    
+    return {"message": "Time off request rejected"}
+
+@api_router.get("/time-off/balances")
+async def get_time_off_balances(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    database=Depends(get_db)
+):
+    """Get current user's time off balances"""
+    user = await get_current_user(credentials, database)
+    
+    balance = await database.time_off_balances.find_one({"staff_id": user.id}, {"_id": 0})
+    if not balance:
+        # Return default balances
+        return {"vacation": 10, "sick": 5, "personal": 3}
+    
+    return balance
+
 # ==================== PHASE 1: PRICE CALCULATION ====================
 
 @api_router.post("/pricing/calculate", response_model=PriceBreakdown)
