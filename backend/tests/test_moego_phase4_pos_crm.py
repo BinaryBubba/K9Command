@@ -318,13 +318,13 @@ class TestPOSCheckout:
         assert create_res.status_code == 200
         transaction_id = create_res.json()["transaction"]["id"]
         
-        # Get the transaction
+        # Get the transaction - returns transaction directly
         response = self.session.get(f"{BASE_URL}/api/moego/pos/transaction/{transaction_id}")
         assert response.status_code == 200, f"Get transaction failed: {response.text}"
         
         data = response.json()
-        assert "transaction" in data
-        assert data["transaction"]["id"] == transaction_id
+        # API returns transaction directly without wrapper
+        assert data["id"] == transaction_id
         print(f"✓ Retrieved transaction: {transaction_id}")
     
     def test_daily_sales(self):
