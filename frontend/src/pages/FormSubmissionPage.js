@@ -266,7 +266,7 @@ export default function FormSubmissionPage() {
     try {
       if (submissionId) {
         // Load existing submission
-        const response = await api.get(`/api/forms/submissions/${submissionId}`);
+        const response = await api.get(`/forms/submissions/${submissionId}`);
         const submission = response.data;
         setValues(submission.values || {});
         setSignature(submission.signature_data);
@@ -278,11 +278,11 @@ export default function FormSubmissionPage() {
           });
         }
         // Load template
-        const templateRes = await api.get(`/api/forms/templates/${submission.template_id}`);
+        const templateRes = await api.get(`/forms/templates/${submission.template_id}`);
         setTemplate(templateRes.data);
       } else if (templateId) {
         // Load template for new submission
-        const response = await api.get(`/api/forms/templates/${templateId}`);
+        const response = await api.get(`/forms/templates/${templateId}`);
         setTemplate(response.data);
       }
     } catch (error) {
@@ -346,10 +346,10 @@ export default function FormSubmissionPage() {
       };
 
       if (submissionId) {
-        await api.patch(`/api/forms/submissions/${submissionId}`, payload);
+        await api.patch(`/forms/submissions/${submissionId}`, payload);
         toast.success(asDraft ? 'Draft saved' : 'Form submitted');
       } else {
-        await api.post('/api/forms/submissions', payload);
+        await api.post('/forms/submissions', payload);
         toast.success(asDraft ? 'Draft saved' : 'Form submitted');
       }
 
