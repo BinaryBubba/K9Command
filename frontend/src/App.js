@@ -179,6 +179,22 @@ function App() {
             }
           />
           <Route
+            path="/staff/time-clock"
+            element={
+              <ProtectedRoute allowedRoles={['staff']}>
+                <StaffTimeClockPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/schedule"
+            element={
+              <ProtectedRoute allowedRoles={['staff']}>
+                <ScheduleViewPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/staff/*"
             element={
               <ProtectedRoute allowedRoles={['staff']}>
