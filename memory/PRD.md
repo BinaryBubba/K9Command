@@ -369,7 +369,28 @@ GET  /api/comms/knowledge/categories/list - List categories
 
 ### Pending
 - [ ] Waitlist management UI
-- [ ] Email/SMS notification integration (framework built, needs service integration)
+- [ ] Email notification integration (SendGrid/Resend - framework built)
+- [ ] SMS notification integration (Twilio - framework built)
+
+### Push Notifications ✅ COMPLETE (Dec 2025)
+- [x] Web Push API (browser-native) implementation
+- [x] Firebase Cloud Messaging framework (requires Firebase credentials)
+- [x] Service worker (sw.js) for handling push events
+- [x] PushNotificationSettings component integrated in Customer Dashboard
+- [x] usePushNotifications React hook for subscription management
+- [x] Backend APIs:
+  - GET /api/moego/push/vapid-key - Get VAPID public key
+  - POST /api/moego/push/subscribe/web - Subscribe to Web Push
+  - POST /api/moego/push/subscribe/fcm - Subscribe to FCM
+  - GET /api/moego/push/subscriptions - Get user subscriptions
+  - DELETE /api/moego/push/unsubscribe/{id} - Unsubscribe
+  - POST /api/moego/push/test - Send test notification
+- [x] Push notifications sent for:
+  - Booking confirmed
+  - Booking pending approval (auto-blocked)
+  - Booking approved
+  - Booking rejected
+  - Admin alerts for pending approvals
 
 ---
 
