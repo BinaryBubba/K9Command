@@ -127,6 +127,14 @@ function App() {
             }
           />
           <Route
+            path="/customer/portal"
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <CustomerPortalPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/customer/updates"
             element={
               <ProtectedRoute allowedRoles={['customer']}>
