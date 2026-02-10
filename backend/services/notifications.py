@@ -80,10 +80,10 @@ class NotificationService:
         notification_doc = {
             "id": notification_id,
             "user_id": notification.user_id,
-            "type": notification.type,
+            "type": notification.type.value if hasattr(notification.type, 'value') else notification.type,
             "title": notification.title,
             "message": notification.message,
-            "priority": notification.priority,
+            "priority": notification.priority.value if hasattr(notification.priority, 'value') else notification.priority,
             "channels": [c.value for c in notification.channels],
             "data": notification.data,
             "action_url": notification.action_url,
