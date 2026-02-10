@@ -361,7 +361,7 @@ function App() {
             path="/admin/time-management"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
-                <AdminTimesheetDashboard />
+                <AdminTimeManagementPage />
               </ProtectedRoute>
             }
           />
