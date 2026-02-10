@@ -4,9 +4,10 @@ import useAuthStore from '../store/authStore';
 import api from '../utils/api';
 import { Button } from '../components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
-import { PlusIcon, DogIcon, CalendarIcon, ImageIcon, LogOutIcon, CreditCardIcon } from 'lucide-react';
+import { PlusIcon, DogIcon, CalendarIcon, ImageIcon, LogOutIcon, CreditCardIcon, SettingsIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import NotificationBell from '../components/NotificationBell';
+import PushNotificationSettings from '../components/PushNotificationSettings';
 
 const CustomerDashboard = () => {
   const { user, logout } = useAuthStore();
