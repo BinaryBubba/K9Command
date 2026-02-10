@@ -1884,3 +1884,137 @@ async def mark_all_notifications_read(
     count = await service.mark_all_as_read(user.id)
     
     return {"message": f"Marked {count} notifications as read"}
+
+
+
+# ==================== PUSH NOTIFICATIONS ====================
+
+@router.get("/push/vapid-key")
+async def get_vapid_public_key():
+    """Get VAPID public key for Web Push subscription"""
+    from services.push_notifications import PushNotificationService
+    # Create temporary instance just to get the key
+    service = PushNotificationService(None)
+    return {"vapid_public_key": service.get_vapid_public_key()}
+
+
+@router.post("/push/subscribe/web")
+async def subscribe_web_push(
+    data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Subscribe to Web Push notifications"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    
+    subscription_info = data.get('subscription')
+    device_info = data.get('device_info')
+    
+    if not subscription_info or not subscription_info.get('endpoint'):
+        raise HTTPException(status_code=400, detail="Invalid subscription data")
+    
+    service = PushNotificationService(db)
+    subscription = await service.subscribe_web_push(
+        user_id=user.id,
+        subscription_info=subscription_info,
+        device_info=device_info
+    )
+    
+    return {
+        "message": "Subscribed to Web Push notifications",
+        "subscription_id": subscription.id
+    }
+
+
+@router.post("/push/subscribe/fcm")
+async def subscribe_fcm(
+    data: dict,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Subscribe to Firebase Cloud Messaging notifications"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    
+    fcm_token = data.get('fcm_token')
+    device_info = data.get('device_info')
+    
+    if not fcm_token:
+        raise HTTPException(status_code=400, detail="FCM token is required")
+    
+    service = PushNotificationService(db)
+    subscription = await service.subscribe_fcm(
+        user_id=user.id,
+        fcm_token=fcm_token,
+        device_info=device_info
+    )
+    
+    return {
+        "message": "Subscribed to FCM notifications",
+        "subscription_id": subscription.id
+    }
+
+
+@router.delete("/push/unsubscribe/{subscription_id}")
+async def unsubscribe_push(
+    subscription_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Unsubscribe from push notifications"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    
+    service = PushNotificationService(db)
+    success = await service.unsubscribe(user.id, subscription_id)
+    
+    if not success:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    
+    return {"message": "Unsubscribed from push notifications"}
+
+
+@router.get("/push/subscriptions")
+async def get_push_subscriptions(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get all push subscriptions for current user"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    
+    subscriptions = await db.push_subscriptions.find(
+        {"user_id": user.id, "is_active": True},
+        {"_id": 0}
+    ).to_list(50)
+    
+    return subscriptions
+
+
+@router.post("/push/test")
+async def test_push_notification(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Send a test push notification to current user"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    
+    service = PushNotificationService(db)
+    payload = PushNotificationPayload(
+        title="Test Notification 🔔",
+        body="Push notifications are working! You'll receive alerts for booking updates.",
+        tag="test",
+        data={"type": "test"},
+        action_url="/customer/dashboard"
+    )
+    
+    results = await service.send_to_user(user.id, payload)
+    
+    total_sent = results["web_push_sent"] + results["fcm_sent"]
+    if total_sent == 0:
+        return {
+            "message": "No active push subscriptions found. Please enable notifications first.",
+            "results": results
+        }
+    
+    return {
+        "message": f"Test notification sent to {total_sent} device(s)",
+        "results": results
+    }
