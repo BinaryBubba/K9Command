@@ -663,7 +663,7 @@ class TestTimeOffPolicies:
         headers = {"Authorization": f"Bearer {test_data['admin_token']}"}
         response = requests.post(f"{BASE_URL}/api/hr/time-off-policies", json={
             "name": "TEST_PTO Policy",
-            "policy_type": "pto",
+            "time_off_type": "vacation",
             "accrual_rate": 1.25,
             "accrual_frequency": "per_pay_period",
             "max_balance": 120.0,
@@ -679,7 +679,7 @@ class TestTimeOffPolicies:
         assert response.status_code == 200, f"Create time off policy failed: {response.text}"
         data = response.json()
         assert data['name'] == "TEST_PTO Policy"
-        assert data['policy_type'] == "pto"
+        assert data['time_off_type'] == "vacation"
         assert data['accrual_rate'] == 1.25
         test_data['time_off_policy_id'] = data['id']
         print(f"Created time off policy: {test_data['time_off_policy_id']}")
@@ -794,18 +794,18 @@ class TestAnnouncements:
             "title": "TEST_Important Update",
             "content": "This is a test announcement for all staff members.",
             "priority": "high",
-            "target_audience": "all",
-            "require_acknowledgement": True,
+            "target_roles": [],
+            "requires_acknowledgement": True,
             "acknowledgement_deadline": (datetime.now() + timedelta(days=7)).isoformat(),
             "is_pinned": True,
-            "tags": ["important", "policy"]
+            "status": "published"
         }, headers=headers)
         
         assert response.status_code == 200, f"Create announcement failed: {response.text}"
         data = response.json()
         assert data['title'] == "TEST_Important Update"
         assert data['priority'] == "high"
-        assert data['require_acknowledgement'] == True
+        assert data['requires_acknowledgement'] == True
         test_data['announcement_id'] = data['id']
         print(f"Created announcement: {test_data['announcement_id']}")
     
@@ -859,11 +859,11 @@ class TestTrainingCourses:
                     "order": 2
                 }
             ],
-            "estimated_duration_minutes": 60,
-            "is_required": True,
-            "due_days_after_hire": 7,
+            "duration_minutes": 60,
+            "required_for_new_staff": True,
+            "due_days_after_start": 7,
             "passing_score": 80,
-            "is_active": True,
+            "status": "published",
             "tags": ["safety", "required", "onboarding"]
         }, headers=headers)
         
@@ -871,7 +871,7 @@ class TestTrainingCourses:
         data = response.json()
         assert data['title'] == "TEST_Safety Training"
         assert len(data['sections']) == 2
-        assert data['is_required'] == True
+        assert data['required_for_new_staff'] == True
         test_data['course_id'] = data['id']
         print(f"Created course: {test_data['course_id']}")
     
@@ -987,14 +987,14 @@ class TestKnowledgeBase:
             "content": "# Emergency Procedures\n\n## Fire\n1. Sound alarm\n2. Evacuate\n3. Call 911\n\n## Medical\n1. Assess situation\n2. Call for help\n3. Administer first aid",
             "category": "safety",
             "tags": ["emergency", "safety", "procedures"],
-            "is_published": True,
-            "access_level": "all"
+            "status": "published",
+            "visible_to_roles": []
         }, headers=headers)
         
         assert response.status_code == 200, f"Create article failed: {response.text}"
         data = response.json()
         assert data['title'] == "TEST_Emergency Procedures"
-        assert data['is_published'] == True
+        assert data['status'] == "published"
         test_data['article_id'] = data['id']
         print(f"Created article: {test_data['article_id']}")
     
@@ -1066,7 +1066,7 @@ class TestAuthorization:
         headers = {"Authorization": f"Bearer {test_data['staff_token']}"}
         response = requests.post(f"{BASE_URL}/api/hr/time-off-policies", json={
             "name": "Unauthorized Policy",
-            "policy_type": "pto"
+            "time_off_type": "vacation"
         }, headers=headers)
         
         assert response.status_code == 403, f"Staff should be denied: {response.text}"
