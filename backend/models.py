@@ -184,7 +184,8 @@ class AccommodationType(str, Enum):
     ROOM = "room"
     CRATE = "crate"
 
-class PricingRule(BaseModel):
+class BookingPricingConfig(BaseModel):
+    """Simple booking pricing configuration"""
     base_price_per_night: float
     additional_dog_discount: float = 0.0  # percentage
     holiday_surcharge: float = 0.0  # percentage
