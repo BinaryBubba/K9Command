@@ -1,59 +1,60 @@
 <analysis>Here is a detailed handover summary for the next agent:
 
 **original_problem_statement:**
-The project's goal is to build a **MoeGo Parity** application for a pet services business named K9Command. The authoritative Product Requirements Document (PRD) is located at  and outlines a multi-phase implementation plan. The project has already completed the first three phases and is now beginning Phase 4.
+A senior full-stack engineer is tasked with implementing fixes and missing features in the K9Command application. The authoritative list of tasks was provided by the user and must be completed in order.
 
 **PRODUCT REQUIREMENTS:**
-- **Phase 1 (Core Data Models & Rules):** Foundation for services, kennels, capacity, and coupons. (COMPLETED)
-- **Phase 2 (Booking + Ops Views):** Smart booking UI, lodging map, and check-in/out flows, with notifications. (COMPLETED)
-- **Phase 3 (Payments & Portal):** Square integration for card-on-file, deposits, and a customer portal. (COMPLETED)
-- **Phase 4 (POS & Growth):** Retail inventory, POS checkout, and CRM tools. (IN PROGRESS)
-- **Phase 5 (Mobile Grooming & Integrations):** Route planning and external booking hooks. (SKIPPED BY USER FOR NOW)
+- **Task 1: Unify Frontend Data Access:** Create a single  facade and refactor all pages to use it, removing direct  or  calls.
+- **Task 2: Fix Dashboard Calendar:** Ensure the calendar correctly displays bookings for the logged-in customer, normalizing date formats.
+- **Task 3: Modify Bookings:** Allow customers to view and modify their upcoming bookings with specific business rules.
+- **Task 4: Modify Dog Profiles:** Allow customers to view and edit their dogs' profiles.
+- **Task 5: Booking Confirmation Emails:** Implement an event-driven email system (mock and SMTP) for booking confirmations, with an admin-editable template.
+- **Task 6: Account Governance:** Enforce rules for user registration (Customer vs. Staff), add a staff approval workflow, and restrict admin creation to an owner role.
+- **Task 7: Fix Deadlinks:** Resolve any broken links discovered during testing.
 
 **User's preferred language**: The user's primary language is English. The next agent MUST respond in English.
 
 **what currently exists?**
-A full-stack application using React, FastAPI, and MongoDB. The application has successfully implemented the first three phases of the MoeGo Parity plan, including core data models, a comprehensive booking and operational management system (with in-app and web push notifications), and a fully functional (though mocked) payment system with a customer portal via Square integration. The previous legacy Connecteam features also exist but are not the current focus.
+A full-stack application (React/FastAPI/MongoDB) for a pet services business. The backend was recently refactored from a monolithic router () into multiple, domain-specific routers (e.g., , , ). All API endpoints now use the  prefix. The application includes features for kennel management, booking, POS, inventory, CRM, and notifications. Work has just begun on a new set of user-requested tasks, starting with the creation of a unified .
 
 **Last working item**:
-- **Last item agent was working:** The agent started scaffolding the files for **MoeGo Parity Phase 4 (POS & Growth)**. It created the backend service file (), added placeholder API endpoints, and created the frontend page files for Inventory Management and POS Checkout.
+- **Last item agent was working:** The agent was laying the groundwork for the new feature requests. It created a new backend service () and a new router () for email and admin functions. The immediate next step is to integrate this new router into the main application.
 - **Status:** IN PROGRESS
 - **Agent Testing Done:** N
-- **Which testing method agent to use?** Both backend and frontend testing agents after the feature is fully implemented.
+- **Which testing method agent to use?** Both. Once all tasks are implemented, use the testing agent to perform a full regression and feature test.
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- No pending issues.
+- No outstanding bugs are reported. The focus is on implementing the new feature set.
 
 **In progress Task List**:
-- **Task 1: Implement Full MoeGo Parity Phase 4 (POS & Growth) (P0)**
-  - **Description:** Build the systems for retail inventory management, a Point-of-Sale (POS) checkout flow for in-person sales, and a basic Customer Relationship Management (CRM) dashboard.
-  - **Where to resume:**
-    1.  Create the new frontend page file: .
-    2.  Implement the backend logic in  and the corresponding models in .
-    3.  Build the UI for the three new pages: , , and .
-    4.  Add routes for the new pages in  and navigation links in .
-  - **What will be achieved with this?** A functional POS system for retail sales, inventory tracking, and basic CRM capabilities.
+- **Task 1: Unify Frontend Data Access & System Setup (P0)**
+  - **Description:** Centralize all frontend data fetching through a single  and set up the necessary files for all subsequent tasks.
+  - **Where to resume:** The agent created  but has not yet included it in . This must be done first. After that, continue refactoring all frontend pages that make direct API calls to use the .
+  - **What will be achieved with this?** A maintainable data access layer on the frontend and the foundational backend routes for admin and email functionality.
   - **Status:** IN PROGRESS
   - **Should Test frontend/backend/both after fix?** Both.
   - **Blocked on something:** No.
 
 **Upcoming and Future Tasks**
 - **Upcoming Tasks:**
-    - **P1: Implement Auto-Reminders:** Implement a system for automated appointment/check-in reminders via push notifications or email, a previously suggested enhancement.
-- **Future Tasks:**
-    - **P2: Refactor  Router:** Break down the monolithic  file into smaller, feature-specific routers (e.g., , , ) to improve maintainability.
-    - **P3: Implement MoeGo Parity Phase 5 (Mobile Grooming & Integrations):** Add support for mobile grooming routes and Reserve with Google, which was previously de-prioritized by the user.
+  - **P1: Fix Dashboard Calendar:** Implement Task 2 from the user's request.
+  - **P2: Enable Customer to Modify Bookings:** Implement Task 3.
+  - **P3: Enable Customer to Modify Dog Profiles:** Implement Task 4.
+  - **P4: Implement Booking Confirmation Emails:** Implement Task 5.
+  - **P5: Implement Account Governance:** Implement Task 6.
+  - **P6: Fix Deadlinks:** Implement Task 7.
 
 **Completed work in this session**
-- **MoeGo Parity - Phase 2 (Booking, Ops Views & Notifications) - COMPLETE:**
-  - Implemented smart booking with eligibility rules, auto-blocking, a visual lodging map, check-in/out workflows, and a booking approval page.
-  - Integrated a complete notification system, including an in-app notification center () and a Web Push API framework (, service worker,  hook).
-- **MoeGo Parity - Phase 3 (Payments & Portal) - COMPLETE:**
-  - Integrated Square for payments, including a service () that mocks responses when credentials are not present.
-  - Built a  with tabs for viewing booking history, upcoming stays, and managing saved payment methods ().
-- **Testing & Quality:** Successfully ran the testing agent after each major feature completion ( through ), which found and fixed a critical MongoDB  serialization bug.
-- **Documentation:** Kept  updated to reflect the completion of Phases 2 and 3.
+- **Major Refactoring & Rebranding (DONE):**
+  - Refactored the monolithic  into 9 smaller, domain-specific routers.
+  - Rebranded the API by changing the prefix from  to  across the entire application.
+  - Removed all references to moego, connecteam, and rover from the codebase and .
+- **Auto-Reminders System (DONE):**
+  - Implemented a backend service and API for creating and managing scheduled reminders for bookings.
+  - Added a Reminders tab to the customer portal for preference management.
+- **MoeGo Parity - Phase 4 (POS & Growth) (DONE):**
+  - Completed the POS, Inventory, and CRM/Leads pages and corresponding backend logic.
 
 **Earlier issues found/mentioned but not fixed**
 - N/A
@@ -65,72 +66,61 @@ A full-stack application using React, FastAPI, and MongoDB. The application has 
 
 
 **Key Technical Concepts**
-- **Backend:** FastAPI, Pydantic data models, modular business logic in a  directory.
-- **Frontend:** React, Tailwind CSS, Shadcn/UI, Zustand (), React Router.
-- **Notifications:** A dual system combining periodic polling for in-app notifications and the browser's Web Push API for real-time alerts.
-- **Payments:** Square SDK integration with a robust mock fallback for development without live credentials.
+- **Data Client Facade:** A pattern being implemented in  to abstract all API communication. It supports  and  modes to allow for development without a live backend.
+- **Modular Backend:** The backend API is now structured with small, domain-specific routers, making it more maintainable.
 
 **key DB schema**
-- **Phase 4 Models (to be defined):** The agent will need to define Pydantic models for , , , , and  in .
+- **EmailTemplate:** (To be created) Will store admin-editable email templates (e.g., , ).
+- **StaffRequest:** (To be created) Will store requests from users to become , pending admin approval.
 
 **changes in tech stack**
-- Added  to support browser push notifications.
+- No new technologies have been added.
 
 **All files of reference**
-- : **CRITICAL**. The authoritative product requirements document.
-- : The main backend router containing all endpoints.
-- : The newly created service file for the current task.
-- , : Placeholder pages for the current task.
+- : The central data access client being implemented.
+- : Main FastAPI application file where all routers are included.
+- : The new router for admin-specific endpoints.
+- : The new service for handling email sending.
+- : The primary customer-facing page that needs refactoring.
+- : The Product Requirements Document.
 
 **Areas that need refactoring**:
-- The  file has grown to over 2500 lines and handles all application logic. It is becoming a bottleneck for maintainability and should be refactored into smaller, domain-specific routers in the future.
+- **Frontend Data Access:** The main ongoing task is to refactor all frontend components to use the new  instead of making direct API calls. A  previously identified over 50 files that need to be updated.
 
 **key api endpoints**
-- **Phase 4 (Placeholders):**
-  - 
-  - 
-  - 
-- **Phase 3 (Payments & Portal):**
-  -  (Add card)
-  - 
-  - 
+- All endpoints are now prefixed with .
+- New endpoints are being added under  to manage email templates and staff approval.
 
 **Critical Info for New Agent**
-- **Resume Phase 4:** Your immediate task is to complete the implementation of the POS & CRM features outlined in the PRD. You will need to create one more frontend page file before building out the UI and backend logic.
-- **PRD is Authoritative:** Adhere strictly to the requirements in .
-- **Monolithic Backend Router:** Be aware that  is very large. While you should continue adding to it for this task, consider proposing a refactor as a future task.
+- Follow the user's task list (from message #253) in the specified order. Do not deviate.
+- Your immediate next step is to include the  from  into the FastAPI app in .
+- After setting up the router, proceed with refactoring all frontend pages to use the .
 
 **documents and test reports created in this job**
--  (Updated)
-- 
+-  (Significantly updated)
 - 
 - 
 - 
 
 **Last 10 User Messages and any pending HUMAN messages**
-- **User:**  (Instruction to proceed with all planned steps without interruption).
-- **User:** Approved implementing Web Push and Firebase for notifications, using the Emergent LLM Key.
-- **User:**  (Approved agent's plan and suggestion for email/SMS notifications).
-- **User:** Approved a notification framework that starts with in-app messages and can be extended later.
-- **User:**  (Explicitly de-prioritized Phase 5).
-- **User:** ,  (Guidance on UI implementation).
+- The most recent and critical user message is a detailed list of 7 tasks to be implemented in order, starting with unifying frontend data access and ending with account governance and bug fixes. This message effectively serves as the new project plan.
 
 **Project Health Check:**
-- **Broken:** The new Phase 4 pages (, ) and the backend service () are empty placeholders.
-- **Mocked:** The Square payment system () is designed to return mock responses because no API keys have been provided.
-- **In-Flight:** Implementation of MoeGo Parity Phase 4 (POS & Growth) has just begun.
+- **Broken:** Many frontend pages are still using a deprecated data access pattern (, ). These pages will break or become inconsistent until they are refactored to use the new .
+- **Mocked:** The Square payment system. The new Email service will also be implemented with mock functionality.
+- **In-Flight:** The implementation of a large, multi-step feature and refactoring request from the user has just started.
 
 **3rd Party Integrations**
-- **Square:** SDK  is installed and integrated. Currently runs in a mocked state.
-- **Web Push:**  is installed and used for browser-native push notifications.
+- **Square:** . Currently runs in a mocked state.
+- **Web Push:** . Used for browser push notifications.
 
 **Testing status**
-- **Testing agent used after significant changes:** YES. It was used successfully after completing Phase 2, the notification enhancements, and Phase 3.
-- **Test files created:** None.
+- **Testing agent used after significant changes:** YES (after previous major features).
+- **Test files created:** None. Legacy test files were removed during refactoring.
 - **Known regressions:** None.
 
 **Credentials to test flow:**
-- Register new users via the  page. Roles (, ) are assigned at registration. A common pattern used has been  or  with the password .
+- Register new users via the UI. The first registered  will be the owner. A common test pattern is  with password .
 
 **What agent forgot to execute**
-- The agent was in the process of scaffolding files for Phase 4. The immediate next step is to create the  file to complete the initial setup.</analysis>
+- The agent created the file  but did not include the router in  to make its endpoints active. This is the immediate next step.</analysis>
