@@ -240,7 +240,7 @@ const CustomerDashboard = () => {
         </Card>
 
         {/* My Dogs */}
-        <Card data-testid="my-dogs-section" className="bg-white rounded-2xl border border-border/50 shadow-sm">
+        <Card data-testid="my-dogs-section" className="bg-white rounded-2xl border border-border/50 shadow-sm mb-8">
           <CardHeader className="border-b border-border/40">
             <CardTitle className="text-2xl font-serif flex items-center gap-2">
               <DogIcon className="text-primary" />
