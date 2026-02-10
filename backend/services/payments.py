@@ -566,6 +566,8 @@ class SquarePaymentService:
                 {"$set": {"status": PaymentStatus.REFUNDED}}
             )
         
+        # Remove MongoDB _id before returning
+        refund_data.pop('_id', None)
         return refund_data
     
     async def get_booking_payments(self, booking_id: str) -> Dict[str, Any]:
