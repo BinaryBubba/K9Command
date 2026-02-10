@@ -84,6 +84,13 @@ class UserResponse(BaseModel):
     is_active: bool
     household_id: Optional[str] = None
     created_at: datetime
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip_code: Optional[str] = None
+    emergency_contact: Optional[str] = None
+    emergency_phone: Optional[str] = None
+    notes: Optional[str] = None
 
 class LoginRequest(BaseModel):
     email: EmailStr
