@@ -1344,7 +1344,7 @@ async def create_smart_booking(
     
     # Send notifications if booking was auto-blocked
     if requires_approval:
-        # Notify customer
+        # Notify customer (in-app)
         await notify_booking_auto_blocked(
             db=db,
             customer_id=user.id,
@@ -1352,6 +1352,15 @@ async def create_smart_booking(
             booking_id=booking_id,
             dog_names=dog_names,
             errors=all_errors
+        )
+        
+        # Send push notification to customer
+        await send_booking_status_push(
+            db=db,
+            user_id=user.id,
+            status="pending_approval",
+            booking_id=booking_id,
+            dog_names=dog_names
         )
         
         # Notify all admins
@@ -1366,6 +1375,24 @@ async def create_smart_booking(
                 dog_names=dog_names,
                 error_count=len(all_errors)
             )
+            # Send push notification to admins
+            await send_admin_alert_push(
+                db=db,
+                admin_ids=admin_ids,
+                title="New Booking Requires Approval 🔔",
+                body=f"Booking from {customer.get('full_name', 'Customer')} for {', '.join(dog_names)} needs review.",
+                action_url="/admin/booking-approvals",
+                data={"booking_id": booking_id}
+            )
+    else:
+        # Booking confirmed - send push notification
+        await send_booking_status_push(
+            db=db,
+            user_id=user.id,
+            status="confirmed",
+            booking_id=booking_id,
+            dog_names=dog_names
+        )
     
     # Remove _id from response
     booking_doc.pop('_id', None)
