@@ -823,6 +823,24 @@ async def approve_booking(
     except Exception as e:
         print(f"Failed to schedule reminders: {e}")
     
+    # Send booking confirmation email when approved
+    try:
+        customer = await db.users.find_one({"id": booking.get("customer_id")}, {"_id": 0, "email": 1})
+        if customer and customer.get("email"):
+            email_service = EmailService(db)
+            await email_service.send_booking_confirmation(
+                to=customer["email"],
+                booking={
+                    "id": booking_id,
+                    "check_in_date": booking.get("check_in_date", ""),
+                    "check_out_date": booking.get("check_out_date", ""),
+                    "status": "confirmed"
+                },
+                dog_names=dog_names
+            )
+    except Exception as e:
+        print(f"Failed to send confirmation email: {e}")
+    
     return {"message": "Booking approved", "booking_id": booking_id}
 
 
