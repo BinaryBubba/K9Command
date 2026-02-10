@@ -779,16 +779,16 @@ class PricingRuleCreate(BaseModel):
 class PricingRuleResponse(BaseDBModel):
     name: str
     rule_type: PricingRuleType
-    multiplier: float
-    flat_adjustment: float
+    multiplier: float = 1.0
+    flat_adjustment: float = 0.0
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
-    recurring_yearly: bool
-    days_of_week: List[int]
-    service_type_ids: List[str]
+    recurring_yearly: bool = False
+    days_of_week: List[int] = []
+    service_type_ids: List[str] = []
     location_id: Optional[str] = None
-    priority: int
-    active: bool
+    priority: int = 0
+    active: bool = True
     description: Optional[str] = None
 
 
