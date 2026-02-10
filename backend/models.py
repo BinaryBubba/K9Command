@@ -966,3 +966,360 @@ class PriceBreakdown(BaseModel):
     requires_approval: bool = False
     blocked_dates: List[str] = []  # Blackout dates in range
     warnings: List[str] = []
+
+
+
+# ==================== PHASE 2: STAFF OPERATIONS ====================
+
+class DogCompatibility(str, Enum):
+    GOOD_WITH_ALL = "good_with_all"
+    SELECTIVE = "selective"
+    DOGS_ONLY = "dogs_only"
+    SOLO_ONLY = "solo_only"
+
+class FeedingFrequency(str, Enum):
+    ONCE_DAILY = "once_daily"
+    TWICE_DAILY = "twice_daily"
+    THREE_TIMES = "three_times"
+    FREE_FEED = "free_feed"
+    CUSTOM = "custom"
+
+
+class StaffAssignment(BaseDBModel):
+    """Staff assigned to care for specific dogs"""
+    staff_id: str
+    staff_name: str
+    dog_id: str
+    dog_name: str
+    booking_id: str
+    assignment_date: datetime
+    assignment_type: str = "primary"  # primary, backup, feeding, walking
+    notes: Optional[str] = None
+    active: bool = True
+
+class StaffAssignmentCreate(BaseModel):
+    staff_id: str
+    dog_id: str
+    booking_id: str
+    assignment_date: datetime
+    assignment_type: str = "primary"
+    notes: Optional[str] = None
+
+class StaffAssignmentResponse(BaseDBModel):
+    staff_id: str
+    staff_name: str
+    dog_id: str
+    dog_name: str
+    booking_id: str
+    assignment_date: datetime
+    assignment_type: str
+    notes: Optional[str] = None
+    active: bool = True
+
+
+class PlayGroup(BaseDBModel):
+    """Group of compatible dogs for play sessions"""
+    name: str
+    dog_ids: List[str] = []
+    dog_names: List[str] = []
+    location_id: str
+    scheduled_date: datetime
+    scheduled_time: str  # "09:00", "14:00"
+    duration_minutes: int = 60
+    max_dogs: int = 6
+    compatibility_level: DogCompatibility = DogCompatibility.GOOD_WITH_ALL
+    supervisor_id: Optional[str] = None
+    supervisor_name: Optional[str] = None
+    notes: Optional[str] = None
+    status: str = "scheduled"  # scheduled, in_progress, completed, cancelled
+    completed_at: Optional[datetime] = None
+
+class PlayGroupCreate(BaseModel):
+    name: str
+    dog_ids: List[str] = []
+    location_id: str
+    scheduled_date: datetime
+    scheduled_time: str
+    duration_minutes: int = 60
+    max_dogs: int = 6
+    compatibility_level: DogCompatibility = DogCompatibility.GOOD_WITH_ALL
+    supervisor_id: Optional[str] = None
+    notes: Optional[str] = None
+
+class PlayGroupResponse(BaseDBModel):
+    name: str
+    dog_ids: List[str]
+    dog_names: List[str] = []
+    location_id: str
+    scheduled_date: datetime
+    scheduled_time: str
+    duration_minutes: int
+    max_dogs: int
+    compatibility_level: DogCompatibility
+    supervisor_id: Optional[str] = None
+    supervisor_name: Optional[str] = None
+    notes: Optional[str] = None
+    status: str
+
+
+class FeedingSchedule(BaseDBModel):
+    """Feeding schedule for a dog during their stay"""
+    dog_id: str
+    dog_name: str
+    booking_id: str
+    frequency: FeedingFrequency = FeedingFrequency.TWICE_DAILY
+    feeding_times: List[str] = ["08:00", "17:00"]  # Times in HH:MM
+    food_type: str = "dry"  # dry, wet, raw, mixed
+    portion_size: str = ""  # "1 cup", "2 scoops", etc.
+    special_instructions: Optional[str] = None
+    medications_with_food: List[str] = []
+    allergies: List[str] = []
+    treats_allowed: bool = True
+    last_fed_at: Optional[datetime] = None
+    last_fed_by: Optional[str] = None
+    notes: Optional[str] = None
+
+class FeedingScheduleCreate(BaseModel):
+    dog_id: str
+    booking_id: str
+    frequency: FeedingFrequency = FeedingFrequency.TWICE_DAILY
+    feeding_times: List[str] = ["08:00", "17:00"]
+    food_type: str = "dry"
+    portion_size: str = ""
+    special_instructions: Optional[str] = None
+    medications_with_food: List[str] = []
+    allergies: List[str] = []
+    treats_allowed: bool = True
+    notes: Optional[str] = None
+
+class FeedingScheduleResponse(BaseDBModel):
+    dog_id: str
+    dog_name: str
+    booking_id: str
+    frequency: FeedingFrequency
+    feeding_times: List[str]
+    food_type: str
+    portion_size: str
+    special_instructions: Optional[str] = None
+    medications_with_food: List[str] = []
+    allergies: List[str] = []
+    treats_allowed: bool
+    last_fed_at: Optional[datetime] = None
+    last_fed_by: Optional[str] = None
+    notes: Optional[str] = None
+
+
+# ==================== PHASE 2: OPS DASHBOARD RESPONSES ====================
+
+class DogOnSite(BaseModel):
+    """Dog currently on site"""
+    dog_id: str
+    dog_name: str
+    breed: str
+    photo_url: Optional[str] = None
+    household_id: str
+    owner_name: str
+    booking_id: str
+    check_in_date: datetime
+    check_out_date: datetime
+    accommodation_type: str
+    room_number: Optional[str] = None
+    special_needs: List[str] = []
+    feeding_schedule: Optional[str] = None
+    assigned_staff: List[str] = []
+    days_remaining: int = 0
+    notes: Optional[str] = None
+
+class ArrivalDeparture(BaseModel):
+    """Arrival or departure record"""
+    booking_id: str
+    dog_ids: List[str]
+    dog_names: List[str]
+    owner_name: str
+    owner_phone: Optional[str] = None
+    scheduled_time: datetime
+    accommodation_type: str
+    type: str  # "arrival" or "departure"
+    status: str  # "pending", "completed"
+    special_instructions: Optional[str] = None
+    items_checklist: Optional[Dict[str, Any]] = None
+
+class CapacitySnapshot(BaseModel):
+    """Current capacity status"""
+    date: str
+    total_capacity: int
+    rooms_capacity: int
+    crates_capacity: int
+    total_occupied: int
+    rooms_occupied: int
+    crates_occupied: int
+    total_available: int
+    rooms_available: int
+    crates_available: int
+    arrivals_today: int
+    departures_today: int
+    requires_approval_count: int
+
+class ApprovalQueueItem(BaseModel):
+    """Booking requiring approval"""
+    booking_id: str
+    household_id: str
+    customer_name: str
+    customer_email: str
+    dog_names: List[str]
+    check_in_date: datetime
+    check_out_date: datetime
+    accommodation_type: str
+    total_price: float
+    reason: str  # "over_capacity", "blackout_date", "manual_review"
+    submitted_at: datetime
+    notes: Optional[str] = None
+
+
+# ==================== PHASE 4: AUTOMATION & NOTIFICATIONS ====================
+
+class NotificationType(str, Enum):
+    BOOKING_CONFIRMED = "booking_confirmed"
+    BOOKING_REMINDER = "booking_reminder"
+    BOOKING_CANCELLED = "booking_cancelled"
+    PAYMENT_RECEIVED = "payment_received"
+    PAYMENT_DUE = "payment_due"
+    CHECK_IN_REMINDER = "check_in_reminder"
+    CHECK_OUT_REMINDER = "check_out_reminder"
+    DAILY_UPDATE = "daily_update"
+    INCIDENT_REPORT = "incident_report"
+    TASK_ASSIGNED = "task_assigned"
+    TASK_DUE = "task_due"
+    CUSTOM = "custom"
+
+class NotificationChannel(str, Enum):
+    EMAIL = "email"
+    SMS = "sms"
+    IN_APP = "in_app"
+    PUSH = "push"
+
+class NotificationStatus(str, Enum):
+    PENDING = "pending"
+    SENT = "sent"
+    DELIVERED = "delivered"
+    FAILED = "failed"
+    READ = "read"
+
+
+class NotificationTemplate(BaseDBModel):
+    """Reusable notification templates"""
+    name: str
+    notification_type: NotificationType
+    channel: NotificationChannel
+    subject: str  # For emails
+    body: str  # Template with {{placeholders}}
+    active: bool = True
+    trigger_event: Optional[str] = None  # Event that triggers this
+    delay_minutes: int = 0  # Delay after trigger
+    conditions: Dict[str, Any] = {}  # Conditions for sending
+
+class NotificationTemplateCreate(BaseModel):
+    name: str
+    notification_type: NotificationType
+    channel: NotificationChannel
+    subject: str
+    body: str
+    active: bool = True
+    trigger_event: Optional[str] = None
+    delay_minutes: int = 0
+    conditions: Dict[str, Any] = {}
+
+class NotificationTemplateResponse(BaseDBModel):
+    name: str
+    notification_type: NotificationType
+    channel: NotificationChannel
+    subject: str
+    body: str
+    active: bool
+    trigger_event: Optional[str] = None
+    delay_minutes: int
+    conditions: Dict[str, Any] = {}
+
+
+class Notification(BaseDBModel):
+    """Individual notification instance"""
+    user_id: str
+    household_id: Optional[str] = None
+    notification_type: NotificationType
+    channel: NotificationChannel
+    subject: str
+    body: str
+    status: NotificationStatus = NotificationStatus.PENDING
+    reference_type: Optional[str] = None  # "booking", "payment", "task"
+    reference_id: Optional[str] = None
+    sent_at: Optional[datetime] = None
+    delivered_at: Optional[datetime] = None
+    read_at: Optional[datetime] = None
+    error_message: Optional[str] = None
+    metadata: Dict[str, Any] = {}
+
+class NotificationResponse(BaseDBModel):
+    user_id: str
+    notification_type: NotificationType
+    channel: NotificationChannel
+    subject: str
+    body: str
+    status: NotificationStatus
+    reference_type: Optional[str] = None
+    reference_id: Optional[str] = None
+    sent_at: Optional[datetime] = None
+    read_at: Optional[datetime] = None
+
+
+class AutomationRule(BaseDBModel):
+    """Automation rules for triggered actions"""
+    name: str
+    description: Optional[str] = None
+    trigger_event: str  # "booking.created", "booking.checked_in", "payment.completed"
+    conditions: Dict[str, Any] = {}  # {"status": "confirmed", "days_until_checkin": {"$lte": 1}}
+    actions: List[Dict[str, Any]] = []  # [{"type": "send_notification", "template_id": "..."}]
+    active: bool = True
+    priority: int = 0
+    last_triggered_at: Optional[datetime] = None
+    trigger_count: int = 0
+
+class AutomationRuleCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    trigger_event: str
+    conditions: Dict[str, Any] = {}
+    actions: List[Dict[str, Any]] = []
+    active: bool = True
+    priority: int = 0
+
+class AutomationRuleResponse(BaseDBModel):
+    name: str
+    description: Optional[str] = None
+    trigger_event: str
+    conditions: Dict[str, Any]
+    actions: List[Dict[str, Any]]
+    active: bool
+    priority: int
+    last_triggered_at: Optional[datetime] = None
+    trigger_count: int
+
+
+class EventLog(BaseDBModel):
+    """System event log for automation tracking"""
+    event_type: str
+    event_source: str  # "booking", "payment", "user", "system"
+    source_id: Optional[str] = None
+    user_id: Optional[str] = None
+    data: Dict[str, Any] = {}
+    triggered_automations: List[str] = []
+    processed: bool = False
+    processed_at: Optional[datetime] = None
+
+class EventLogResponse(BaseDBModel):
+    event_type: str
+    event_source: str
+    source_id: Optional[str] = None
+    user_id: Optional[str] = None
+    data: Dict[str, Any]
+    triggered_automations: List[str]
+    processed: bool
