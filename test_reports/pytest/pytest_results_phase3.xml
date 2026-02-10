@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="28" failures="2" skipped="0" tests="30" time="1.457" timestamp="2026-02-10T13:26:27.371303+00:00" hostname="agent-env-61acaf77-01bc-49e9-8385-303a9d769b33"><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestAuthentication" name="test_admin_login" time="0.336"><failure message="AssertionError: assert 'access_token' in {'token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0ODkzYzg4ZC0wNGViLTRmZGMtYTIyMy00N2YwNWVkMTJlNTUiLCJlbWFpbCI6ImFkbWluX3Rlc3RfbmV3QGs5LmNvbSIsInJvbGUiOiJhZG1pbiIsImV4cCI6MTc3MzMyMTk4N30.CBXCNze5XKC9fBmVcJxE5tzEiKKdQDyVUNc86uTFVLs', 'user': {'created_at': '2026-02-10T12:38:49.432444Z', 'email': 'admin_test_new@k9.com', 'full_name': 'Admin User', 'household_id': None, ...}}">backend/tests/test_phase3_forms_tasks_hr.py:30: in test_admin_login
+    assert "access_token" in data
+E   AssertionError: assert 'access_token' in {'token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0ODkzYzg4ZC0wNGViLTRmZGMtYTIyMy00N2YwNWVkMTJlNTUiLCJlbWFpbCI6ImFkbWluX3Rlc3RfbmV3QGs5LmNvbSIsInJvbGUiOiJhZG1pbiIsImV4cCI6MTc3MzMyMTk4N30.CBXCNze5XKC9fBmVcJxE5tzEiKKdQDyVUNc86uTFVLs', 'user': {'created_at': '2026-02-10T12:38:49.432444Z', 'email': 'admin_test_new@k9.com', 'full_name': 'Admin User', 'household_id': None, ...}}</failure></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestAuthentication" name="test_staff_login" time="0.263"><failure message="AssertionError: assert 'access_token' in {'token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5YjcyOTAyYS05ZjA1LTRhYmMtYjY3OS1mZTYxYWUzNzFjN2IiLCJlbWFpbCI6InN0YWZmX3Rlc3RfbmV3QGs5LmNvbSIsInJvbGUiOiJzdGFmZiIsImV4cCI6MTc3MzMyMTk4OH0.PQ1aU-bZ8UFxLZmXKmxGbiOjt-uO8v4NxuvjBZoOhsQ', 'user': {'created_at': '2026-02-10T12:38:42.469641Z', 'email': 'staff_test_new@k9.com', 'full_name': 'Test Staff', 'household_id': None, ...}}">backend/tests/test_phase3_forms_tasks_hr.py:42: in test_staff_login
+    assert "access_token" in data
+E   AssertionError: assert 'access_token' in {'token': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5YjcyOTAyYS05ZjA1LTRhYmMtYjY3OS1mZTYxYWUzNzFjN2IiLCJlbWFpbCI6InN0YWZmX3Rlc3RfbmV3QGs5LmNvbSIsInJvbGUiOiJzdGFmZiIsImV4cCI6MTc3MzMyMTk4OH0.PQ1aU-bZ8UFxLZmXKmxGbiOjt-uO8v4NxuvjBZoOhsQ', 'user': {'created_at': '2026-02-10T12:38:42.469641Z', 'email': 'staff_test_new@k9.com', 'full_name': 'Test Staff', 'household_id': None, ...}}</failure></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestFormTemplates" name="test_list_form_templates" time="0.262"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:56: in admin_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestFormTemplates" name="test_create_form_template" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:56: in admin_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestFormTemplates" name="test_get_form_template" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:56: in admin_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestFormTemplates" name="test_update_form_template" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:56: in admin_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestFormTemplates" name="test_staff_can_list_templates" time="0.265"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:68: in staff_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestFormTemplates" name="test_staff_cannot_create_template" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:68: in staff_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestFormSubmissions" name="test_create_form_submission_draft" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:68: in staff_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestFormSubmissions" name="test_list_form_submissions" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:68: in staff_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestFormSubmissions" name="test_get_form_submission" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:68: in staff_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestFormSubmissions" name="test_update_form_submission" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:68: in staff_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestFormSubmissions" name="test_admin_review_submission" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:56: in admin_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestTasks" name="test_list_tasks" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:56: in admin_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestTasks" name="test_create_task" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:56: in admin_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestTasks" name="test_get_task" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:56: in admin_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestTasks" name="test_update_task_status" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:56: in admin_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestTasks" name="test_staff_can_list_tasks" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:68: in staff_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestTasks" name="test_staff_can_create_task" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:68: in staff_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestTaskTemplates" name="test_list_task_templates" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:56: in admin_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestTaskTemplates" name="test_create_task_template" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:56: in admin_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestHRPolicies" name="test_list_policies" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:56: in admin_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestHRPolicies" name="test_create_policy" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:56: in admin_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestHRRequests" name="test_list_requests" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:56: in admin_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestHRRequests" name="test_create_request" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:68: in staff_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestHRRequests" name="test_staff_list_own_requests" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:68: in staff_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestAnalytics" name="test_form_submission_analytics" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:56: in admin_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestAnalytics" name="test_task_analytics" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:56: in admin_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestAnalytics" name="test_staff_cannot_access_analytics" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:68: in staff_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase><testcase classname="backend.tests.test_phase3_forms_tasks_hr.TestCleanup" name="test_delete_form_template" time="0.000"><error message="failed on setup with &quot;KeyError: 'access_token'&quot;">backend/tests/test_phase3_forms_tasks_hr.py:56: in admin_token
+    return response.json()["access_token"]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   KeyError: 'access_token'</error></testcase></testsuite></testsuites>
