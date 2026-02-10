@@ -325,6 +325,50 @@ GET  /api/comms/knowledge/categories/list - List categories
 
 ---
 
+## MOEGO PARITY - PHASE 2 (Booking + Ops Views)
+
+### Pending Implementation
+- [ ] Smart booking UI with slot selection
+- [ ] Kennel assignment at booking time
+- [ ] Lodging map view (visual kennel grid)
+- [ ] Check-in/check-out flows with eligibility enforcement
+- [ ] Bath scheduling (before pickup add-on)
+- [ ] Waitlist management UI
+
+---
+
+## MOEGO PARITY - PHASE 3 (Payments & Portal)
+
+### Pending Implementation
+- [ ] Card-on-file vaulting (Square Customers API)
+- [ ] Deposit & pre-authorization holds
+- [ ] Customer portal depth (service history, one-click rebooking)
+- [ ] Invoice & receipt downloads
+- [ ] Dunning/overdue balance workflows
+
+---
+
+## MOEGO PARITY - PHASE 4 (POS & Growth)
+
+### Pending Implementation
+- [ ] Retail inventory catalog (SKUs)
+- [ ] POS checkout (in-person)
+- [ ] Lead intake pipeline
+- [ ] CRM lifecycle states (new/active/lapsed)
+- [ ] Retention metrics (repeat rate, LTV)
+
+---
+
+## MOEGO PARITY - PHASE 5 (Mobile & Integrations)
+
+### Pending Implementation (Architectural Support)
+- [ ] Mobile grooming routes (if needed later)
+- [ ] Service areas (zip/polygon)
+- [ ] Reserve with Google integration
+- [ ] Webhook/event architecture
+
+---
+
 ## CONNECTEAM PARITY - PHASE 4 (Communication & Reporting)
 
 ### Pending Implementation
