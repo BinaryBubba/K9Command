@@ -289,7 +289,7 @@ const BookingModal = ({ isOpen, onClose, booking, onSuccess }) => {
             </label>
           </div>
 
-          {/* Payment Type - Only for Admin/Staff */}
+          {/* Payment Type - With Cash Option */}
           {isAdminOrStaff && !booking && (
             <div>
               <Label>Payment Type</Label>
@@ -299,8 +299,24 @@ const BookingModal = ({ isOpen, onClose, booking, onSuccess }) => {
                 className="w-full p-2 border rounded-xl mt-1"
               >
                 <option value="invoice">Invoice (Pay Later)</option>
-                <option value="immediate">Immediate Payment</option>
+                <option value="immediate">Card Payment</option>
+                <option value="cash">Cash Payment</option>
               </select>
+            </div>
+          )}
+
+          {/* Meet & Greet Override - Admin Only */}
+          {isAdminOrStaff && !booking && formData.booking_type !== 'meet_greet' && (
+            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.meet_greet_override}
+                  onChange={(e) => setFormData({ ...formData, meet_greet_override: e.target.checked })}
+                />
+                <span className="text-sm">Override Meet & Greet Requirement</span>
+              </label>
+              <p className="text-xs text-muted-foreground mt-1">Check this to book for customers who haven't completed their Meet & Greet</p>
             </div>
           )}
 
