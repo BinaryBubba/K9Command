@@ -751,16 +751,21 @@ async def update_items_checklist(
     
     return {"message": "Items checklist updated", "items": items}
 
+class ConfirmPaymentRequest(BaseModel):
+    payment_method: str
+    source_id: Optional[str] = None  # Square payment token
+
 @api_router.post("/bookings/{booking_id}/confirm-payment")
 async def confirm_payment(
     booking_id: str,
-    payment_method: str,
-    source_id: Optional[str] = None,  # Square payment token
+    request: ConfirmPaymentRequest,
     credentials: HTTPAuthorizationCredentials = Depends(security),
     database=Depends(get_db)
 ):
     """Process payment - uses Square if configured, otherwise mock mode"""
     user = await get_current_user(credentials, database)
+    payment_method = request.payment_method
+    source_id = request.source_id
     import uuid
     
     # Get booking details
