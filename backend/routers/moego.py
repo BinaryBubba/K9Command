@@ -1809,3 +1809,72 @@ async def get_baths_due_today(
         })
     
     return result
+
+
+
+# ==================== NOTIFICATIONS ====================
+
+@router.get("/notifications")
+async def get_notifications(
+    unread_only: bool = False,
+    limit: int = 50,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get notifications for the current user"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    
+    service = NotificationService(db)
+    notifications = await service.get_user_notifications(
+        user_id=user.id,
+        unread_only=unread_only,
+        limit=limit
+    )
+    
+    return [n.dict() for n in notifications]
+
+
+@router.get("/notifications/unread-count")
+async def get_unread_notification_count(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get count of unread notifications"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    
+    service = NotificationService(db)
+    count = await service.get_unread_count(user.id)
+    
+    return {"unread_count": count}
+
+
+@router.post("/notifications/{notification_id}/read")
+async def mark_notification_read(
+    notification_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Mark a notification as read"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    
+    service = NotificationService(db)
+    success = await service.mark_as_read(notification_id, user.id)
+    
+    if not success:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    
+    return {"message": "Notification marked as read"}
+
+
+@router.post("/notifications/mark-all-read")
+async def mark_all_notifications_read(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Mark all notifications as read"""
+    db = get_db()
+    user = await get_current_user(credentials, db)
+    
+    service = NotificationService(db)
+    count = await service.mark_all_as_read(user.id)
+    
+    return {"message": f"Marked {count} notifications as read"}
