@@ -825,13 +825,13 @@ class CancellationPolicyResponse(BaseDBModel):
     name: str
     days_before_checkin: int
     refund_percentage: float
-    refund_deposit_only: bool
-    applies_to_deposit: bool
-    applies_to_balance: bool
-    service_type_ids: List[str]
+    refund_deposit_only: bool = False
+    applies_to_deposit: bool = True
+    applies_to_balance: bool = True
+    service_type_ids: List[str] = []
     location_id: Optional[str] = None
-    active: bool
-    is_default: bool
+    active: bool = True
+    is_default: bool = False
     description: Optional[str] = None
 
 
