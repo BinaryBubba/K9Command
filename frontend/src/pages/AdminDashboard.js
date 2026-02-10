@@ -324,6 +324,16 @@ const AdminDashboard = () => {
               <p className="text-sm text-muted-foreground text-center">Arrivals & departures</p>
             </CardContent>
           </Card>
+
+          <Card data-testid="admin-nav-booking-approvals" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/booking-approvals')}>
+            <CardContent className="p-8">
+              <div className="w-16 h-16 rounded-full bg-yellow-100 mx-auto mb-4 flex items-center justify-center">
+                <ShieldAlertIcon className="text-yellow-600" size={32} />
+              </div>
+              <h3 className="text-xl font-serif font-semibold text-center mb-2">Booking Approvals</h3>
+              <p className="text-sm text-muted-foreground text-center">Review blocked bookings</p>
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>
