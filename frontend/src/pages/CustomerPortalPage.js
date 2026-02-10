@@ -68,6 +68,7 @@ export default function CustomerPortalPage() {
 
   useEffect(() => {
     loadData();
+    loadReminderPrefs();
   }, []);
 
   const loadData = async () => {
@@ -87,6 +88,31 @@ export default function CustomerPortalPage() {
       toast.error('Failed to load data');
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const loadReminderPrefs = async () => {
+    try {
+      const res = await api.get('/moego/reminders/preferences');
+      setReminderPrefs(res.data);
+    } catch (error) {
+      console.error('Failed to load reminder preferences:', error);
+    }
+  };
+  
+  const updateReminderPref = async (key, value) => {
+    const updated = { ...reminderPrefs, [key]: value };
+    setReminderPrefs(updated);
+    setReminderLoading(true);
+    
+    try {
+      await api.put('/moego/reminders/preferences', { [key]: value });
+      toast.success('Preference updated');
+    } catch (error) {
+      toast.error('Failed to update preference');
+      setReminderPrefs(reminderPrefs); // Revert
+    } finally {
+      setReminderLoading(false);
     }
   };
 
