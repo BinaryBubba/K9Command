@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
-import { PlusIcon, DogIcon, CalendarIcon, ImageIcon, LogOutIcon, CreditCardIcon, SettingsIcon, LayoutGridIcon, EditIcon, XIcon, CheckIcon } from 'lucide-react';
+import { Badge } from '../components/ui/badge';
+import { PlusIcon, DogIcon, CalendarIcon, ImageIcon, LogOutIcon, CreditCardIcon, SettingsIcon, LayoutGridIcon, EditIcon, XIcon, CheckIcon, ClockIcon, SunIcon, UtensilsIcon, ActivityIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import NotificationBell from '../components/NotificationBell';
 import PushNotificationSettings from '../components/PushNotificationSettings';
@@ -21,6 +22,7 @@ const CustomerDashboard = () => {
   const [bookings, setBookings] = useState([]);
   const [updates, setUpdates] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [todayAgenda, setTodayAgenda] = useState([]);
 
   // Edit dog modal state
   const [editDogModal, setEditDogModal] = useState(false);
