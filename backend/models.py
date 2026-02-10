@@ -736,11 +736,11 @@ class CapacityRuleResponse(BaseDBModel):
     service_type_id: Optional[str] = None
     accommodation_type: Optional[str] = None
     max_capacity: int
-    buffer_capacity: int
+    buffer_capacity: int = 0
     effective_date: Optional[datetime] = None
     expiry_date: Optional[datetime] = None
     notes: Optional[str] = None
-    active: bool
+    active: bool = True
 
 
 # ==================== PRICING RULES ====================
