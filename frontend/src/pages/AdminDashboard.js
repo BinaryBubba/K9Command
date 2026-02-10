@@ -388,6 +388,16 @@ const AdminDashboard = () => {
               <p className="text-sm text-muted-foreground text-center">Approve staff requests</p>
             </CardContent>
           </Card>
+
+          <Card data-testid="admin-nav-settings" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/settings')}>
+            <CardContent className="p-8">
+              <div className="w-16 h-16 rounded-full bg-gray-100 mx-auto mb-4 flex items-center justify-center">
+                <SettingsIcon className="text-gray-600" size={32} />
+              </div>
+              <h3 className="text-xl font-serif font-semibold text-center mb-2">Settings</h3>
+              <p className="text-sm text-muted-foreground text-center">Pricing & business rules</p>
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>
