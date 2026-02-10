@@ -149,7 +149,7 @@ JWT_EXPIRATION_DAYS=30
 
 ### Frontend (.env)
 ```env
-REACT_APP_BACKEND_URL=https://dogops-central.preview.emergentagent.com
+REACT_APP_BACKEND_URL=https://teamflow-118.preview.emergentagent.com
 ```
 
 ## 🚀 Getting Started
