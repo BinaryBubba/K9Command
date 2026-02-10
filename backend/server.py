@@ -2537,6 +2537,12 @@ async def startup_db_client():
             {"key": "rooms_capacity", "value": "7", "value_type": "number", "category": "capacity", "description": "Default room capacity", "editable": True},
             {"key": "crates_capacity", "value": "4", "value_type": "number", "category": "capacity", "description": "Default crate capacity", "editable": True},
             {"key": "booking_requires_approval", "value": "false", "value_type": "boolean", "category": "bookings", "description": "Require staff approval for all bookings", "editable": True},
+            {"key": "base_room_rate", "value": "45", "value_type": "number", "category": "pricing", "description": "Base room rate per dog per night", "editable": True},
+            {"key": "base_crate_rate", "value": "35", "value_type": "number", "category": "pricing", "description": "Base crate rate per dog per night", "editable": True},
+            {"key": "base_daycare_rate", "value": "30", "value_type": "number", "category": "pricing", "description": "Base daycare rate per dog per day", "editable": True},
+            {"key": "separate_playtime_rate", "value": "6", "value_type": "number", "category": "pricing", "description": "Separate playtime add-on rate", "editable": True},
+            {"key": "multi_dog_discount", "value": "10", "value_type": "number", "category": "pricing", "description": "Multi-dog discount percentage", "editable": True},
+            {"key": "meet_greet_settings", "value": '{"required_for_new_customers":true,"duration_minutes":30,"price":0,"available_days":["monday","tuesday","wednesday","thursday","friday"],"available_times":["10:00","14:00","16:00"]}', "value_type": "json", "category": "bookings", "description": "Meet & Greet settings", "editable": True},
         ]
         for setting in default_settings:
             setting["id"] = str(uuid.uuid4())
