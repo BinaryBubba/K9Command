@@ -6,6 +6,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { UsersIcon, DogIcon, CalendarIcon, AlertCircleIcon, LogOutIcon, BarChartIcon, ClockIcon, MessageCircleIcon, ClipboardListIcon, ShieldCheckIcon, CalendarDaysIcon, FileTextIcon, ListTodoIcon, UmbrellaIcon, HomeIcon, TagIcon, ActivityIcon, MapIcon, LogInIcon, ShieldAlertIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import NotificationBell from '../components/NotificationBell';
 
 const AdminDashboard = () => {
   const { user, logout } = useAuthStore();
