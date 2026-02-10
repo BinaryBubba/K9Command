@@ -48,13 +48,13 @@ class NotificationCreate(BaseModel):
 class NotificationResponse(BaseModel):
     id: str
     user_id: str
-    type: NotificationType
+    type: str  # Store as string for flexibility
     title: str
     message: str
-    priority: NotificationPriority
-    channels: List[NotificationChannel]
-    data: Optional[Dict[str, Any]]
-    action_url: Optional[str]
+    priority: str  # Store as string for flexibility
+    channels: List[str]  # Store as strings for flexibility
+    data: Optional[Dict[str, Any]] = None
+    action_url: Optional[str] = None
     is_read: bool
     created_at: str
 
