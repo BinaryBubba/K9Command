@@ -1,87 +1,68 @@
 <analysis>Here is a detailed handover summary for the next agent:
 
 **original_problem_statement:**
-The user's initial goal was to build a Kennel Operations Single Source of Truth Platform and migrate the backend to a self-hostable stack (PostgreSQL and Redis). After an attempt to migrate was reverted due to environmental constraints, the user provided a comprehensive Product Requirements Document (PRD) and pivoted the direction to a phased implementation of features on the existing MongoDB stack. The user has instructed the agent to complete the backend implementation for Phases 1 through 4 before pausing.
+The project has undergone a major pivot. The initial goal of building a Connecteam Parity system for staff operations has been **replaced** by a new, authoritative Product Requirements Document (PRD) to build a **MoeGo Parity** system for a pet services business (K9Command).
 
 **PRODUCT REQUIREMENTS:**
-A detailed PRD is available at . Key features include:
-- **Phase 1 (Data & Rules):** Add-ons, dynamic pricing, capacity rules, deposits, cancellation policies.
-- **Phase 2 (Staff Ops):** Ops dashboard, approval queue, dog assignments, feeding/task schedules.
-- **Phase 3 (Customer UX):** Multi-step booking, payment history, invoices, receipts.
-- **Phase 4 (Automation):** Notification triggers and event logging hooks.
+The new goal is to extend the K9Command application to replicate MoeGo's functionality for pet services, focusing on Boarding, Daycare, and light Grooming support. The authoritative PRD is located at  and outlines a new multi-phase implementation plan.
+
+- **Phase 1 (Core Data Models & Rules):** Foundation for services, kennels, capacity, and coupons. (COMPLETED)
+- **Phase 2 (Booking + Ops Views):** Smart booking UI, lodging map, and check-in/out flows. (IN PROGRESS)
+- **Phase 3 (Payments & Portal):** Card-on-file, deposits, and customer portal.
+- **Phase 4 (POS & Growth):** Retail inventory and CRM tools.
+- **Phase 5 (Mobile Grooming & Integrations):** Route planning and external booking hooks.
 
 **User's preferred language**: The user's primary language is English. The next agent MUST respond in English.
 
 **what currently exists?**
-A full-stack application with a React frontend and a FastAPI backend using a MongoDB database.
-- **Backend:** The backend has been significantly extended to complete **Phase 1 (Data & Rules Foundation)**. This includes new data models, CRUD API endpoints, and business logic for add-ons, service types, dynamic pricing, and system settings. The code scaffolding (models and endpoint stubs) for **Phases 2, 3, and 4** has been added but is not yet tested.
-- **Frontend:** Two new pages ( and ) have been added. A mock data adapter () has been implemented, allowing the frontend to function in a mock mode, unblocking UI development. The customer dashboard has been updated with links to the new pages.
+A full-stack application (React frontend, FastAPI/MongoDB backend). The codebase contains two distinct sets of features:
+1.  **Legacy Connecteam Features:** The time clock, scheduling, and forms/HR features are fully implemented (backend and frontend) but are now considered secondary to the new project direction.
+2.  **New MoeGo Parity Features:** Phase 1 is **complete**. This includes a new  router and extended models in  for kennels, coupons, and time slots. The corresponding frontend pages (, , ) are also fully implemented, tested, and integrated into the Admin Dashboard.
 
 **Last working item**:
-- **Last item agent was working:** Following the user's instruction to finish everything through phase 4, the agent added the backend models, API endpoint stubs, and service files for Phase 2 (Staff Ops), Phase 3 (Customer UX), and Phase 4 (Automation).
+- **Last item agent was working:** The agent began implementing the frontend for **MoeGo Parity Phase 2 (Booking + Ops Views)**. It created the initial placeholder file for the lodging map view and was about to create the page for check-in/out flows.
 - **Status:** IN PROGRESS
-- **Agent Testing Done:** N (Code for phases 2-4 has been written but not tested at all).
-- **Which testing method agent to use?** backend testing agent. A large number of new backend endpoints across three major phases have been added and require comprehensive verification.
+- **Agent Testing Done:** N
+- **Which testing method agent to use?** Frontend testing agent (once the pages are built).
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1 (P1): Customer Booking Fails:**
-  - **Description:** A critical pre-existing bug where customers cannot complete a booking. This was deprioritized in favor of the new phased implementation.
-  - **Next debug checklist:** After the Phase 1-4 backend is stable, this needs to be the top priority.
-    1. Re-test the customer booking flow from the UI.
-    2. Trace the  endpoint in  to identify the failure point.
-    3. Check browser network logs and backend logs for errors.
-  - **Why fix this issue and what will be achieved with the fix?** Restores the application's primary function for customers.
-  - **Status:** NOT STARTED
-  - **Is recurring issue?** Y
-  - **Should Test frontend/backend/both after fix?** Both
-  - **Blocked on other issue:** In progress Task 1: Implement and Test Phases 2-4 Backend.
-
-- **Issue 2 (P2): Staff Booking Creation Flow is Incorrect:**
-  - **Description:** A pre-existing bug where staff cannot create bookings on behalf of customers.
-  - **Next debug checklist:** Similar to the customer booking bug, this should be addressed after the core backend work is done.
-  - **Why fix this issue and what will be achieved with the fix?** Enables a key operational workflow for staff.
-  - **Status:** NOT STARTED
-  - **Is recurring issue?** Y
-  - **Should Test frontend/backend/both after fix?** Both
-  - **Blocked on other issue:** In progress Task 1: Implement and Test Phases 2-4 Backend.
+- No pending issues.
 
 **In progress Task List**:
-- **Task 1 (P0): Implement and Test Phases 2-4 Backend**
-  - **Description:** The user has requested the completion of all backend logic for Phases 2, 3, and 4. The agent has written the code but it remains untested.
+- **Task 1 (P0): Implement Full MoeGo Parity Phase 2 Frontend (Booking + Ops Views)**
+  - **Description:** Build the frontend interfaces for the smart booking engine, kennel/lodging map, and check-in/out workflows. The backend for this phase is not yet built.
   - **Where to resume:**
-    1. The code for these phases has been added to  and . The  has also been created.
-    2. The immediate next step is to restart the backend service (backend: stopped
-backend: started).
-    3. After restarting, thoroughly test all the new API endpoints added for Phases 2-4 to ensure they are functional and do not have logical errors or schema validation issues.
-  - **What will be achieved with this?** The entire backend foundation required by the user's PRD will be complete, providing all necessary APIs for the frontend implementation of Phases 2-4.
+    1.  Create the new frontend page file for the Check-in/Check-out workflow.
+    2.  Implement the  UI, displaying kennels in a **simple grid** layout as requested by the user.
+    3.  Implement the UI for the new Check-in/Check-out page.
+    4.  Build the Smart Booking UI, which should incorporate eligibility rules. Per user requirements, if a booking fails an eligibility check, it must **auto-block** and require admin approval.
+    5.  The booking flow should include an option for a Bath before pickup add-on, which can be scheduled for the **day of/day before checkout**.
+  - **What will be achieved with this?** A functional booking engine and operational views, which are the core of the MoeGo parity requirement.
   - **Status:** IN PROGRESS
-  - **Should Test frontend/backend/both after fix?** Backend
-  - **Blocked on something:** Nothing. This is the current highest priority task.
+  - **Should Test frontend/backend/both after fix?** Both (backend will need to be created first).
+  - **Blocked on something:** The backend APIs for Phase 2 (booking, lodging status, check-in/out) do not exist yet and must be created.
 
 **Upcoming and Future Tasks**
 - **Upcoming Tasks:**
-  - **P1: Implement Staff Ops Frontend (Phase 2):** Build the UI for the Daily Capacity Dashboard, Arrivals/Departures list, and Booking Approval Queue.
-  - **P2: Complete Customer UX Frontend (Phase 3):** Implement the multi-step booking flow with add-ons, booking modification/cancellation, payment history, and downloadable receipts.
-  - **P3: Implement Admin Features Frontend:** Build the UIs for managing Pricing Rules, Capacity Rules, Service Definitions, Add-Ons, and Policies.
+    - **P0: Implement MoeGo Parity Phase 2 Backend:** Create the API endpoints to support the smart booking UI, lodging map data, and check-in/out operations.
+    - **P1: Implement MoeGo Parity Phase 3 (Payments & Portal):** Integrate Square for card-on-file, deposits, and holds. Build out the pet parent portal for service history and rebooking.
+    - **P2: Implement MoeGo Parity Phase 4 (POS & Growth):** Implement retail inventory management, a POS checkout flow, and basic CRM tools.
 - **Future Tasks:**
-  - Implement full Square payments integration (live mode).
-  - Implement Crypto (USDC) payments.
-  - Implement photo watermarking and purchasing feature.
-  - Develop native Android and iOS applications.
-  - Implement Phase 5: In-app messaging.
+    - **P3: Implement MoeGo Parity Phase 5 (Mobile Grooming & Integrations):** Add architectural support for mobile grooming routes and service areas, and hooks for Reserve with Google.
 
 **Completed work in this session**
-- **PostgreSQL Migration Attempt & Reversal:** Strategically reverted a blocked migration to PostgreSQL, returning to a stable MongoDB stack to continue development.
-- **Frontend Mock Data Client:** Implemented a data adapter () to allow the frontend to run in a mock mode, unblocking UI development.
-- **New Frontend Pages:** Created  and  and integrated them into the .
-- **Phase 1 (Data & Rules Foundation) Backend COMPLETE & TESTED:**
-  - Implemented and verified models and APIs for , , , , , and .
-  - Created a dynamic  to calculate booking costs.
-  - Created a  abstraction layer.
+- **Project Pivot:** Successfully transitioned the entire project focus from Connecteam Parity to MoeGo Parity based on a new PRD.
+- **MoeGo Parity - Phase 1 (Core Data Models & Rules) - COMPLETE:**
+  - **Backend:** Implemented and tested new models and API endpoints for managing kennels, coupons, time slots, and eligibility rules in .
+  - **Frontend:** Implemented and tested new admin pages: , , and , including navigation from the Admin Dashboard.
+- **Legacy Connecteam Feature Completion:**
+  - **Phase 2 (Time Clock & Scheduling):** Fully completed the frontend implementation and integration, including fixing a Kiosk UI bug.
+  - **Phase 3 (Tasks, Forms, HR):** Fully completed the frontend implementation (including a drag-and-drop form builder) and integration.
+- **Documentation:** Overhauled  to reflect the new MoeGo Parity requirements and tracked progress.
 
 **Earlier issues found/mentioned but not fixed**
-- The two critical booking-related bugs (Customer Booking Fails, Staff Booking Flow Incorrect) were paused to prioritize the phased implementation requested by the user. They are tracked in the All Pending/In progress Issue list.
+- N/A
 
 **Known issue recurrence from previous fork**
 - N/A
@@ -92,80 +73,72 @@ backend: started).
   
 
 **Key Technical Concepts**
-- **Frontend:** React, Tailwind CSS, Shadcn/UI, Mock Data Adapter Pattern.
-- **Backend:** FastAPI, Pydantic, Motor (MongoDB async driver), Business Logic Service modules.
-- **Database:** MongoDB.
+- **Backend:** FastAPI with  for modularization, extensive Pydantic data modeling.
+- **Frontend:** React, Tailwind CSS, Shadcn/UI, Zustand () for state management.
 
 **key DB schema**
-- **Existing:** , , , , , , , .
-- **Newly Added (Phase 1):** , , , , , .
-- **Newly Added (Phases 2-4 Scaffolding):** , , , , .
-- ** model updated with:** , , , , , .
+- **New MoeGo Models:** , , , , , , , , .
+- See  for full definitions.
 
 **changes in tech stack**
-- The requested migration to PostgreSQL/Redis was aborted. The project remains on a MongoDB stack.
+- No changes to the core technologies.
 
 **All files of reference**
-- : The authoritative product requirements document.
-- : Contains all API endpoints, including the untested ones for Phases 2-4.
-- : Contains all data models, including the new ones for Phases 1-4.
-- : New business logic file.
-- : New file for Phase 4.
-- : Key file for frontend mock mode.
-- : New page.
-- : New page.
+- : **CRITICAL**. The authoritative PRD for the new MoeGo Parity project.
+- : New backend logic for MoeGo features.
+- : Contains all data models for both old and new features.
+- : Newly created file for the current task.
+- : Main frontend router.
+- : Main admin navigation hub.
 
 **Areas that need refactoring**:
--  is now over 3,000 lines long and contains logic for dozens of endpoints. It should be broken down into multiple router files organized by feature (e.g., , , ) to improve maintainability.
+- The codebase now contains a large number of legacy files related to the Connecteam features. While functional, they are no longer the primary focus. No immediate refactoring is needed, but the agent should be aware of the two distinct feature sets.
 
 **key api endpoints**
-- **Phase 1 (Tested):** , , , .
-- **Phase 2-4 (Untested):** , , , , and many more.
+- 
+- 
+- 
+- 
+- 
 
 **Critical Info for New Agent**
-- **Follow the User's Plan:** The user's latest instruction is to complete the backend for Phases 1-4. Phase 1 is done and tested. Phases 2-4 have code written but are completely untested.
-- **Test Before Proceeding:** Your immediate priority is to restart the backend and thoroughly test all the newly added API endpoints for Phases 2, 3, and 4. Do not move on to other tasks until the backend is stable.
-- **Original Bugs Are Still Pending:** The two critical booking bugs are still present but are de-prioritized until the phased backend work is complete.
-- **Frontend is Mocked:** The frontend is intentionally running in a mock data mode. This is not a bug.
+- **PROJECT PIVOT IS KEY:** The primary goal is now **MoeGo Parity**. The previous work on Connecteam Parity (time clocks, staff forms) is complete but secondary. All new development must align with the MoeGo PRD ().
+- **RESUME PHASE 2:** Your immediate task is to continue building the frontend for MoeGo Phase 2. This will require creating the backend APIs for booking and ops views first.
+- **USER REQUIREMENTS FOR PHASE 2:** Remember the user's specific requests: a simple grid for the lodging map, auto-block on booking rule failures, and day of/day before scheduling for the bath add-on.
 
 **documents and test reports created in this job**
--  (Updated)
+-  (Updated with MoeGo Parity plan)
+-  (Connecteam Phase 2 Test)
+-  (Connecteam Phase 3 Test)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1. **User (LATEST & PENDING):** finish everything through phase 4, wait until the end to provide summary.
-2. **Agent:** Summarized Phase 1 completion and asked to proceed with Phase 2.
-3. **User:** Defer, but make sure infrastructure is inplace (regarding crypto).
-4. **User:** There could be more (regarding service types).
-5. **User:** correct (regarding capacity numbers).
-6. **User:** default to %50, but make it admin adjustable (regarding deposits).
-7. **User:** lets make them admin configurable (regarding add-on pricing).
-8. **Agent:** Asked clarifying questions on the PRD for Phase 1 implementation.
-9. **User:** Provided the detailed K9Command PRD and instructed the agent to perform a gap-mapping analysis before coding.
-10. **Agent:** Successfully implemented frontend patches and finished the session.
+1.  **User (LATEST):**  - (Requirement for bath scheduling)
+2.  **User (LATEST):**  - (Requirement for booking eligibility failure)
+3.  **User (LATEST):**  - (Requirement for lodging map UI)
+4.  **User:**  - (Approval to proceed with MoeGo Phase 2)
+5.  **User:**  - (Clarification for Phase 1)
+6.  **User:**  - (Clarification for Phase 1 payment features)
+7.  **User:**  - (Clarification for Phase 1 kennel assignment)
+8.  **User:**  - (Clarification for Phase 1 scope)
+9.  **User:**  - (Guidance for implementing Connecteam Phase 3)
+10. **User:**  - (Guidance for implementing Connecteam Phase 3)
 
 **Project Health Check:**
-- **Broken:**
-  - The core customer booking flow.
-  - The staff booking creation flow.
-  - All newly added backend endpoints for Phases 2, 3, and 4 are untested and presumed broken.
-- **Mocked:**
-  - The entire frontend is operating on a mock data client, disconnected from the backend API.
-  - Square payment integration.
-- **In-Flight:**
-  - A major backend feature implementation (Phases 2-4) is underway. The code has been written but awaits testing.
+- **Broken:** The new page  is an empty placeholder file.
+- **Mocked:** N/A
+- **In-Flight:** MoeGo Parity Phase 2 (Booking + Ops Views) implementation has just begun.
 
 **3rd Party Integrations**
-- **Square:** SDK installed for payments. Requires User API Key.
-- **Recharts:** Used on the frontend for charts.
+- **Square:** SDK installed, but not yet fully integrated for payments as per the MoeGo PRD.
 
 **Testing status**
-- **Testing agent used after significant changes:** NO (But highly recommended for the next step).
+- **Testing agent used after significant changes:** YES (For legacy Connecteam features).
 - **Troubleshoot agent used after agent stuck in loop:** NO
-- **Test files created:** None in this session.
-- **Known regressions:** The original customer booking flow remains broken.
+- **Test files created:** Numerous page and router files.
+- **Known regressions:** None.
 
 **Credentials to test flow:**
-- Register a new user via the UI at . You can select the role (customer, staff, admin) during registration.
+- New admin/staff users can be registered through the UI at . Admin credentials from the last session were  / .
 
 **What agent forgot to execute**
-- The agent was following user instructions to write code for phases 1-4. It has not yet executed the testing step for the code written for phases 2-4.</analysis>
+- The agent was mid-task, scaffolding files for MoeGo Phase 2. It created one page () and needs to create the Check-in/Check-out page next before proceeding with implementation.</analysis>

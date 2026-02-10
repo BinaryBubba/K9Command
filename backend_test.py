@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 
 class KennelAPITester:
-    def __init__(self, base_url="https://teamflow-118.preview.emergentagent.com"):
+    def __init__(self, base_url="https://petbook-7.preview.emergentagent.com"):
         self.base_url = base_url
         self.tokens = {}  # Store tokens for different roles
         self.users = {}   # Store user data for different roles
