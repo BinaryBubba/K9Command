@@ -109,16 +109,16 @@ class TestSmartBookingWithNotifications:
         self.session = requests.Session()
         self.session.headers.update({"Content-Type": "application/json"})
         
-        # Login as admin first to create test data
+        # Login as customer to create dogs and bookings
         login_response = self.session.post(f"{BASE_URL}/api/auth/login", json={
-            "email": ADMIN_EMAIL,
-            "password": ADMIN_PASSWORD
+            "email": CUSTOMER_EMAIL,
+            "password": CUSTOMER_PASSWORD
         })
-        assert login_response.status_code == 200, f"Admin login failed: {login_response.text}"
+        assert login_response.status_code == 200, f"Customer login failed: {login_response.text}"
         
         token = login_response.json().get("token")
         self.session.headers.update({"Authorization": f"Bearer {token}"})
-        self.admin_user = login_response.json().get("user")
+        self.customer_user = login_response.json().get("user")
         
     def test_smart_booking_creates_booking(self):
         """Test that smart booking creates a booking with eligibility checks"""
