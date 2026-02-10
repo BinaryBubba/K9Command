@@ -682,12 +682,14 @@ async def create_booking_admin(
     
     separate_playtime_fee = 0.0
     needs_separate_playtime = booking_data.get('needs_separate_playtime', False)
-    if needs_separate_playtime:
-        separate_playtime_fee = 6.0 * nights
+    if needs_separate_playtime and booking_type != "meet_greet":
+        playtime_setting = await database.system_settings.find_one({"key": "separate_playtime_rate"}, {"_id": 0})
+        playtime_rate = float(playtime_setting.get("value", "6")) if playtime_setting else 6.0
+        separate_playtime_fee = playtime_rate * nights
         total_price += separate_playtime_fee
     
-    # Payment type: immediate or invoice
-    payment_type = booking_data.get('payment_type', 'invoice')  # 'immediate' or 'invoice'
+    # Payment type: immediate, invoice, or cash
+    payment_type = booking_data.get('payment_type', 'invoice')  # 'immediate', 'invoice', or 'cash'
     payment_status = 'pending'
     
     # Get location (default to main kennel)
@@ -702,6 +704,7 @@ async def create_booking_admin(
         accommodation_type=booking_data.get('accommodation_type', 'room'),
         check_in_date=check_in_date,
         check_out_date=check_out_date,
+        booking_type=booking_type,
         notes=booking_data.get('notes', ''),
         special_request=booking_data.get('special_request', ''),
         needs_separate_playtime=needs_separate_playtime,
