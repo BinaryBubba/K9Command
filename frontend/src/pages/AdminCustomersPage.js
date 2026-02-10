@@ -273,31 +273,75 @@ const AdminCustomersPage = () => {
 
       {/* Create/Edit Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editMode ? 'Edit Customer' : 'Add New Customer'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label>Full Name *</Label>
-              <Input value={formData.full_name} onChange={(e) => setFormData({ ...formData, full_name: e.target.value })} required />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <Label>Full Name *</Label>
+                <Input value={formData.full_name} onChange={(e) => setFormData({ ...formData, full_name: e.target.value })} required />
+              </div>
+              <div>
+                <Label>Email *</Label>
+                <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required disabled={editMode} />
+              </div>
+              <div>
+                <Label>Phone</Label>
+                <Input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
+              </div>
             </div>
-            <div>
-              <Label>Email *</Label>
-              <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required disabled={editMode} />
+            
+            <div className="border-t pt-4">
+              <p className="text-sm font-medium mb-3">Address Information</p>
+              <div className="space-y-3">
+                <div>
+                  <Label>Street Address</Label>
+                  <Input value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="123 Main St" />
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <Label>City</Label>
+                    <Input value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>State</Label>
+                    <Input value={formData.state} onChange={(e) => setFormData({ ...formData, state: e.target.value })} placeholder="CA" />
+                  </div>
+                  <div>
+                    <Label>Zip Code</Label>
+                    <Input value={formData.zip_code} onChange={(e) => setFormData({ ...formData, zip_code: e.target.value })} />
+                  </div>
+                </div>
+              </div>
             </div>
-            <div>
-              <Label>Phone</Label>
-              <Input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
+            
+            <div className="border-t pt-4">
+              <p className="text-sm font-medium mb-3">Emergency Contact</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Contact Name</Label>
+                  <Input value={formData.emergency_contact} onChange={(e) => setFormData({ ...formData, emergency_contact: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Contact Phone</Label>
+                  <Input value={formData.emergency_phone} onChange={(e) => setFormData({ ...formData, emergency_phone: e.target.value })} />
+                </div>
+              </div>
             </div>
-            <div>
-              <Label>{editMode ? 'New Password (leave blank to keep current)' : 'Password *'}</Label>
-              <Input type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} required={!editMode} />
+            
+            <div className="border-t pt-4">
+              <div>
+                <Label>{editMode ? 'New Password (leave blank to keep current)' : 'Password *'}</Label>
+                <Input type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} required={!editMode} />
+              </div>
+              <div className="mt-3">
+                <Label>Notes</Label>
+                <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} className="w-full p-2 border rounded-lg" rows={2} />
+              </div>
             </div>
-            <div>
-              <Label>Notes</Label>
-              <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} className="w-full p-2 border rounded-lg" rows={2} />
-            </div>
+            
             <div className="flex gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => setModalOpen(false)} className="flex-1">Cancel</Button>
               <Button type="submit" className="flex-1">{editMode ? 'Update' : 'Create'}</Button>
