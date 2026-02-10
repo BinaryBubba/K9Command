@@ -6,12 +6,18 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { toast } from 'sonner';
 import api from '../utils/api';
+import useAuthStore from '../store/authStore';
 
 const BookingModal = ({ isOpen, onClose, booking, onSuccess }) => {
+  const { user } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [dogs, setDogs] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [customerDogs, setCustomerDogs] = useState([]);
   const [locations, setLocations] = useState([]);
+  const [customerSearch, setCustomerSearch] = useState('');
   const [formData, setFormData] = useState({
+    customer_id: '',
     dog_ids: [],
     location_id: '',
     accommodation_type: 'room',
@@ -19,13 +25,17 @@ const BookingModal = ({ isOpen, onClose, booking, onSuccess }) => {
     check_out_date: '',
     notes: '',
     needs_separate_playtime: false,
+    payment_type: 'invoice',
   });
+
+  const isAdminOrStaff = user?.role === 'admin' || user?.role === 'staff';
 
   useEffect(() => {
     if (isOpen) {
       fetchData();
       if (booking) {
         setFormData({
+          customer_id: booking.customer_id || '',
           dog_ids: booking.dog_ids || [],
           location_id: booking.location_id || '',
           accommodation_type: booking.accommodation_type || 'room',
@@ -33,6 +43,7 @@ const BookingModal = ({ isOpen, onClose, booking, onSuccess }) => {
           check_out_date: booking.check_out_date?.split('T')[0] || '',
           notes: booking.notes || '',
           needs_separate_playtime: booking.needs_separate_playtime || false,
+          payment_type: booking.payment_type || 'invoice',
         });
       }
     }
@@ -49,13 +60,50 @@ const BookingModal = ({ isOpen, onClose, booking, onSuccess }) => {
       if (locationsRes.data.length > 0 && !booking) {
         setFormData(prev => ({ ...prev, location_id: locationsRes.data[0].id }));
       }
+
+      // For admin/staff, also fetch customers
+      if (isAdminOrStaff) {
+        try {
+          const customersRes = await api.get('/admin/users?role=customer');
+          setCustomers(customersRes.data || []);
+        } catch (e) {
+          console.log('Could not load customers');
+        }
+      }
     } catch (error) {
       toast.error('Failed to load data');
     }
   };
 
+  const handleCustomerSelect = (customerId) => {
+    setFormData({ ...formData, customer_id: customerId, dog_ids: [] });
+    const customer = customers.find(c => c.id === customerId);
+    if (customer) {
+      const dogsForCustomer = dogs.filter(d => d.household_id === customer.household_id);
+      setCustomerDogs(dogsForCustomer);
+    } else {
+      setCustomerDogs([]);
+    }
+  };
+
+  const filteredCustomers = customers.filter(c =>
+    c.full_name?.toLowerCase().includes(customerSearch.toLowerCase()) ||
+    c.email?.toLowerCase().includes(customerSearch.toLowerCase())
+  );
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (isAdminOrStaff && !booking && !formData.customer_id) {
+      toast.error('Please select a customer');
+      return;
+    }
+    
+    if (formData.dog_ids.length === 0) {
+      toast.error('Please select at least one dog');
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -68,7 +116,12 @@ const BookingModal = ({ isOpen, onClose, booking, onSuccess }) => {
       if (booking) {
         await api.patch(`/bookings/${booking.id}`, payload);
         toast.success('Booking updated successfully');
+      } else if (isAdminOrStaff) {
+        // Admin/Staff use the admin endpoint
+        await api.post('/bookings/admin', payload);
+        toast.success('Booking created successfully');
       } else {
+        // Customer uses regular endpoint
         await api.post('/bookings', payload);
         toast.success('Booking created successfully');
       }
@@ -81,6 +134,9 @@ const BookingModal = ({ isOpen, onClose, booking, onSuccess }) => {
     }
   };
 
+  // Determine which dogs to show
+  const availableDogs = isAdminOrStaff && !booking ? customerDogs : dogs;
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -88,6 +144,40 @@ const BookingModal = ({ isOpen, onClose, booking, onSuccess }) => {
           <DialogTitle>{booking ? 'Edit Booking' : 'Create Booking'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Customer Selection - Only for Admin/Staff creating new booking */}
+          {isAdminOrStaff && !booking && (
+            <div>
+              <Label>Customer *</Label>
+              <Input
+                type="text"
+                placeholder="Search customer by name or email..."
+                value={customerSearch}
+                onChange={(e) => setCustomerSearch(e.target.value)}
+                className="mt-1 mb-2"
+              />
+              <div className="max-h-32 overflow-y-auto border rounded-xl p-2">
+                {filteredCustomers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No customers found</p>
+                ) : (
+                  filteredCustomers.slice(0, 10).map((customer) => (
+                    <label 
+                      key={customer.id} 
+                      className={`flex items-center gap-2 p-2 cursor-pointer rounded hover:bg-muted ${formData.customer_id === customer.id ? 'bg-primary/10' : ''}`}
+                    >
+                      <input
+                        type="radio"
+                        name="customer"
+                        checked={formData.customer_id === customer.id}
+                        onChange={() => handleCustomerSelect(customer.id)}
+                      />
+                      <span className="text-sm">{customer.full_name} ({customer.email})</span>
+                    </label>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
           <div>
             <Label>Location</Label>
             <select
@@ -139,24 +229,30 @@ const BookingModal = ({ isOpen, onClose, booking, onSuccess }) => {
           </div>
 
           <div>
-            <Label>Select Dogs</Label>
+            <Label>Select Dogs *</Label>
             <div className="mt-2 space-y-2 max-h-40 overflow-y-auto border rounded-xl p-3">
-              {dogs.map((dog) => (
-                <label key={dog.id} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.dog_ids.includes(dog.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setFormData({ ...formData, dog_ids: [...formData.dog_ids, dog.id] });
-                      } else {
-                        setFormData({ ...formData, dog_ids: formData.dog_ids.filter(id => id !== dog.id) });
-                      }
-                    }}
-                  />
-                  <span>{dog.name} - {dog.breed}</span>
-                </label>
-              ))}
+              {availableDogs.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {isAdminOrStaff && !booking ? 'Select a customer first to see their dogs' : 'No dogs available'}
+                </p>
+              ) : (
+                availableDogs.map((dog) => (
+                  <label key={dog.id} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.dog_ids.includes(dog.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setFormData({ ...formData, dog_ids: [...formData.dog_ids, dog.id] });
+                        } else {
+                          setFormData({ ...formData, dog_ids: formData.dog_ids.filter(id => id !== dog.id) });
+                        }
+                      }}
+                    />
+                    <span>{dog.name} - {dog.breed}</span>
+                  </label>
+                ))
+              )}
             </div>
           </div>
 
@@ -170,6 +266,21 @@ const BookingModal = ({ isOpen, onClose, booking, onSuccess }) => {
               <span>Needs Separate Playtime (+$6/day)</span>
             </label>
           </div>
+
+          {/* Payment Type - Only for Admin/Staff */}
+          {isAdminOrStaff && !booking && (
+            <div>
+              <Label>Payment Type</Label>
+              <select
+                value={formData.payment_type}
+                onChange={(e) => setFormData({ ...formData, payment_type: e.target.value })}
+                className="w-full p-2 border rounded-xl mt-1"
+              >
+                <option value="invoice">Invoice (Pay Later)</option>
+                <option value="immediate">Immediate Payment</option>
+              </select>
+            </div>
+          )}
 
           <div>
             <Label>Notes</Label>
