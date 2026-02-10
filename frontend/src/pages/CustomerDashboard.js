@@ -73,6 +73,14 @@ const CustomerDashboard = () => {
           <div className="flex items-center gap-4">
             <NotificationBell />
             <Button
+              variant="outline"
+              onClick={() => navigate('/customer/portal')}
+              className="flex items-center gap-2"
+            >
+              <LayoutGridIcon size={18} />
+              My Portal
+            </Button>
+            <Button
               data-testid="logout-button"
               onClick={handleLogout}
               variant="ghost"
