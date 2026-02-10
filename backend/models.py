@@ -276,13 +276,13 @@ class BookingCreate(BaseModel):
 class BookingResponse(BaseDBModel):
     household_id: str
     dog_ids: List[str]
-    location_id: str
+    location_id: Optional[str] = None
     check_in_date: datetime
     check_out_date: datetime
     status: BookingStatus
     total_price: float
     notes: Optional[str] = None
-    payment_status: str
+    payment_status: Optional[str] = "pending"
     payment_type: Optional[str] = "invoice"
     customer_id: Optional[str] = None
     accommodation_type: Optional[str] = None
