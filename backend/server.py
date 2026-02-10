@@ -171,6 +171,38 @@ async def register(user_data: UserCreate, database=Depends(get_db)):
     # Audit log
     await create_audit_log(user.id, AuditAction.CREATE, "user", user.id)
     
+    # Send welcome email to customer
+    if user.role == UserRole.CUSTOMER:
+        try:
+            from services.email import EmailService
+            email_service = EmailService(database)
+            await email_service.send_email(
+                to=user.email,
+                subject="Welcome to K9Command!",
+                body=f"""
+Hello {user.full_name},
+
+Welcome to K9Command! We're excited to have you join our family.
+
+As a new customer, please note that you'll need to schedule a Meet & Greet before booking your first stay or daycare reservation. This helps us get to know your furry friend and ensure we provide the best care possible.
+
+To get started:
+1. Log in to your account
+2. Add your dog(s) to your profile
+3. Book a Meet & Greet appointment
+
+If you have any questions, feel free to reach out to us.
+
+We look forward to meeting you and your pup!
+
+Best regards,
+K9Command Team
+                """.strip(),
+                template_name="customer_welcome"
+            )
+        except Exception as e:
+            print(f"Failed to send welcome email: {e}")
+    
     user_response = UserResponse(**user.model_dump())
     return LoginResponse(token=token, user=user_response)
 
