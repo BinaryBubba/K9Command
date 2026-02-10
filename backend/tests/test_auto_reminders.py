@@ -37,7 +37,7 @@ class TestAutoReminders:
             "password": ADMIN_PASSWORD
         })
         if response.status_code == 200:
-            self.admin_token = response.json().get("access_token")
+            self.admin_token = response.json().get("token")
             return self.admin_token
         pytest.skip(f"Admin login failed: {response.status_code}")
     
@@ -50,7 +50,7 @@ class TestAutoReminders:
             "password": CUSTOMER_PASSWORD
         })
         if response.status_code == 200:
-            self.customer_token = response.json().get("access_token")
+            self.customer_token = response.json().get("token")
             return self.customer_token
         pytest.skip(f"Customer login failed: {response.status_code}")
     
@@ -314,7 +314,7 @@ class TestReminderIntegration:
             "password": ADMIN_PASSWORD
         })
         if response.status_code == 200:
-            return response.json().get("access_token")
+            return response.json().get("token")
         pytest.skip(f"Admin login failed: {response.status_code}")
     
     def get_customer_token(self):
@@ -324,7 +324,7 @@ class TestReminderIntegration:
             "password": CUSTOMER_PASSWORD
         })
         if response.status_code == 200:
-            return response.json().get("access_token")
+            return response.json().get("token")
         pytest.skip(f"Customer login failed: {response.status_code}")
     
     def test_reminder_preferences_persistence(self):
