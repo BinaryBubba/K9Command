@@ -480,6 +480,41 @@ GET  /api/comms/knowledge/categories/list - List categories
 
 ---
 
+## AUTO-REMINDERS SYSTEM ✅ COMPLETE (Feb 2026)
+
+### Implemented Features
+- [x] User reminder preferences with toggle controls
+- [x] Check-in reminders (24h before, 2h before)
+- [x] Check-out reminders (24h before, 2h before)
+- [x] Booking confirmation notifications
+- [x] Payment due reminders
+- [x] Auto-scheduling when booking is confirmed
+- [x] Auto-scheduling when booking is approved by admin
+- [x] Admin tools for processing and monitoring reminders
+
+### Frontend - Customer Portal
+- Reminders tab in `/customer/portal`
+- Toggle switches for each reminder type
+- Real-time preference updates via API
+
+### Backend APIs
+```
+GET  /api/moego/reminders/preferences - Get user preferences
+PUT  /api/moego/reminders/preferences - Update preferences
+GET  /api/moego/reminders/scheduled - Get scheduled reminders
+POST /api/moego/reminders/schedule/{booking_id} - Manual schedule
+DELETE /api/moego/reminders/cancel/{booking_id} - Cancel reminders
+POST /api/moego/reminders/process - Process due reminders (admin)
+GET  /api/moego/reminders/pending - View pending reminders (admin)
+```
+
+### Notes
+- Reminders sent via in-app notifications + push notifications
+- Push notifications require browser subscription (Web Push API)
+- Default: 24h check-in/out enabled, 2h check-out disabled
+
+---
+
 ## MOEGO PARITY - PHASE 5 (Mobile & Integrations)
 
 ### Pending Implementation (Architectural Support)
