@@ -431,7 +431,7 @@ export default function FormBuilderPage() {
   const loadTemplate = async () => {
     setLoading(true);
     try {
-      const response = await api.get(`/api/forms/templates/${templateId}`);
+      const response = await api.get(`/forms/templates/${templateId}`);
       const template = response.data;
       setFormName(template.name);
       setFormDescription(template.description || '');
