@@ -4460,14 +4460,13 @@ async def send_manual_notification(
 # ==================== INCLUDE ROUTER (MUST BE AFTER ALL ROUTES) ====================
 app.include_router(api_router)
 
-# Include Connecteam-parity routers
+# Include HR/Staff management routers
 from routers.timeclock import router as timeclock_router
 from routers.forms import router as forms_router
 from routers.hr import router as hr_router
 from routers.communications import router as comms_router
 from routers.scheduling import router as scheduling_router
 from routers.exports import router as exports_router
-from routers.moego import router as moego_router
 
 app.include_router(timeclock_router)
 app.include_router(forms_router)
@@ -4475,7 +4474,27 @@ app.include_router(hr_router)
 app.include_router(comms_router)
 app.include_router(scheduling_router)
 app.include_router(exports_router)
-app.include_router(moego_router)
+
+# Include K9Command core routers (refactored from moego.py)
+from routers.kennels import router as kennels_router
+from routers.bookings import router as bookings_router
+from routers.operations import router as operations_router
+from routers.notifications import router as notifications_router
+from routers.payments import router as payments_router
+from routers.portal import router as portal_router
+from routers.inventory import router as inventory_router
+from routers.crm import router as crm_router
+from routers.reminders import router as reminders_router
+
+app.include_router(kennels_router)
+app.include_router(bookings_router)
+app.include_router(operations_router)
+app.include_router(notifications_router)
+app.include_router(payments_router)
+app.include_router(portal_router)
+app.include_router(inventory_router)
+app.include_router(crm_router)
+app.include_router(reminders_router)
 
 
 @app.on_event("shutdown")
