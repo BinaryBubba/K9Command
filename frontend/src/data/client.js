@@ -242,6 +242,9 @@ function normalizeBooking(b) {
     householdId: b.householdId || b.household_id,
     paymentType: b.paymentType || b.payment_type || 'invoice',
     paymentStatus: b.paymentStatus || b.payment_status || 'pending',
+    // Add-on fields - normalized
+    needsSeparatePlaytime: b.needsSeparatePlaytime ?? b.needs_separate_playtime ?? false,
+    bathBeforePickup: b.bathBeforePickup ?? b.bath_before_pickup ?? false,
     createdAt: b.createdAt || b.created_at || new Date().toISOString(),
     // Keep raw fields for backend compatibility but UI should use normalized
     _raw: {
