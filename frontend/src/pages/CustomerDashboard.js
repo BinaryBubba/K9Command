@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
-import { dataClient, dataMode } from '../data/client';
+import { dataClient, dataMode, bookingRules } from '../data/client';
 import { Button } from '../components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
@@ -9,7 +9,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Badge } from '../components/ui/badge';
-import { PlusIcon, DogIcon, CalendarIcon, ImageIcon, LogOutIcon, CreditCardIcon, SettingsIcon, LayoutGridIcon, EditIcon, XIcon, CheckIcon, ClockIcon, SunIcon, UtensilsIcon, ActivityIcon } from 'lucide-react';
+import { AlertTriangleIcon, PlusIcon, DogIcon, CalendarIcon, ImageIcon, LogOutIcon, CreditCardIcon, SettingsIcon, LayoutGridIcon, EditIcon, XIcon, CheckIcon, ClockIcon, SunIcon, UtensilsIcon, ActivityIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import NotificationBell from '../components/NotificationBell';
 import PushNotificationSettings from '../components/PushNotificationSettings';
@@ -23,6 +23,11 @@ const CustomerDashboard = () => {
   const [updates, setUpdates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [todayAgenda, setTodayAgenda] = useState([]);
+
+  // Cancellation modal state
+  const [cancelModal, setCancelModal] = useState(false);
+  const [cancellingBooking, setCancellingBooking] = useState(null);
+  const [cancellationPreview, setCancellationPreview] = useState(null);
 
   // Edit dog modal state
   const [editDogModal, setEditDogModal] = useState(false);
