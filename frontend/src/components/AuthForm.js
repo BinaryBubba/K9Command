@@ -10,12 +10,15 @@ import { toast } from 'sonner';
 
 const AuthForm = () => {
   const [isLogin, setIsLogin] = useState(true);
+  // PUBLIC SIGNUP IS CUSTOMER-ONLY - No role selection allowed
+  // Staff accounts require admin approval via separate flow
+  // Admin accounts can only be created by the owner
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     full_name: '',
     phone: '',
-    role: 'customer',
+    role: 'customer', // Fixed to customer - never exposed in UI
   });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
