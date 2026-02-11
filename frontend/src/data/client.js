@@ -376,8 +376,69 @@ const mock = {
     return normalizeBooking(updated);
   },
 
-  async cancelBooking(bookingId) {
-    return mock.updateBooking(bookingId, { status: 'cancelled' });
+  async cancelBooking(bookingId, options = {}) {
+    const bookings = ls.get(KEYS.BOOKINGS, []);
+    const idx = bookings.findIndex(b => b.id === bookingId);
+    if (idx === -1) throw new Error('Booking not found');
+    
+    const booking = normalizeBooking(bookings[idx]);
+    
+    // Check if cancellation is allowed and calculate refund
+    const cancellationResult = canCancelBooking(booking);
+    if (!cancellationResult.allowed) {
+      throw new Error(cancellationResult.reason);
+    }
+    
+    // Update booking status
+    bookings[idx] = {
+      ...bookings[idx],
+      status: 'cancelled',
+      cancelledAt: new Date().toISOString(),
+      cancellation: {
+        refundPercentage: cancellationResult.refundPercentage,
+        refundAmount: cancellationResult.refundAmount,
+        policyTier: cancellationResult.policyTier,
+        policyDescription: cancellationResult.policyDescription,
+        hoursUntilCheckIn: cancellationResult.hoursUntilCheckIn,
+        processedAt: new Date().toISOString(),
+      }
+    };
+    ls.set(KEYS.BOOKINGS, bookings);
+    
+    // Create refund record if refund amount > 0
+    if (cancellationResult.refundAmount > 0) {
+      const refunds = ls.get(KEYS.REFUNDS || 'refunds', []);
+      refunds.push({
+        id: uid('refund'),
+        bookingId,
+        amount: cancellationResult.refundAmount,
+        percentage: cancellationResult.refundPercentage,
+        policyTier: cancellationResult.policyTier,
+        status: 'pending', // Manual processing required
+        createdAt: new Date().toISOString(),
+      });
+      ls.set(KEYS.REFUNDS || 'refunds', refunds);
+    }
+    
+    // Return updated booking with cancellation details
+    return {
+      ...normalizeBooking(bookings[idx]),
+      cancellation: bookings[idx].cancellation,
+    };
+  },
+
+  // Get cancellation preview without actually cancelling
+  async getCancellationPreview(bookingId) {
+    const booking = await mock.getBooking(bookingId);
+    if (!booking) throw new Error('Booking not found');
+    return canCancelBooking(booking);
+  },
+
+  // Check if booking can be modified
+  async getModificationEligibility(bookingId) {
+    const booking = await mock.getBooking(bookingId);
+    if (!booking) throw new Error('Booking not found');
+    return canModifyBooking(booking);
   },
 
   // ---------- DOGS ----------
@@ -385,14 +446,16 @@ const mock = {
     const user = getCurrentUser();
     const dogs = ls.get(KEYS.DOGS, []);
     // Customer scoping
-    return user?.role === 'customer'
-      ? dogs.filter(d => d.ownerId === user.id || d.owner_id === user.id)
+    const filtered = user?.role === 'customer'
+      ? dogs.filter(d => d.ownerId === user.id || d.owner_id === user.id || d.householdId === user.household_id || d.household_id === user.household_id)
       : dogs;
+    return filtered.map(normalizeDog);
   },
 
   async getDog(dogId) {
     const dogs = ls.get(KEYS.DOGS, []);
-    return dogs.find(d => d.id === dogId) || null;
+    const dog = dogs.find(d => d.id === dogId);
+    return dog ? normalizeDog(dog) : null;
   },
 
   async createDog(payload) {
