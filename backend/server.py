@@ -96,30 +96,39 @@ async def create_audit_log(user_id: str, action: AuditAction, resource_type: str
 
 @api_router.post("/auth/register", response_model=LoginResponse)
 async def register(user_data: UserCreate, database=Depends(get_db)):
+    """
+    PUBLIC REGISTRATION ENDPOINT
+    
+    ROLE GOVERNANCE (AUTHORITATIVE):
+    - Public users may ONLY register as customers
+    - Staff accounts require admin approval via /staff-request endpoint
+    - Admin accounts can ONLY be created by the owner via /admin/create-admin
+    - The first admin ever created becomes the owner (is_owner: true)
+    """
     # Check if user exists
     existing_user = await database.users.find_one({"email": user_data.email}, {"_id": 0})
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    # Account Governance Rules
+    # ENFORCE: Public signup is CUSTOMER-ONLY
     role = user_data.role
     
-    # Rule 1: Admin registration - only allowed if no admins exist (first admin becomes owner)
+    # Rule 1: Admin registration via public endpoint is NEVER allowed (except first admin bootstrap)
     if role == UserRole.ADMIN:
         existing_admin = await database.users.find_one({"role": "admin"}, {"_id": 0})
         if existing_admin:
+            # There's already an owner - admin creation must go through owner
             raise HTTPException(
                 status_code=403, 
                 detail="Admin registration is not allowed. Contact the owner to create admin accounts."
             )
-        # First admin - they become the owner
+        # First admin - they become the owner (bootstrap case)
         is_owner = True
     else:
         is_owner = False
     
-    # Rule 2: Staff registration requires approval (create request, don't create user yet)
+    # Rule 2: Staff registration via public endpoint creates a REQUEST, not an account
     if role == UserRole.STAFF:
-        # Create a staff request instead of direct registration
         from uuid import uuid4
         request_id = str(uuid4())
         request_doc = {
@@ -133,13 +142,13 @@ async def register(user_data: UserCreate, database=Depends(get_db)):
         }
         await database.staff_requests.insert_one(request_doc)
         
-        # Return a response indicating pending approval
+        # Return 202 Accepted - request submitted but account not created
         raise HTTPException(
-            status_code=202,  # Accepted
-            detail="Staff registration submitted. Awaiting admin approval."
+            status_code=202,
+            detail="Staff access request submitted. Awaiting admin approval."
         )
     
-    # Rule 3: Customers can register freely
+    # Rule 3: Customers can register freely (default and expected case)
     # Create household for customers
     household_id = None
     if user_data.role == UserRole.CUSTOMER:
