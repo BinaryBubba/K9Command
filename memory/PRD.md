@@ -11,11 +11,49 @@ Single location first, multi-location capable by design.
 
 **Note:** Grooming has been simplified to just "Bath before pickup" add-on.
 
+---
+
+## AUTHORITATIVE BUSINESS RULES (Feb 2026 Normalization)
+
+### Role Governance
+- **3 Roles:** customer, staff, admin
+- **First admin** registered becomes the **owner** (`is_owner: true`)
+- **Owner exclusive powers:** create other admins, approve staff
+- **Public signup:** customer-only (no role selection in UI)
+- **Staff accounts:** require admin approval via `/staff-request` flow
+- **Admin accounts:** can only be created by owner via `/admin/create-admin`
+
+### Cancellation & Refund Policy (HOURS-BASED)
+| Time Before Check-In | Refund |
+|---------------------|--------|
+| ≥ 48 hours | 100% |
+| ≥ 24 and < 48 hours | 50% |
+| < 24 hours | 0% |
+
+**Rules:**
+- Cancellation is **ALWAYS allowed**
+- Refund calculated using **hours** (not days): `total_seconds() / 3600`
+- Customer sees refund amount + policy tier before confirming cancellation
+- Logic is identical in mock mode and backend
+
+### Field Normalization (MANDATORY)
+**Bookings:** UI must use normalized fields only:
+- `startDate` (not check_in_date)
+- `endDate` (not check_out_date)
+- `dogIds` (not dog_ids)
+
+**Dogs:** UI must use normalized fields:
+- `feedingInstructions` (not feeding_instructions)
+- `behaviorNotes` (not behavior_notes)
+- `specialNeeds` (not special_needs)
+
+---
+
 ## Tech Stack
 - **Frontend:** React 18, Tailwind CSS, Shadcn/UI, Zustand
 - **Backend:** FastAPI with Pydantic, MongoDB (Motor async)
 - **Auth:** JWT multi-role (Customer, Staff, Admin)
-- **Payments:** Square SDK (card-on-file vaulting)
+- **Payments:** Square SDK (card-on-file vaulting) - unified via payment_service.py
 
 ## API Architecture (Refactored Feb 2026)
 All K9Command APIs now use the `/api/k9` prefix. The backend has been refactored into 9 domain-specific routers:
