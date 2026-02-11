@@ -247,12 +247,53 @@ const CustomerDashboard = () => {
 
   const handleSaveBooking = async () => {
     if (!editingBooking) return;
+    
+    // Validate at least one dog is selected
+    if ((bookingForm.dogIds || []).length === 0) {
+      toast.error('Please select at least one dog');
+      return;
+    }
+    
+    // Validate dates
+    if (!bookingForm.startDate || !bookingForm.endDate) {
+      toast.error('Please select both check-in and check-out dates');
+      return;
+    }
+    
+    if (new Date(bookingForm.startDate) >= new Date(bookingForm.endDate)) {
+      toast.error('Check-out date must be after check-in date');
+      return;
+    }
+    
     setSavingBooking(true);
     try {
-      await dataClient.updateBooking(editingBooking.id, bookingForm);
-      toast.success('Booking updated!');
+      // Prepare update payload with all modifiable fields
+      const updatePayload = {
+        startDate: bookingForm.startDate,
+        endDate: bookingForm.endDate,
+        dogIds: bookingForm.dogIds,
+        notes: bookingForm.notes || '',
+        needsSeparatePlaytime: bookingForm.needsSeparatePlaytime || false,
+        bathBeforePickup: bookingForm.bathBeforePickup || false,
+        // Include calculated total if price changed
+        total: pricePreview?.total || editingBooking.total,
+      };
+      
+      await dataClient.updateBooking(editingBooking.id, updatePayload);
+      
+      // Show success message with price delta info
+      if (pricePreview?.priceDelta > 0) {
+        toast.success(`Booking updated! Additional $${pricePreview.priceDelta.toFixed(2)} has been added to your account.`);
+      } else if (pricePreview?.priceDelta < 0) {
+        toast.success(`Booking updated! A refund of $${Math.abs(pricePreview.priceDelta).toFixed(2)} will be processed.`);
+      } else {
+        toast.success('Booking updated successfully!');
+      }
+      
       setEditBookingModal(false);
       setEditingBooking(null);
+      setBookingForm({});
+      setPricePreview(null);
       fetchData();
     } catch (error) {
       toast.error(error.message || 'Failed to update booking');
