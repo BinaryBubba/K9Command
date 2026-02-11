@@ -170,6 +170,22 @@ const AuthForm = () => {
           </>
         )}
       </div>
+
+      {/* Staff Request Link - separate flow requiring admin approval */}
+      {!isLogin && (
+        <div className="text-center mt-4 pt-4 border-t border-border/40">
+          <p className="text-sm text-muted-foreground">
+            Want to join our team?{' '}
+            <button
+              type="button"
+              onClick={() => navigate('/staff-request')}
+              className="text-primary hover:underline font-medium"
+            >
+              Request Staff Access
+            </button>
+          </p>
+        </div>
+      )}
     </div>
   );
 };
