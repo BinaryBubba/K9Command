@@ -516,3 +516,52 @@ class PricingEngine:
             "days_until_checkin": int(hours_until_checkin / 24),
             "policy_applied": policy_description,
         }
+
+    def can_modify_booking(self, booking: Dict, current_time: datetime = None) -> Dict[str, Any]:
+        """
+        Check if a booking can be modified.
+        
+        Modification rules:
+        - Status must not be completed, cancelled, checked_out, or no_show
+        - Must be 24+ hours before check-in
+        
+        Returns eligibility result with reason if not allowed.
+        """
+        current_time = current_time or datetime.now(timezone.utc)
+        
+        status = (booking.get('status') or '').lower()
+        non_modifiable = ['completed', 'cancelled', 'checked_out', 'no_show']
+        
+        if status in non_modifiable:
+            return {
+                'allowed': False,
+                'reason': f'Cannot modify booking with status: {status}'
+            }
+        
+        check_in = booking.get('check_in_date')
+        if isinstance(check_in, str):
+            if 'T' not in check_in:
+                check_in = f"{check_in}T14:00:00+00:00"
+            check_in = datetime.fromisoformat(check_in.replace('Z', '+00:00'))
+        
+        if current_time.tzinfo is None:
+            current_time = current_time.replace(tzinfo=timezone.utc)
+        if check_in.tzinfo is None:
+            check_in = check_in.replace(tzinfo=timezone.utc)
+        
+        time_diff = check_in - current_time
+        hours_until_checkin = time_diff.total_seconds() / 3600
+        
+        if hours_until_checkin < 24:
+            return {
+                'allowed': False,
+                'reason': 'Cannot modify booking within 24 hours of check-in',
+                'hours_until_checkin': round(hours_until_checkin, 1)
+            }
+        
+        return {
+            'allowed': True,
+            'reason': None,
+            'hours_until_checkin': round(hours_until_checkin, 1)
+        }
+
