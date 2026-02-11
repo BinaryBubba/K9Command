@@ -1,6 +1,11 @@
 """
 Payments Router - K9Command
 Handles Square payments, card-on-file, deposits, refunds
+
+PAYMENT ARCHITECTURE:
+- Uses the unified PaymentService from payment_service.py
+- Supports Square, Crypto (future), and Mock providers
+- Falls back to mock when provider not configured
 """
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -9,7 +14,7 @@ from datetime import datetime, timezone
 
 from models import UserRole
 from auth import get_current_user
-from services.payments import SquarePaymentService as PaymentService
+from payment_service import PaymentService  # Use unified service
 
 router = APIRouter(prefix="/api/k9", tags=["Payments"])
 security = HTTPBearer()
