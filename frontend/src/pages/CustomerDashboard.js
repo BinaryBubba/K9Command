@@ -29,6 +29,14 @@ const CustomerDashboard = () => {
   const [cancellingBooking, setCancellingBooking] = useState(null);
   const [cancellationPreview, setCancellationPreview] = useState(null);
 
+  // Edit booking modal state
+  const [editBookingModal, setEditBookingModal] = useState(false);
+  const [editingBooking, setEditingBooking] = useState(null);
+  const [bookingForm, setBookingForm] = useState({});
+  const [savingBooking, setSavingBooking] = useState(false);
+  const [pricePreview, setPricePreview] = useState(null);
+  const [availableAddOns, setAvailableAddOns] = useState([]);
+
   // Edit dog modal state
   const [editDogModal, setEditDogModal] = useState(false);
   const [editingDog, setEditingDog] = useState(null);
