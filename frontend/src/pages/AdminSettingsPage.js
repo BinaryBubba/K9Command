@@ -377,7 +377,7 @@ const AdminSettingsPage = () => {
                           <div>
                             <p className="font-medium">{rule.name}</p>
                             <p className="text-sm text-muted-foreground">
-                              {rule.rule_type} | {rule.modifier_type === 'percentage' ? `${rule.modifier_value}%` : `$${rule.modifier_value}`}
+                              {rule.rule_type} | {rule.multiplier ? `${((rule.multiplier - 1) * 100).toFixed(0)}%` : rule.modifier_type === 'percentage' ? `${rule.modifier_value}%` : `$${rule.modifier_value || rule.flat_adjustment || 0}`}
                               {rule.start_date && ` | ${rule.start_date} - ${rule.end_date}`}
                             </p>
                           </div>
