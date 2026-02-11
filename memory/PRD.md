@@ -795,6 +795,42 @@ GET /api/time-off/balances - Get time off balances
 
 ---
 
+## BOOKING MODIFICATION UI (Feb 2026) ✅ COMPLETE
+
+### Complete Booking Edit Modal ✅
+- **Date Selection**: Check-in/check-out date pickers with min date validation (24h ahead)
+- **Dog Selection**: Checkbox list showing all customer's dogs with name and breed
+- **Add-on Services**:
+  - Separate Playtime (+$6/night) - Private play sessions
+  - Bath Before Pickup (+$25/dog) - Fresh for pickup day
+- **Notes Field**: Textarea for special instructions
+- **Real-time Price Preview**:
+  - Shows nights, base rate, dog count, add-on details
+  - Calculates and displays price delta (increase/decrease)
+  - Color-coded: Yellow for price increase, Green for decrease
+  - Shows appropriate note about charges/refunds
+
+### Price Calculation Logic
+- Base rate: $45/night/dog
+- Separate Playtime: +$6/night (all dogs)
+- Bath Before Pickup: +$25/dog (per dog)
+- Delta calculated: New Total - Original Total
+
+### Files Modified
+- `/app/frontend/src/pages/CustomerDashboard.js` - Complete edit modal UI with all fields
+- `/app/frontend/src/data/client.js` - Enhanced updateBooking with price recalculation, normalized add-on fields in booking
+
+### Data-testid Attributes Added
+- `edit-booking-start-date`, `edit-booking-end-date` - Date inputs
+- `edit-booking-dog-{id}` - Dog checkboxes
+- `edit-booking-separate-playtime`, `edit-booking-bath` - Add-on toggles
+- `edit-booking-notes` - Notes textarea
+- `save-booking-changes-btn` - Save button
+
+**Test Report:** `/app/test_reports/iteration_20.json` - 100% frontend testing passed
+
+---
+
 ## Test Accounts
 - Customer: `customer_test@k9.com` / `Test123!`
 - Staff: `staff_test@k9.com` / `Test123!`
