@@ -64,20 +64,189 @@ function getCurrentUser() {
   }
 }
 
+// ========================
+// CENTRALIZED BOOKING RULES (AUTHORITATIVE)
+// ========================
+// These rules MUST be identical in mock mode and backend
+
+/**
+ * Calculate hours until check-in from now
+ * @param {string} startDate - Check-in date (ISO format YYYY-MM-DD or full ISO)
+ * @returns {number} Hours until check-in (can be negative if past)
+ */
+function getHoursUntilCheckIn(startDate) {
+  if (!startDate) return 0;
+  // Parse the check-in date - assume 2pm (14:00) check-in time if only date provided
+  const checkInStr = startDate.includes('T') ? startDate : `${startDate}T14:00:00`;
+  const checkIn = new Date(checkInStr);
+  const now = new Date();
+  const diffMs = checkIn.getTime() - now.getTime();
+  return diffMs / (1000 * 60 * 60); // Convert ms to hours
+}
+
+/**
+ * Calculate refund based on hours before check-in
+ * AUTHORITATIVE REFUND POLICY:
+ * - ≥ 48 hours: 100% refund
+ * - ≥ 24 and < 48 hours: 50% refund  
+ * - < 24 hours: 0% refund
+ * 
+ * @param {number} hoursUntilCheckIn - Hours until check-in
+ * @param {number} totalAmount - Total booking amount
+ * @returns {Object} Refund calculation result
+ */
+function calculateRefund(hoursUntilCheckIn, totalAmount) {
+  let refundPercentage = 0;
+  let policyTier = 'no_refund';
+  let policyDescription = 'Less than 24 hours before check-in - no refund';
+
+  if (hoursUntilCheckIn >= 48) {
+    refundPercentage = 100;
+    policyTier = 'full_refund';
+    policyDescription = '48+ hours before check-in - full refund';
+  } else if (hoursUntilCheckIn >= 24) {
+    refundPercentage = 50;
+    policyTier = 'partial_refund';
+    policyDescription = '24-48 hours before check-in - 50% refund';
+  }
+
+  const refundAmount = (totalAmount * refundPercentage) / 100;
+
+  return {
+    hoursUntilCheckIn: Math.round(hoursUntilCheckIn * 10) / 10,
+    refundPercentage,
+    refundAmount: Math.round(refundAmount * 100) / 100,
+    policyTier,
+    policyDescription,
+    cancellationAllowed: true, // Cancellation is ALWAYS allowed
+  };
+}
+
+/**
+ * Check if booking can be modified
+ * Modification is allowed if:
+ * - Status is pending, confirmed, or checked_in (not completed/cancelled)
+ * - Check-in is 24+ hours away
+ * 
+ * @param {Object} booking - Normalized booking object
+ * @returns {Object} Modification eligibility result
+ */
+function canModifyBooking(booking) {
+  if (!booking) return { allowed: false, reason: 'Booking not found' };
+  
+  const status = booking.status?.toLowerCase();
+  const nonModifiableStatuses = ['completed', 'cancelled', 'checked_out', 'no_show'];
+  
+  if (nonModifiableStatuses.includes(status)) {
+    return { 
+      allowed: false, 
+      reason: `Cannot modify booking with status: ${status}` 
+    };
+  }
+  
+  const hoursUntilCheckIn = getHoursUntilCheckIn(booking.startDate);
+  
+  if (hoursUntilCheckIn < 24) {
+    return { 
+      allowed: false, 
+      reason: 'Cannot modify booking within 24 hours of check-in',
+      hoursUntilCheckIn: Math.round(hoursUntilCheckIn * 10) / 10
+    };
+  }
+  
+  return { 
+    allowed: true, 
+    reason: null,
+    hoursUntilCheckIn: Math.round(hoursUntilCheckIn * 10) / 10
+  };
+}
+
+/**
+ * Check if booking can be cancelled (always yes) and calculate refund
+ * @param {Object} booking - Normalized booking object
+ * @returns {Object} Cancellation eligibility with refund details
+ */
+function canCancelBooking(booking) {
+  if (!booking) return { allowed: false, reason: 'Booking not found' };
+  
+  const status = booking.status?.toLowerCase();
+  if (['cancelled', 'completed', 'checked_out'].includes(status)) {
+    return { 
+      allowed: false, 
+      reason: `Booking already ${status}` 
+    };
+  }
+  
+  const hoursUntilCheckIn = getHoursUntilCheckIn(booking.startDate);
+  const total = booking.total || booking.totalPrice || 0;
+  const refund = calculateRefund(hoursUntilCheckIn, total);
+  
+  return {
+    allowed: true, // Cancellation always allowed for active bookings
+    ...refund
+  };
+}
+
+// Export booking rules for use across the app
+export const bookingRules = {
+  getHoursUntilCheckIn,
+  calculateRefund,
+  canModifyBooking,
+  canCancelBooking,
+};
+
+// ========================
+// DOG NORMALIZATION
+// ========================
+function normalizeDog(d) {
+  if (!d) return null;
+  return {
+    id: d.id,
+    name: d.name,
+    breed: d.breed,
+    age: d.age,
+    weight: d.weight,
+    size: d.size,
+    birthday: d.birthday,
+    feedingInstructions: d.feedingInstructions || d.feeding_instructions || '',
+    medications: d.medications || [],
+    behaviorNotes: d.behaviorNotes || d.behavior_notes || '',
+    specialNeeds: d.specialNeeds || d.special_needs || '',
+    notes: d.notes || '',
+    householdId: d.householdId || d.household_id,
+    photoUrl: d.photoUrl || d.photo_url || null,
+    createdAt: d.createdAt || d.created_at,
+    updatedAt: d.updatedAt || d.updated_at,
+  };
+}
+
 // Normalize booking to consistent format
 function normalizeBooking(b) {
+  if (!b) return null;
   return {
     ...b,
     id: b.id,
+    // ALWAYS use normalized field names in UI
     startDate: toISODate(b.startDate || b.check_in_date || b.checkInDate),
     endDate: toISODate(b.endDate || b.check_out_date || b.checkOutDate),
     status: b.status || 'pending',
+    bookingType: b.bookingType || b.booking_type || 'stay',
     dogs: b.dogs || b.dog_names || [],
     dogIds: b.dogIds || b.dog_ids || [],
     notes: b.notes || '',
-    total: typeof b.total === 'number' ? b.total : (b.total_cents ? b.total_cents / 100 : 0),
+    total: typeof b.total === 'number' ? b.total : (b.totalPrice || b.total_price || (b.total_cents ? b.total_cents / 100 : 0)),
+    totalPrice: typeof b.totalPrice === 'number' ? b.totalPrice : (b.total || b.total_price || 0),
     customerId: b.customerId || b.customer_id || b.user_id,
+    householdId: b.householdId || b.household_id,
+    paymentType: b.paymentType || b.payment_type || 'invoice',
+    paymentStatus: b.paymentStatus || b.payment_status || 'pending',
     createdAt: b.createdAt || b.created_at || new Date().toISOString(),
+    // Keep raw fields for backend compatibility but UI should use normalized
+    _raw: {
+      check_in_date: b.check_in_date,
+      check_out_date: b.check_out_date,
+      dog_ids: b.dog_ids,
+    }
   };
 }
 
