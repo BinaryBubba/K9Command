@@ -43,12 +43,6 @@ const CustomerDashboard = () => {
   const [dogForm, setDogForm] = useState({});
   const [savingDog, setSavingDog] = useState(false);
 
-  // Edit booking modal state
-  const [editBookingModal, setEditBookingModal] = useState(false);
-  const [editingBooking, setEditingBooking] = useState(null);
-  const [bookingForm, setBookingForm] = useState({});
-  const [savingBooking, setSavingBooking] = useState(false);
-
   useEffect(() => {
     if (!user || user.role !== 'customer') {
       navigate('/auth');
