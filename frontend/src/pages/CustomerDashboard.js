@@ -155,27 +155,100 @@ const CustomerDashboard = () => {
 
   // ---------- Booking Edit Functions ----------
   const canEditBooking = (booking) => {
-    const allowedStatuses = ['pending', 'confirmed'];
-    if (!allowedStatuses.includes(booking.status)) return false;
+    // Use centralized booking rules
+    const result = bookingRules.canModifyBooking(booking);
+    return result.allowed;
+  };
+
+  const getModificationReason = (booking) => {
+    const result = bookingRules.canModifyBooking(booking);
+    return result.reason;
+  };
+
+  // Calculate price based on form data
+  const calculateBookingPrice = (form, originalBooking) => {
+    if (!form.startDate || !form.endDate) return null;
     
-    const checkInDate = new Date(booking.startDate);
-    const now = new Date();
-    const hoursUntilCheckIn = (checkInDate - now) / (1000 * 60 * 60);
-    return hoursUntilCheckIn >= 24;
+    const start = new Date(form.startDate);
+    const end = new Date(form.endDate);
+    const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+    
+    if (nights <= 0) return null;
+    
+    const dogCount = (form.dogIds || []).length || 1;
+    const baseRate = 45; // Base rate per night per dog
+    
+    let subtotal = baseRate * nights * dogCount;
+    
+    // Add-ons
+    let addOnTotal = 0;
+    const addOnDetails = [];
+    if (form.needsSeparatePlaytime) {
+      const playtimeFee = 6 * nights;
+      addOnTotal += playtimeFee;
+      addOnDetails.push({ name: 'Separate Playtime', amount: playtimeFee });
+    }
+    if (form.bathBeforePickup) {
+      const bathFee = 25 * dogCount;
+      addOnTotal += bathFee;
+      addOnDetails.push({ name: 'Bath Before Pickup', amount: bathFee });
+    }
+    
+    const total = subtotal + addOnTotal;
+    const originalTotal = originalBooking?.total || originalBooking?.totalPrice || 0;
+    const priceDelta = total - originalTotal;
+    
+    return {
+      nights,
+      dogCount,
+      subtotal,
+      addOnTotal,
+      addOnDetails,
+      total,
+      originalTotal,
+      priceDelta,
+      isIncrease: priceDelta > 0,
+      isDecrease: priceDelta < 0,
+    };
   };
 
   const openEditBooking = (booking) => {
-    if (!canEditBooking(booking)) {
-      toast.error('This booking cannot be modified');
+    const modResult = bookingRules.canModifyBooking(booking);
+    if (!modResult.allowed) {
+      toast.error(modResult.reason || 'This booking cannot be modified');
       return;
     }
+    
     setEditingBooking(booking);
-    setBookingForm({
+    const form = {
       startDate: booking.startDate || '',
       endDate: booking.endDate || '',
+      dogIds: booking.dogIds || [],
       notes: booking.notes || '',
-    });
+      needsSeparatePlaytime: booking.needsSeparatePlaytime || booking.needs_separate_playtime || false,
+      bathBeforePickup: booking.bathBeforePickup || booking.bath_before_pickup || false,
+    };
+    setBookingForm(form);
+    
+    // Calculate initial price preview
+    const preview = calculateBookingPrice(form, booking);
+    setPricePreview(preview);
+    
+    // Set available add-ons
+    setAvailableAddOns([
+      { id: 'separate_playtime', name: 'Separate Playtime', pricePerNight: 6, description: 'Private play sessions instead of group play' },
+      { id: 'bath_before_pickup', name: 'Bath Before Pickup', pricePerDog: 25, description: 'Fresh and clean for pickup day' },
+    ]);
+    
     setEditBookingModal(true);
+  };
+
+  // Update price preview when form changes
+  const updateBookingForm = (updates) => {
+    const newForm = { ...bookingForm, ...updates };
+    setBookingForm(newForm);
+    const preview = calculateBookingPrice(newForm, editingBooking);
+    setPricePreview(preview);
   };
 
   const handleSaveBooking = async () => {
