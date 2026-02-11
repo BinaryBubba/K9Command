@@ -120,22 +120,7 @@ const AuthForm = () => {
           />
         </div>
 
-        {!isLogin && (
-          <div>
-            <Label htmlFor="role">I am a</Label>
-            <select
-              id="role"
-              data-testid="register-role-select"
-              value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-              className="w-full mt-1 p-2 border rounded-xl"
-            >
-              <option value="customer">Dog Parent</option>
-              <option value="staff">Staff Member</option>
-              <option value="admin">Administrator</option>
-            </select>
-          </div>
-        )}
+        {/* REMOVED: Role selection - public signup is customer-only */}
 
         <Button
           data-testid="auth-submit-button"
