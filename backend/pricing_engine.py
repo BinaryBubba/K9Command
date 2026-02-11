@@ -447,41 +447,72 @@ class PricingEngine:
         }
     
     async def calculate_refund(self, booking: Dict, cancellation_date: datetime = None) -> Dict[str, Any]:
-        """Calculate refund amount based on cancellation policy"""
+        """
+        Calculate refund amount based on hours-based cancellation policy.
+        
+        AUTHORITATIVE REFUND POLICY (hours-based):
+        - ≥ 48 hours before check-in: 100% refund
+        - ≥ 24 and < 48 hours before check-in: 50% refund
+        - < 24 hours before check-in: 0% refund
+        
+        Cancellation is ALWAYS allowed, but refund varies based on timing.
+        """
         cancellation_date = cancellation_date or datetime.now(timezone.utc)
         
         check_in = booking.get('check_in_date')
         if isinstance(check_in, str):
+            # Assume 2pm (14:00) check-in time if only date is provided
+            if 'T' not in check_in:
+                check_in = f"{check_in}T14:00:00+00:00"
             check_in = datetime.fromisoformat(check_in.replace('Z', '+00:00'))
         
-        days_until_checkin = (check_in - cancellation_date).days
+        # Ensure cancellation_date is timezone-aware
+        if cancellation_date.tzinfo is None:
+            cancellation_date = cancellation_date.replace(tzinfo=timezone.utc)
+        if check_in.tzinfo is None:
+            check_in = check_in.replace(tzinfo=timezone.utc)
         
-        policy = await self.get_cancellation_policy(booking)
+        # Calculate hours until check-in (CRITICAL: use total_seconds, NOT .days)
+        time_diff = check_in - cancellation_date
+        hours_until_checkin = time_diff.total_seconds() / 3600  # Convert seconds to hours
         
+        # Get total amount (paid or owed)
         total_paid = 0.0
         if booking.get('deposit_paid'):
             total_paid += booking.get('deposit_amount', 0)
         if booking.get('balance_paid'):
             total_paid += booking.get('balance_due', 0)
         
-        # Find applicable refund tier
+        # If nothing paid yet, use total_price as the refund base
+        total_amount = booking.get('total_price', 0) or booking.get('total', 0) or total_paid
+        
+        # Apply hours-based refund policy
         refund_percentage = 0.0
-        policy_applied = "No refund - past cancellation deadline"
+        policy_tier = 'no_refund'
+        policy_description = 'Less than 24 hours before check-in - no refund'
         
-        if days_until_checkin >= policy.get('days_before_checkin', 7):
-            refund_percentage = policy.get('refund_percentage', 100)
-            policy_applied = policy.get('name', 'Standard Policy')
+        if hours_until_checkin >= 48:
+            refund_percentage = 100.0
+            policy_tier = 'full_refund'
+            policy_description = '48+ hours before check-in - full refund'
+        elif hours_until_checkin >= 24:
+            refund_percentage = 50.0
+            policy_tier = 'partial_refund'
+            policy_description = '24-48 hours before check-in - 50% refund'
         
-        if policy.get('refund_deposit_only') and refund_percentage > 0:
-            refund_amount = booking.get('deposit_amount', 0) * (refund_percentage / 100)
-        else:
-            refund_amount = total_paid * (refund_percentage / 100)
+        # Calculate actual refund amount based on what was paid
+        refund_amount = (total_paid * refund_percentage) / 100 if total_paid > 0 else (total_amount * refund_percentage) / 100
         
         return {
+            "cancellation_allowed": True,  # Cancellation is ALWAYS allowed
             "total_paid": total_paid,
+            "total_amount": total_amount,
             "refund_percentage": refund_percentage,
             "refund_amount": round(refund_amount, 2),
-            "policy_applied": policy_applied,
-            "days_until_checkin": days_until_checkin,
-            "policy_requires_days": policy.get('days_before_checkin', 7)
+            "policy_tier": policy_tier,
+            "policy_description": policy_description,
+            "hours_until_checkin": round(hours_until_checkin, 1),
+            # Deprecated fields for backwards compatibility
+            "days_until_checkin": int(hours_until_checkin / 24),
+            "policy_applied": policy_description,
         }
