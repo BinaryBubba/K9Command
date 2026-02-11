@@ -341,7 +341,7 @@ const mock = {
       throw new Error('Booking cannot be modified in current status');
     }
 
-    const checkInDate = new Date(booking.startDate);
+    const checkInDate = new Date(booking.startDate || booking.check_in_date);
     const now = new Date();
     const hoursUntilCheckIn = (checkInDate - now) / (1000 * 60 * 60);
     if (hoursUntilCheckIn < 24) {
@@ -349,7 +349,7 @@ const mock = {
     }
 
     // Customer can only modify their own bookings
-    if (user?.role === 'customer' && booking.customerId !== user.id) {
+    if (user?.role === 'customer' && booking.customerId !== user.id && booking.customer_id !== user.id) {
       throw new Error('Not authorized to modify this booking');
     }
 
@@ -363,12 +363,50 @@ const mock = {
       });
     }
 
+    // Recalculate price if dates, dogs, or add-ons changed
+    let newTotal = booking.total;
+    const newStartDate = updates.startDate ? toISODate(updates.startDate) : booking.startDate;
+    const newEndDate = updates.endDate ? toISODate(updates.endDate) : booking.endDate;
+    const newDogIds = updates.dogIds || updates.dog_ids || booking.dogIds || booking.dog_ids || [];
+    const needsSeparatePlaytime = updates.needsSeparatePlaytime ?? booking.needsSeparatePlaytime ?? booking.needs_separate_playtime ?? false;
+    const bathBeforePickup = updates.bathBeforePickup ?? booking.bathBeforePickup ?? booking.bath_before_pickup ?? false;
+    
+    if (newStartDate && newEndDate) {
+      const start = new Date(newStartDate);
+      const end = new Date(newEndDate);
+      const nights = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+      const dogCount = newDogIds.length || 1;
+      const baseRate = 45;
+      
+      let subtotal = baseRate * nights * dogCount;
+      let addOnTotal = 0;
+      
+      if (needsSeparatePlaytime) {
+        addOnTotal += 6 * nights;
+      }
+      if (bathBeforePickup) {
+        addOnTotal += 25 * dogCount;
+      }
+      
+      newTotal = subtotal + addOnTotal;
+    }
+
     const updated = {
       ...booking,
       ...updates,
       dogs: dogNames,
-      startDate: updates.startDate ? toISODate(updates.startDate) : booking.startDate,
-      endDate: updates.endDate ? toISODate(updates.endDate) : booking.endDate,
+      dogIds: newDogIds,
+      dog_ids: newDogIds,
+      startDate: newStartDate,
+      endDate: newEndDate,
+      check_in_date: newStartDate,
+      check_out_date: newEndDate,
+      needsSeparatePlaytime,
+      needs_separate_playtime: needsSeparatePlaytime,
+      bathBeforePickup,
+      bath_before_pickup: bathBeforePickup,
+      total: updates.total ?? newTotal,
+      totalPrice: updates.total ?? newTotal,
       updatedAt: new Date().toISOString(),
     };
 
