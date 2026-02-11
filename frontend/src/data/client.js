@@ -31,6 +31,8 @@ const KEYS = {
   EMAIL_TEMPLATES: 'k9_mock_email_templates_v1',
   STAFF_REQUESTS: 'k9_mock_staff_requests_v1',
   USERS: 'k9_mock_users_v1',
+  REFUNDS: 'k9_mock_refunds_v1',
+  SYSTEM_SETTINGS: 'k9_mock_system_settings_v1',
 };
 
 // ========================
