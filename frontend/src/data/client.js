@@ -504,19 +504,34 @@ const mock = {
     const dog = dogs[idx];
 
     // Customer can only modify their own dogs
-    if (user?.role === 'customer' && dog.ownerId !== user.id && dog.owner_id !== user.id) {
+    if (user?.role === 'customer' && 
+        dog.ownerId !== user.id && 
+        dog.owner_id !== user.id &&
+        dog.householdId !== user.household_id &&
+        dog.household_id !== user.household_id) {
       throw new Error('Not authorized to modify this dog');
     }
 
+    // Normalize updates to store both camelCase and snake_case
+    const normalizedUpdates = {
+      ...updates,
+      feedingInstructions: updates.feedingInstructions || updates.feeding_instructions || dog.feedingInstructions,
+      feeding_instructions: updates.feedingInstructions || updates.feeding_instructions || dog.feeding_instructions,
+      behaviorNotes: updates.behaviorNotes || updates.behavior_notes || dog.behaviorNotes,
+      behavior_notes: updates.behaviorNotes || updates.behavior_notes || dog.behavior_notes,
+      specialNeeds: updates.specialNeeds || updates.special_needs || dog.specialNeeds,
+      special_needs: updates.specialNeeds || updates.special_needs || dog.special_needs,
+    };
+
     const updated = {
       ...dog,
-      ...updates,
+      ...normalizedUpdates,
       updatedAt: new Date().toISOString(),
     };
 
     dogs[idx] = updated;
     ls.set(KEYS.DOGS, dogs);
-    return updated;
+    return normalizeDog(updated);
   },
 
   async deleteDog(dogId) {
