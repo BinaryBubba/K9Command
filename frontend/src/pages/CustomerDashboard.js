@@ -774,42 +774,218 @@ const CustomerDashboard = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Booking Modal */}
+      {/* Edit Booking Modal - Complete Modification UI */}
       <Dialog open={editBookingModal} onOpenChange={setEditBookingModal}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Booking</DialogTitle>
+            <DialogTitle className="text-xl font-serif">Modify Booking</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Update your booking details below. Changes to dates, dogs, or add-ons will affect pricing.
+            </p>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label>Check-in Date</Label>
-              <Input
-                type="date"
-                value={bookingForm.startDate || ''}
-                onChange={(e) => setBookingForm({ ...bookingForm, startDate: e.target.value })}
-              />
+          
+          <div className="space-y-5 py-4">
+            {/* Date Selection */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="font-medium">Check-in Date</Label>
+                <Input
+                  type="date"
+                  data-testid="edit-booking-start-date"
+                  value={bookingForm.startDate || ''}
+                  onChange={(e) => updateBookingForm({ startDate: e.target.value })}
+                  min={new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label className="font-medium">Check-out Date</Label>
+                <Input
+                  type="date"
+                  data-testid="edit-booking-end-date"
+                  value={bookingForm.endDate || ''}
+                  onChange={(e) => updateBookingForm({ endDate: e.target.value })}
+                  min={bookingForm.startDate || new Date().toISOString().split('T')[0]}
+                  className="mt-1"
+                />
+              </div>
             </div>
+
+            {/* Dog Selection */}
             <div>
-              <Label>Check-out Date</Label>
-              <Input
-                type="date"
-                value={bookingForm.endDate || ''}
-                onChange={(e) => setBookingForm({ ...bookingForm, endDate: e.target.value })}
-              />
+              <Label className="font-medium">Dogs for this booking</Label>
+              <div className="mt-2 space-y-2 max-h-36 overflow-y-auto border rounded-xl p-3 bg-muted/20">
+                {dogs.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No dogs available</p>
+                ) : (
+                  dogs.map((dog) => (
+                    <label 
+                      key={dog.id} 
+                      className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-muted/30 transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        data-testid={`edit-booking-dog-${dog.id}`}
+                        checked={(bookingForm.dogIds || []).includes(dog.id)}
+                        onChange={(e) => {
+                          const currentIds = bookingForm.dogIds || [];
+                          if (e.target.checked) {
+                            updateBookingForm({ dogIds: [...currentIds, dog.id] });
+                          } else {
+                            updateBookingForm({ dogIds: currentIds.filter(id => id !== dog.id) });
+                          }
+                        }}
+                        className="w-4 h-4 rounded text-primary"
+                      />
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                          <DogIcon size={14} className="text-primary" />
+                        </div>
+                        <span className="font-medium">{dog.name}</span>
+                        <span className="text-xs text-muted-foreground">({dog.breed})</span>
+                      </div>
+                    </label>
+                  ))
+                )}
+              </div>
+              {(bookingForm.dogIds || []).length === 0 && (
+                <p className="text-xs text-red-500 mt-1">Please select at least one dog</p>
+              )}
             </div>
+
+            {/* Add-ons Section */}
             <div>
-              <Label>Notes</Label>
+              <Label className="font-medium">Add-on Services</Label>
+              <div className="mt-2 space-y-3">
+                {/* Separate Playtime */}
+                <div className="flex items-start gap-3 p-3 border rounded-xl bg-muted/10 hover:bg-muted/20 transition-colors">
+                  <input
+                    type="checkbox"
+                    data-testid="edit-booking-separate-playtime"
+                    checked={bookingForm.needsSeparatePlaytime || false}
+                    onChange={(e) => updateBookingForm({ needsSeparatePlaytime: e.target.checked })}
+                    className="mt-1 w-4 h-4 rounded text-primary"
+                  />
+                  <div className="flex-1">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">Separate Playtime</span>
+                      <Badge variant="secondary" className="text-xs">+$6/night</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Private play sessions instead of group play
+                    </p>
+                  </div>
+                </div>
+
+                {/* Bath Before Pickup */}
+                <div className="flex items-start gap-3 p-3 border rounded-xl bg-muted/10 hover:bg-muted/20 transition-colors">
+                  <input
+                    type="checkbox"
+                    data-testid="edit-booking-bath"
+                    checked={bookingForm.bathBeforePickup || false}
+                    onChange={(e) => updateBookingForm({ bathBeforePickup: e.target.checked })}
+                    className="mt-1 w-4 h-4 rounded text-primary"
+                  />
+                  <div className="flex-1">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">Bath Before Pickup</span>
+                      <Badge variant="secondary" className="text-xs">+$25/dog</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Fresh and clean for pickup day
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <Label className="font-medium">Special Instructions</Label>
               <Textarea
+                data-testid="edit-booking-notes"
                 value={bookingForm.notes || ''}
-                onChange={(e) => setBookingForm({ ...bookingForm, notes: e.target.value })}
-                rows={3}
+                onChange={(e) => updateBookingForm({ notes: e.target.value })}
+                placeholder="Any special requests or notes for our team..."
+                className="mt-1"
+                rows={2}
               />
             </div>
+
+            {/* Price Preview */}
+            {pricePreview && (
+              <div className={`p-4 rounded-xl border-2 ${
+                pricePreview.priceDelta > 0 ? 'bg-yellow-50 border-yellow-200' :
+                pricePreview.priceDelta < 0 ? 'bg-green-50 border-green-200' :
+                'bg-muted/30 border-border'
+              }`}>
+                <div className="flex justify-between items-center mb-3">
+                  <span className="font-serif font-semibold text-lg">Price Summary</span>
+                  {pricePreview.nights > 0 && (
+                    <Badge variant="outline">{pricePreview.nights} night{pricePreview.nights !== 1 ? 's' : ''}</Badge>
+                  )}
+                </div>
+                
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Base rate ({pricePreview.dogCount} dog{pricePreview.dogCount !== 1 ? 's' : ''} × {pricePreview.nights} nights × $45)</span>
+                    <span>${pricePreview.subtotal?.toFixed(2)}</span>
+                  </div>
+                  
+                  {pricePreview.addOnDetails?.map((addon, idx) => (
+                    <div key={idx} className="flex justify-between text-muted-foreground">
+                      <span>+ {addon.name}</span>
+                      <span>${addon.amount?.toFixed(2)}</span>
+                    </div>
+                  ))}
+                  
+                  <div className="flex justify-between font-medium pt-2 border-t">
+                    <span>New Total</span>
+                    <span className="text-lg">${pricePreview.total?.toFixed(2)}</span>
+                  </div>
+                  
+                  {pricePreview.priceDelta !== 0 && (
+                    <div className={`flex justify-between font-semibold pt-2 ${
+                      pricePreview.priceDelta > 0 ? 'text-yellow-700' : 'text-green-700'
+                    }`}>
+                      <span>{pricePreview.priceDelta > 0 ? 'Additional Amount Due' : 'Refund Amount'}</span>
+                      <span>{pricePreview.priceDelta > 0 ? '+' : '-'}${Math.abs(pricePreview.priceDelta)?.toFixed(2)}</span>
+                    </div>
+                  )}
+                  
+                  {pricePreview.priceDelta > 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      * Additional charges will be added to your account
+                    </p>
+                  )}
+                  {pricePreview.priceDelta < 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      * Refund will be processed within 5-7 business days
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditBookingModal(false)}>Cancel</Button>
-            <Button onClick={handleSaveBooking} disabled={savingBooking}>
-              {savingBooking ? 'Saving...' : 'Save Changes'}
+
+          <DialogFooter className="gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setEditBookingModal(false);
+                setEditingBooking(null);
+                setBookingForm({});
+                setPricePreview(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              data-testid="save-booking-changes-btn"
+              onClick={handleSaveBooking} 
+              disabled={savingBooking || (bookingForm.dogIds || []).length === 0}
+            >
+              {savingBooking ? 'Saving...' : 'Confirm Changes'}
             </Button>
           </DialogFooter>
         </DialogContent>
