@@ -739,6 +739,78 @@ const CustomerDashboard = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Cancellation Preview Modal */}
+      <Dialog open={cancelModal} onOpenChange={setCancelModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangleIcon className="text-yellow-500" size={20} />
+              Cancel Booking
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {cancellingBooking && (
+              <div className="p-4 bg-muted/30 rounded-lg">
+                <p className="font-medium">Booking Details</p>
+                <p className="text-sm text-muted-foreground">
+                  {cancellingBooking.startDate} - {cancellingBooking.endDate}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Total: ${(cancellingBooking.total || cancellingBooking.totalPrice || 0).toFixed(2)}
+                </p>
+              </div>
+            )}
+            
+            {cancellationPreview && (
+              <div className={`p-4 rounded-lg border-2 ${
+                cancellationPreview.refundPercentage === 100 ? 'bg-green-50 border-green-200' :
+                cancellationPreview.refundPercentage === 50 ? 'bg-yellow-50 border-yellow-200' :
+                'bg-red-50 border-red-200'
+              }`}>
+                <p className="font-semibold text-lg mb-2">Refund Policy</p>
+                <p className="text-sm mb-3">{cancellationPreview.policyDescription}</p>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">Hours until check-in:</span>
+                  <span className="font-medium">{cancellationPreview.hoursUntilCheckIn}h</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">Refund percentage:</span>
+                  <span className="font-medium">{cancellationPreview.refundPercentage}%</span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t mt-2">
+                  <span className="font-medium">Refund amount:</span>
+                  <span className="text-xl font-bold text-primary">
+                    ${cancellationPreview.refundAmount.toFixed(2)}
+                  </span>
+                </div>
+                
+                {cancellationPreview.refundAmount > 0 && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    * Refund will be processed within 5-7 business days
+                  </p>
+                )}
+              </div>
+            )}
+            
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to cancel this booking? This action cannot be undone.
+            </p>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setCancelModal(false)}>
+              Keep Booking
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleConfirmCancel}
+            >
+              Confirm Cancellation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
