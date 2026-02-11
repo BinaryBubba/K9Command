@@ -66,6 +66,7 @@ import AdminStaffManagementPage from './pages/AdminStaffManagementPage';
 import AdminTimeManagementPage from './pages/AdminTimeManagementPage';
 import StaffTimeManagementPage from './pages/StaffTimeManagementPage';
 import AdminSettingsPage from './pages/AdminSettingsPage';
+import StaffRequestPage from './pages/StaffRequestPage';
 
 // Store
 import useAuthStore from './store/authStore';
