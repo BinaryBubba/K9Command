@@ -466,23 +466,31 @@ const mock = {
       id: uid('dog'),
       ownerId: user?.id,
       owner_id: user?.id,
+      householdId: user?.household_id || user?.householdId,
+      household_id: user?.household_id || user?.householdId,
       name: payload.name,
       breed: payload.breed || '',
       age: payload.age || null,
       birthday: payload.birthday || null,
       weight: payload.weight || null,
+      size: payload.size || null,
       feedingInstructions: payload.feedingInstructions || payload.feeding_instructions || '',
+      feeding_instructions: payload.feedingInstructions || payload.feeding_instructions || '',
       medications: payload.medications || '',
       behaviorNotes: payload.behaviorNotes || payload.behavior_notes || '',
+      behavior_notes: payload.behaviorNotes || payload.behavior_notes || '',
       specialNeeds: payload.specialNeeds || payload.special_needs || '',
+      special_needs: payload.specialNeeds || payload.special_needs || '',
+      notes: payload.notes || '',
       photoUrl: payload.photoUrl || payload.photo_url || null,
       vaccinations: payload.vaccinations || [],
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     dogs.push(dog);
     ls.set(KEYS.DOGS, dogs);
-    return dog;
+    return normalizeDog(dog);
   },
 
   async updateDog(dogId, updates) {
