@@ -186,20 +186,37 @@ const CustomerDashboard = () => {
     }
   };
 
-  const handleCancelBooking = async (booking) => {
-    if (!canEditBooking(booking)) {
-      toast.error('This booking cannot be cancelled');
-      return;
-    }
-    if (!window.confirm('Are you sure you want to cancel this booking?')) return;
+  // Open cancellation preview modal
+  const openCancelModal = (booking) => {
+    const preview = bookingRules.canCancelBooking(booking);
+    setCancellationPreview(preview);
+    setCancellingBooking(booking);
+    setCancelModal(true);
+  };
+
+  // Execute the actual cancellation
+  const handleConfirmCancel = async () => {
+    if (!cancellingBooking) return;
     
     try {
-      await dataClient.cancelBooking(booking.id);
-      toast.success('Booking cancelled');
+      const result = await dataClient.cancelBooking(cancellingBooking.id);
+      toast.success(
+        cancellationPreview?.refundAmount > 0 
+          ? `Booking cancelled. Refund of $${cancellationPreview.refundAmount.toFixed(2)} will be processed.`
+          : 'Booking cancelled'
+      );
+      setCancelModal(false);
+      setCancellingBooking(null);
+      setCancellationPreview(null);
       fetchData();
     } catch (error) {
       toast.error(error.message || 'Failed to cancel booking');
     }
+  };
+
+  // Legacy handler for backwards compatibility
+  const handleCancelBooking = async (booking) => {
+    openCancelModal(booking);
   };
 
   // Get upcoming bookings
