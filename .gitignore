@@ -123,3 +123,9 @@ frontend/node_modules/.cache/default-development/7.pack
 # Environment files
 *.env
 *.env.*
+
+# IDE cruft
+.vs/
+
+# IDE cruft
+.vs/

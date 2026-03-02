@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { API } from '../utils/api';
+import api from '../utils/api';
 import useAuthStore from '../store/authStore';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -34,7 +33,7 @@ const AuthForm = () => {
         ? { email: formData.email, password: formData.password }
         : formData;
 
-      const response = await axios.post(`${API}${endpoint}`, payload);
+      const response = await api.post(endpoint, payload);
       const { token, user } = response.data;
 
       setAuth(user, token);

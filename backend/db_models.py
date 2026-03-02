@@ -84,7 +84,7 @@ class User(Base):
     role = Column(Enum(UserRole), nullable=False)
     location_id = Column(String, ForeignKey("locations.id"), nullable=True)
     is_active = Column(Boolean, default=True)
-    household_id = Column(String, nullable=True, index=True)
+    household_id = Column(String, nullable=True, index=True, unique=True)
     reset_token = Column(String, nullable=True)
     reset_token_expiry = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

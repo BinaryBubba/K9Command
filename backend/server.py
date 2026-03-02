@@ -2,7 +2,6 @@ from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, EmailStr
 import os
 import logging
@@ -11,6 +10,9 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone, timedelta
 import base64
 import uuid
+
+# Note: MongoDB imports are intentionally removed; using PostgreSQL (SQLAlchemy) instead
+# See database.py for PostgreSQL configuration
 
 from models import (
     User, UserCreate, UserResponse, LoginRequest, LoginResponse,
@@ -56,13 +58,30 @@ from automation_service import AutomationService, seed_default_automations
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+# MongoDB is no longer used - using PostgreSQL (SQLAlchemy) instead
+# If MONGO_URL is set, it's ignored; PostgreSQL via DATABASE_URL is the source of truth
+MONGO_URL = os.getenv('MONGO_URL')
+DB_NAME = os.getenv('DB_NAME')
+if MONGO_URL and DB_NAME:
+    print("⚠ WARNING: MONGO_URL and DB_NAME env vars are set but ignored. Using PostgreSQL (DATABASE_URL) instead.")
 
 # Create the main app without a prefix
 app = FastAPI()
+
+# Configure CORS from environment (comma-separated origins) with a safe default for local dev
+public_origins = os.getenv('PUBLIC_ORIGINS')
+if public_origins:
+    allow_origins = [o.strip() for o in public_origins.split(',') if o.strip()]
+else:
+    allow_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allow_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -74,12 +93,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Dependency to get database
-async def get_db():
-    return db
+# NOTE: Database session now comes from backend/database.py (PostgreSQL + SQLAlchemy)
+# This server.py file is deprecated and kept for reference only.
+# Use app/main.py which imports from routers/auth_pg.py instead.
 
 # Helper function to log audit
-async def create_audit_log(user_id: str, action: AuditAction, resource_type: str, resource_id: str = None, details: dict = {}):
+async def create_audit_log(user_id: str, action: AuditAction, resource_type: str, resource_id: str = None, details: Optional[Dict[str, Any]] = None):
+    if details is None:
+        details = {}
+
     audit = AuditLog(
         user_id=user_id,
         action=action,
