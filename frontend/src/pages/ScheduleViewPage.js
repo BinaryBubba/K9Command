@@ -9,9 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Textarea } from '../components/ui/textarea';
 import useAuthStore from '../store/authStore';
-
-const API_URL = process.env.REACT_APP_BACKEND_URL;
-
+import { apiUrl } from "../utils/api";
 export default function ScheduleViewPage() {
   const navigate = useNavigate();
   const { user, token } = useAuthStore();
@@ -49,7 +47,7 @@ export default function ScheduleViewPage() {
         end_date: weekEnd.toISOString()
       });
       
-      const response = await fetch(`${API_URL}/api/scheduling/shifts?${params}`, {
+      const response = await fetch(apiUrl(`/api/scheduling/shifts?${params}`), {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -68,7 +66,7 @@ export default function ScheduleViewPage() {
     if (user?.role !== 'staff') return;
     try {
       // This endpoint may not exist - using users list
-      const response = await fetch(`${API_URL}/api/admin/staff`, {
+      const response = await fetch(apiUrl(`/api/admin/staff`), {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
@@ -83,7 +81,7 @@ export default function ScheduleViewPage() {
   // Fetch my swap requests
   const fetchSwapRequests = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/api/scheduling/swap-requests`, {
+      const response = await fetch(apiUrl(`/api/scheduling/swap-requests`), {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
@@ -150,7 +148,7 @@ export default function ScheduleViewPage() {
     
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/scheduling/swap-requests`, {
+      const response = await fetch(apiUrl(`/api/scheduling/swap-requests`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

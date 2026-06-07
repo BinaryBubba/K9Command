@@ -14,6 +14,7 @@ const StaffDashboard = () => {
   const [stats, setStats] = useState({});
   const [tasks, setTasks] = useState([]);
   const [clockedIn, setClockedIn] = useState(false);
+  const [currentEntry, setCurrentEntry] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,12 +27,15 @@ const StaffDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [statsRes, tasksRes] = await Promise.all([
+      const [statsRes, tasksRes, currentRes] = await Promise.all([
         api.get('/dashboard/stats'),
         api.get('/tasks'),
+        api.get('/time-entries/current'),
       ]);
       setStats(statsRes.data);
       setTasks(tasksRes.data.filter(t => t.status !== 'completed'));
+      setClockedIn(!!currentRes.data?.clocked_in);
+      setCurrentEntry(currentRes.data?.entry || null);
     } catch (error) {
       toast.error('Failed to load dashboard data');
     } finally {
@@ -41,12 +45,13 @@ const StaffDashboard = () => {
 
   const handleClockIn = async () => {
     try {
-      await api.post('/time-entries/clock-in', {
-        staff_id: user.id,
-        location_id: user.location_id || 'default-location',
-      });
+      const res = await api.post('/time-entries/clock-in', user?.location_id ? {
+        location_id: user.location_id,
+      } : {});
       setClockedIn(true);
+      setCurrentEntry(res.data || null);
       toast.success('Clocked in successfully!');
+      fetchData();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to clock in');
     }
@@ -56,9 +61,11 @@ const StaffDashboard = () => {
     try {
       await api.post('/time-entries/clock-out');
       setClockedIn(false);
+      setCurrentEntry(null);
       toast.success('Clocked out successfully!');
+      fetchData();
     } catch (error) {
-      toast.error('Failed to clock out');
+      toast.error(error.response?.data?.detail || 'Failed to clock out');
     }
   };
 
@@ -109,7 +116,7 @@ const StaffDashboard = () => {
             </Button>
           </div>
           
-          {/* Time Clock */}
+          {/* My Time */}
           <div className="flex gap-4">
             {!clockedIn ? (
               <Button
@@ -175,21 +182,21 @@ const StaffDashboard = () => {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <Card data-testid="action-time-clock" className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-2xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/staff/time-clock')}>
+          <Card data-testid="action-time-clock" className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-2xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/staff/my-time')}>
             <CardContent className="p-6">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
                   <MapPinIcon size={24} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-serif font-bold">Time Clock</h3>
+                  <h3 className="text-lg font-serif font-bold">My Time</h3>
                   <p className="text-sm opacity-90">GPS clock in/out</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card data-testid="action-schedule" className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-2xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/staff/schedule')}>
+          <Card data-testid="action-schedule" className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-2xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/staff/my-time')}>
             <CardContent className="p-6">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
@@ -231,19 +238,7 @@ const StaffDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card data-testid="action-timesheet" className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/staff/timesheet')}>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                  <CalendarClockIcon size={24} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-serif font-bold">Timesheet</h3>
-                  <p className="text-sm opacity-90">Work hours</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          
 
           <Card data-testid="action-chat" className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-2xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/staff/chat')}>
             <CardContent className="p-6">

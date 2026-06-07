@@ -3,10 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import api from '../utils/api';
 import { Button } from '../components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
-import { UsersIcon, DogIcon, CalendarIcon, AlertCircleIcon, LogOutIcon, BarChartIcon, ClockIcon, MessageCircleIcon, ClipboardListIcon, ShieldCheckIcon, CalendarDaysIcon, FileTextIcon, ListTodoIcon, UmbrellaIcon, HomeIcon, TagIcon, ActivityIcon, MapIcon, LogInIcon, ShieldAlertIcon, PackageIcon, ShoppingCartIcon, UserPlusIcon, MailIcon, UsersRoundIcon, SettingsIcon } from 'lucide-react';
+import { Card, CardContent } from '../components/ui/card';
+import {
+  UsersIcon,
+  DogIcon,
+  CalendarIcon,
+  AlertCircleIcon,
+  LogOutIcon,
+  ClockIcon,
+  ShieldCheckIcon,
+  ActivityIcon,
+} from 'lucide-react';
 import { toast } from 'sonner';
-import NotificationBell from '../components/NotificationBell';
 
 const AdminDashboard = () => {
   const { user, logout } = useAuthStore();
@@ -51,7 +59,6 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-[#F9F7F2]">
-      {/* Header */}
       <header className="bg-white border-b border-border/40 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex justify-between items-center">
           <div>
@@ -59,7 +66,6 @@ const AdminDashboard = () => {
             <p className="text-sm text-muted-foreground">Welcome back, {user?.full_name}</p>
           </div>
           <div className="flex items-center gap-4">
-            <NotificationBell />
             <Button
               data-testid="admin-logout-button"
               onClick={handleLogout}
@@ -74,7 +80,6 @@ const AdminDashboard = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 md:px-8 py-8">
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           <Card data-testid="stat-customers" className="bg-white rounded-2xl border border-border/50 shadow-sm">
             <CardContent className="p-6">
@@ -147,255 +152,64 @@ const AdminDashboard = () => {
           </Card>
         </div>
 
-        {/* Management Sections */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Card data-testid="admin-nav-bookings" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/bookings')}>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-full bg-primary/10 mx-auto mb-4 flex items-center justify-center">
-                <CalendarIcon className="text-primary" size={32} />
-              </div>
-              <h3 className="text-xl font-serif font-semibold text-center mb-2">Manage Bookings</h3>
-              <p className="text-sm text-muted-foreground text-center">View and manage all reservations</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
+          <Card
+            data-testid="admin-nav-operations"
+            className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+            onClick={() => navigate('/admin/operations')}
+          >
+            <CardContent className="p-8 text-center">
+              <ActivityIcon className="mx-auto mb-4 text-orange-600" size={32} />
+              <h3 className="text-lg font-semibold">Operations</h3>
+              <p className="text-sm text-muted-foreground">Daily ops, lodging, and check-in/out workflows</p>
             </CardContent>
           </Card>
 
-          <Card data-testid="admin-nav-staff" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/staff')}>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-full bg-secondary/20 mx-auto mb-4 flex items-center justify-center">
-                <UsersIcon className="text-secondary-foreground" size={32} />
-              </div>
-              <h3 className="text-xl font-serif font-semibold text-center mb-2">Staff Management</h3>
-              <p className="text-sm text-muted-foreground text-center">Schedule and track staff</p>
+          <Card
+            data-testid="admin-nav-customer-management"
+            className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+            onClick={() => navigate('/admin/customer-management')}
+          >
+            <CardContent className="p-8 text-center">
+              <UsersIcon className="mx-auto mb-4 text-primary" size={32} />
+              <h3 className="text-lg font-semibold">Customer Management</h3>
+              <p className="text-sm text-muted-foreground">Customers, bookings, and relationship tools</p>
             </CardContent>
           </Card>
 
-          <Card data-testid="admin-nav-reports" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/reports')}>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-full bg-primary/10 mx-auto mb-4 flex items-center justify-center">
-                <BarChartIcon className="text-primary" size={32} />
-              </div>
-              <h3 className="text-xl font-serif font-semibold text-center mb-2">Reports & Analytics</h3>
-              <p className="text-sm text-muted-foreground text-center">View business insights</p>
+          <Card
+            data-testid="admin-nav-staff-hub"
+            className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+            onClick={() => navigate('/admin/staff-hub')}
+          >
+            <CardContent className="p-8 text-center">
+              <UsersIcon className="mx-auto mb-4 text-primary" size={32} />
+              <h3 className="text-lg font-semibold">Staff Hub</h3>
+              <p className="text-sm text-muted-foreground">Tasks, approvals, and kennel staff workflows</p>
             </CardContent>
           </Card>
 
-          <Card data-testid="admin-nav-customers" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/customers')}>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-full bg-secondary/20 mx-auto mb-4 flex items-center justify-center">
-                <UsersIcon className="text-secondary-foreground" size={32} />
-              </div>
-              <h3 className="text-xl font-serif font-semibold text-center mb-2">Customer Management</h3>
-              <p className="text-sm text-muted-foreground text-center">View all customers and dogs</p>
+          <Card
+            data-testid="admin-nav-time-management-hub"
+            className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+            onClick={() => navigate('/admin/time-management-hub')}
+          >
+            <CardContent className="p-8 text-center">
+              <ClockIcon className="mx-auto mb-4 text-green-600" size={32} />
+              <h3 className="text-lg font-semibold">Time Management</h3>
+              <p className="text-sm text-muted-foreground">Timesheets, schedules, PTO, and approvals</p>
             </CardContent>
           </Card>
 
-          <Card data-testid="admin-nav-incidents" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/incidents')}>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-full bg-red-100 mx-auto mb-4 flex items-center justify-center">
-                <AlertCircleIcon className="text-red-600" size={32} />
-              </div>
-              <h3 className="text-xl font-serif font-semibold text-center mb-2">Incidents</h3>
-              <p className="text-sm text-muted-foreground text-center">Review and manage incidents</p>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="admin-nav-audit" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/audit')}>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-full bg-primary/10 mx-auto mb-4 flex items-center justify-center">
-                <ShieldCheckIcon className="text-primary" size={32} />
-              </div>
-              <h3 className="text-xl font-serif font-semibold text-center mb-2">Audit Logs</h3>
-              <p className="text-sm text-muted-foreground text-center">View system activity logs</p>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="admin-nav-timesheet" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/timesheet')}>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-full bg-blue-100 mx-auto mb-4 flex items-center justify-center">
-                <ClockIcon className="text-blue-600" size={32} />
-              </div>
-              <h3 className="text-xl font-serif font-semibold text-center mb-2">Staff Timesheets</h3>
-              <p className="text-sm text-muted-foreground text-center">View employee work hours</p>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="admin-nav-time-management" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/time-management')}>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-full bg-green-100 mx-auto mb-4 flex items-center justify-center">
-                <ClockIcon className="text-green-600" size={32} />
-              </div>
-              <h3 className="text-xl font-serif font-semibold text-center mb-2">Time Management</h3>
-              <p className="text-sm text-muted-foreground text-center">Pay periods & approvals</p>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="admin-nav-schedule" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/schedule')}>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-full bg-indigo-100 mx-auto mb-4 flex items-center justify-center">
-                <CalendarDaysIcon className="text-indigo-600" size={32} />
-              </div>
-              <h3 className="text-xl font-serif font-semibold text-center mb-2">Staff Schedule</h3>
-              <p className="text-sm text-muted-foreground text-center">Shifts & swap requests</p>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="admin-nav-chat" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/chat')}>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-full bg-purple-100 mx-auto mb-4 flex items-center justify-center">
-                <MessageCircleIcon className="text-purple-600" size={32} />
-              </div>
-              <h3 className="text-xl font-serif font-semibold text-center mb-2">Messages</h3>
-              <p className="text-sm text-muted-foreground text-center">Chat with staff & customers</p>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="admin-nav-forms" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/forms')}>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-full bg-teal-100 mx-auto mb-4 flex items-center justify-center">
-                <FileTextIcon className="text-teal-600" size={32} />
-              </div>
-              <h3 className="text-xl font-serif font-semibold text-center mb-2">Forms Builder</h3>
-              <p className="text-sm text-muted-foreground text-center">Create & manage forms</p>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="admin-nav-tasks" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/tasks')}>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-full bg-orange-100 mx-auto mb-4 flex items-center justify-center">
-                <ListTodoIcon className="text-orange-600" size={32} />
-              </div>
-              <h3 className="text-xl font-serif font-semibold text-center mb-2">Task Management</h3>
-              <p className="text-sm text-muted-foreground text-center">Assign & track tasks</p>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="admin-nav-time-off" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/time-off')}>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-full bg-pink-100 mx-auto mb-4 flex items-center justify-center">
-                <UmbrellaIcon className="text-pink-600" size={32} />
-              </div>
-              <h3 className="text-xl font-serif font-semibold text-center mb-2">Time Off</h3>
-              <p className="text-sm text-muted-foreground text-center">Review leave requests</p>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="admin-nav-kennels" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/kennels')}>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-full bg-emerald-100 mx-auto mb-4 flex items-center justify-center">
-                <HomeIcon className="text-emerald-600" size={32} />
-              </div>
-              <h3 className="text-xl font-serif font-semibold text-center mb-2">Kennel Management</h3>
-              <p className="text-sm text-muted-foreground text-center">Runs, suites & crates</p>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="admin-nav-daily-ops" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/daily-ops')}>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-full bg-cyan-100 mx-auto mb-4 flex items-center justify-center">
-                <ActivityIcon className="text-cyan-600" size={32} />
-              </div>
-              <h3 className="text-xl font-serif font-semibold text-center mb-2">Daily Operations</h3>
-              <p className="text-sm text-muted-foreground text-center">Dogs on site today</p>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="admin-nav-coupons" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/coupons')}>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-full bg-amber-100 mx-auto mb-4 flex items-center justify-center">
-                <TagIcon className="text-amber-600" size={32} />
-              </div>
-              <h3 className="text-xl font-serif font-semibold text-center mb-2">Coupon Codes</h3>
-              <p className="text-sm text-muted-foreground text-center">Manage discounts</p>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="admin-nav-lodging-map" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/lodging-map')}>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-full bg-indigo-100 mx-auto mb-4 flex items-center justify-center">
-                <MapIcon className="text-indigo-600" size={32} />
-              </div>
-              <h3 className="text-xl font-serif font-semibold text-center mb-2">Lodging Map</h3>
-              <p className="text-sm text-muted-foreground text-center">Visual kennel grid</p>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="admin-nav-check-in-out" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/check-in-out')}>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-full bg-rose-100 mx-auto mb-4 flex items-center justify-center">
-                <LogInIcon className="text-rose-600" size={32} />
-              </div>
-              <h3 className="text-xl font-serif font-semibold text-center mb-2">Check-In/Out</h3>
-              <p className="text-sm text-muted-foreground text-center">Arrivals & departures</p>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="admin-nav-booking-approvals" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/booking-approvals')}>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-full bg-yellow-100 mx-auto mb-4 flex items-center justify-center">
-                <ShieldAlertIcon className="text-yellow-600" size={32} />
-              </div>
-              <h3 className="text-xl font-serif font-semibold text-center mb-2">Booking Approvals</h3>
-              <p className="text-sm text-muted-foreground text-center">Review blocked bookings</p>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="admin-nav-inventory" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/inventory')}>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-full bg-teal-100 mx-auto mb-4 flex items-center justify-center">
-                <PackageIcon className="text-teal-600" size={32} />
-              </div>
-              <h3 className="text-xl font-serif font-semibold text-center mb-2">Inventory</h3>
-              <p className="text-sm text-muted-foreground text-center">Manage retail products</p>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="admin-nav-pos" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/pos')}>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-full bg-lime-100 mx-auto mb-4 flex items-center justify-center">
-                <ShoppingCartIcon className="text-lime-600" size={32} />
-              </div>
-              <h3 className="text-xl font-serif font-semibold text-center mb-2">POS Checkout</h3>
-              <p className="text-sm text-muted-foreground text-center">Point of sale</p>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="admin-nav-crm" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/crm')}>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-full bg-violet-100 mx-auto mb-4 flex items-center justify-center">
-                <UserPlusIcon className="text-violet-600" size={32} />
-              </div>
-              <h3 className="text-xl font-serif font-semibold text-center mb-2">CRM & Leads</h3>
-              <p className="text-sm text-muted-foreground text-center">Track customer lifecycle</p>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="admin-nav-email-templates" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/email-templates')}>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-full bg-blue-100 mx-auto mb-4 flex items-center justify-center">
-                <MailIcon className="text-blue-600" size={32} />
-              </div>
-              <h3 className="text-xl font-serif font-semibold text-center mb-2">Email Templates</h3>
-              <p className="text-sm text-muted-foreground text-center">Manage notifications</p>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="admin-nav-staff-management" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/staff-management')}>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-full bg-amber-100 mx-auto mb-4 flex items-center justify-center">
-                <UsersRoundIcon className="text-amber-600" size={32} />
-              </div>
-              <h3 className="text-xl font-serif font-semibold text-center mb-2">Staff Management</h3>
-              <p className="text-sm text-muted-foreground text-center">Approve staff requests</p>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="admin-nav-settings" className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/admin/settings')}>
-            <CardContent className="p-8">
-              <div className="w-16 h-16 rounded-full bg-gray-100 mx-auto mb-4 flex items-center justify-center">
-                <SettingsIcon className="text-gray-600" size={32} />
-              </div>
-              <h3 className="text-xl font-serif font-semibold text-center mb-2">Settings</h3>
-              <p className="text-sm text-muted-foreground text-center">Pricing & business rules</p>
+          <Card
+            data-testid="admin-nav-administration"
+            className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+            onClick={() => navigate('/admin/administration')}
+          >
+            <CardContent className="p-8 text-center">
+              <ShieldCheckIcon className="mx-auto mb-4 text-slate-700" size={32} />
+              <h3 className="text-lg font-semibold">Administration</h3>
+              <p className="text-sm text-muted-foreground">Reports, settings, staff admin, and oversight</p>
             </CardContent>
           </Card>
         </div>

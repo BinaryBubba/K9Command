@@ -45,7 +45,7 @@ const AdminIncidentsPage = () => {
         api.get('/incidents'),
         api.get('/dogs'),
       ]);
-      setIncidents(incidentsRes.data);
+      setIncidents(incidentsRes.data?.incidents || incidentsRes.data || []);
       setDogs(dogsRes.data);
     } catch (error) {
       toast.error('Failed to load incidents');

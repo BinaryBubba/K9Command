@@ -10,6 +10,7 @@ import api from '../utils/api';
 const TaskModal = ({ isOpen, onClose, task, onSuccess, isRecurring = false }) => {
   const [loading, setLoading] = useState(false);
   const [locations, setLocations] = useState([]);
+  const [formTemplates, setFormTemplates] = useState([]);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -18,11 +19,14 @@ const TaskModal = ({ isOpen, onClose, task, onSuccess, isRecurring = false }) =>
     assigned_to: '',
     recurring: isRecurring,
     recurrence_pattern: 'daily',
+    form_template_id: '',
+    require_form_completion: false,
   });
 
   useEffect(() => {
     if (isOpen) {
-      fetchLocations();
+      fetchDependencies();
+
       if (task) {
         setFormData({
           title: task.title || '',
@@ -32,20 +36,43 @@ const TaskModal = ({ isOpen, onClose, task, onSuccess, isRecurring = false }) =>
           assigned_to: task.assigned_to || '',
           recurring: false,
           recurrence_pattern: 'daily',
+          form_template_id: task.form_template_id || '',
+          require_form_completion: !!task.require_form_completion,
+        });
+      } else {
+        setFormData({
+          title: '',
+          description: '',
+          location_id: '',
+          due_date: '',
+          assigned_to: '',
+          recurring: isRecurring,
+          recurrence_pattern: 'daily',
+          form_template_id: '',
+          require_form_completion: false,
         });
       }
     }
-  }, [isOpen, task]);
+  }, [isOpen, task, isRecurring]);
 
-  const fetchLocations = async () => {
+  const fetchDependencies = async () => {
     try {
-      const response = await api.get('/locations');
-      setLocations(response.data);
-      if (response.data.length > 0 && !task) {
-        setFormData(prev => ({ ...prev, location_id: response.data[0].id }));
+      const [locationsRes, formsRes] = await Promise.all([
+        api.get('/locations'),
+        api.get('/forms/templates').catch(() => ({ data: [] })),
+      ]);
+
+      const nextLocations = locationsRes.data || [];
+      const nextForms = formsRes.data || [];
+
+      setLocations(nextLocations);
+      setFormTemplates(nextForms);
+
+      if (nextLocations.length > 0 && !task) {
+        setFormData(prev => ({ ...prev, location_id: nextLocations[0].id }));
       }
     } catch (error) {
-      toast.error('Failed to load locations');
+      toast.error('Failed to load task form dependencies');
     }
   };
 
@@ -56,7 +83,10 @@ const TaskModal = ({ isOpen, onClose, task, onSuccess, isRecurring = false }) =>
     try {
       const payload = {
         ...formData,
+        assigned_to: formData.assigned_to || null,
         due_date: formData.due_date ? new Date(formData.due_date).toISOString() : null,
+        form_template_id: formData.form_template_id || null,
+        require_form_completion: !!formData.require_form_completion,
       };
 
       if (task) {
@@ -64,10 +94,19 @@ const TaskModal = ({ isOpen, onClose, task, onSuccess, isRecurring = false }) =>
         toast.success('Task updated successfully');
       } else {
         if (formData.recurring) {
-          // Create recurring tasks (e.g., for next 30 days)
-          const days = formData.recurrence_pattern === 'daily' ? 30 : formData.recurrence_pattern === 'weekly' ? 12 : 6;
-          const interval = formData.recurrence_pattern === 'daily' ? 1 : formData.recurrence_pattern === 'weekly' ? 7 : 14;
-          
+          const days =
+            formData.recurrence_pattern === 'daily'
+              ? 30
+              : formData.recurrence_pattern === 'weekly'
+                ? 12
+                : 6;
+          const interval =
+            formData.recurrence_pattern === 'daily'
+              ? 1
+              : formData.recurrence_pattern === 'weekly'
+                ? 7
+                : 14;
+
           for (let i = 0; i < days; i++) {
             const dueDate = new Date();
             dueDate.setDate(dueDate.getDate() + (i * interval));
@@ -83,6 +122,7 @@ const TaskModal = ({ isOpen, onClose, task, onSuccess, isRecurring = false }) =>
           toast.success('Task created successfully');
         }
       }
+
       onSuccess();
       onClose();
     } catch (error) {
@@ -98,6 +138,7 @@ const TaskModal = ({ isOpen, onClose, task, onSuccess, isRecurring = false }) =>
         <DialogHeader>
           <DialogTitle>{task ? 'Edit Task' : isRecurring ? 'Create Recurring Tasks' : 'Create Task'}</DialogTitle>
         </DialogHeader>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label>Title</Label>
@@ -134,6 +175,31 @@ const TaskModal = ({ isOpen, onClose, task, onSuccess, isRecurring = false }) =>
                 <option key={loc.id} value={loc.id}>{loc.name}</option>
               ))}
             </select>
+          </div>
+
+          <div>
+            <Label>Required Form Template</Label>
+            <select
+              value={formData.form_template_id}
+              onChange={(e) => setFormData({ ...formData, form_template_id: e.target.value })}
+              className="w-full p-2 border rounded-xl mt-1"
+            >
+              <option value="">None</option>
+              {formTemplates.map((template) => (
+                <option key={template.id} value={template.id}>{template.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={!!formData.require_form_completion}
+                onChange={(e) => setFormData({ ...formData, require_form_completion: e.target.checked })}
+              />
+              <span>Require form completion before task can be completed</span>
+            </label>
           </div>
 
           {!task && (

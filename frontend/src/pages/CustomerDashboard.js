@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
-import { dataClient, dataMode, bookingRules } from '../data/client';
+import { bookingRules } from '../data/client';
+import api from '../utils/api';
 import { Button } from '../components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
@@ -11,7 +12,6 @@ import { Textarea } from '../components/ui/textarea';
 import { Badge } from '../components/ui/badge';
 import { AlertTriangleIcon, PlusIcon, DogIcon, CalendarIcon, ImageIcon, LogOutIcon, CreditCardIcon, SettingsIcon, LayoutGridIcon, EditIcon, XIcon, CheckIcon, ClockIcon, SunIcon, UtensilsIcon, ActivityIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import NotificationBell from '../components/NotificationBell';
 import PushNotificationSettings from '../components/PushNotificationSettings';
 
 const CustomerDashboard = () => {
@@ -53,16 +53,20 @@ const CustomerDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [statsData, dogsData, bookingsData, updatesData] = await Promise.all([
-        dataClient.getDashboardStats(),
-        dataClient.listDogs(),
-        dataClient.listBookings(),
-        dataClient.getDailyUpdates(),
+      const [statsRes, dogsRes, bookingsRes, updatesRes] = await Promise.all([
+        api.get('/dashboard/stats'),
+        api.get('/dogs'),
+        api.get('/bookings'),
+        api.get('/daily-updates').catch(() => ({ data: [] })),
       ]);
-      setStats(statsData || {});
-      setDogs(dogsData || []);
-      setBookings(bookingsData || []);
-      setUpdates(updatesData || []);
+      const statsData = statsRes.data || {};
+      const dogsData = dogsRes.data || [];
+      const bookingsData = bookingsRes.data || [];
+      const updatesData = updatesRes.data || [];
+      setStats(statsData);
+      setDogs(dogsData);
+      setBookings(bookingsData);
+      setUpdates(updatesData);
       
       // Build today's agenda from active bookings
       const today = new Date().toISOString().split('T')[0];
@@ -135,7 +139,7 @@ const CustomerDashboard = () => {
     if (!editingDog) return;
     setSavingDog(true);
     try {
-      await dataClient.updateDog(editingDog.id, dogForm);
+      await api.patch(`/dogs/${editingDog.id}`, dogForm);
       toast.success('Dog profile updated!');
       setEditDogModal(false);
       setEditingDog(null);
@@ -279,7 +283,7 @@ const CustomerDashboard = () => {
         total: pricePreview?.total || editingBooking.total,
       };
       
-      await dataClient.updateBooking(editingBooking.id, updatePayload);
+      await api.patch(`/bookings/${editingBooking.id}`, updatePayload);
       
       // Show success message with price delta info
       if (pricePreview?.priceDelta > 0) {
@@ -315,7 +319,7 @@ const CustomerDashboard = () => {
     if (!cancellingBooking) return;
     
     try {
-      const result = await dataClient.cancelBooking(cancellingBooking.id);
+      const result = await api.post(`/bookings/${cancellingBooking.id}/cancel`).then(res => res.data);
       toast.success(
         cancellationPreview?.refundAmount > 0 
           ? `Booking cancelled. Refund of $${cancellationPreview.refundAmount.toFixed(2)} will be processed.`
@@ -363,9 +367,8 @@ const CustomerDashboard = () => {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-xs text-muted-foreground hidden sm:block">
-              Mode: {dataMode}
+
             </span>
-            <NotificationBell />
             <Button
               variant="outline"
               onClick={() => navigate('/customer/portal')}
@@ -395,7 +398,7 @@ const CustomerDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">My Dogs</p>
-                  <p className="text-3xl font-serif font-bold text-primary mt-2">{stats.my_dogs || dogs.length}</p>
+                  <p className="text-3xl font-serif font-bold text-primary mt-2">{dogs.length}</p>
                 </div>
                 <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                   <DogIcon className="text-primary" size={24} />

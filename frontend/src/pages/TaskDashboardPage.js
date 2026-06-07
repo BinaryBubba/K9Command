@@ -1,42 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Badge } from '../components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Checkbox } from '../components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
-import { Label } from '../components/ui/label';
-import { Textarea } from '../components/ui/textarea';
-import { toast } from 'sonner';
-import { 
-  PlusIcon, 
-  SearchIcon, 
-  CheckCircleIcon, 
-  ClockIcon, 
-  AlertTriangleIcon,
-  PlayIcon,
-  ArrowLeftIcon,
-  FilterIcon,
-  CalendarIcon,
-  UserIcon,
-  MoreVerticalIcon,
-  ListTodoIcon,
-  FlagIcon,
-  XIcon
-} from 'lucide-react';
+import TaskModal from '../components/TaskModal';
 import api from '../utils/api';
+import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 
 export default function TaskDashboardPage() {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'admin';
   
   const [tasks, setTasks] = useState([]);
   const [templates, setTemplates] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -51,7 +28,8 @@ export default function TaskDashboardPage() {
     description: '',
     priority: 'medium',
     due_date: '',
-    assigned_to: ''
+    assigned_to: '',
+    location_id: ''
   });
 
   useEffect(() => {
@@ -61,14 +39,23 @@ export default function TaskDashboardPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [tasksRes, templatesRes, analyticsRes] = await Promise.all([
+      const [tasksRes, templatesRes, analyticsRes, locationsRes] = await Promise.all([
         api.get('/tasks'),
         api.get('/forms/task-templates').catch(() => ({ data: [] })),
-        api.get('/forms/analytics/tasks').catch(() => ({ data: {} }))
+        api.get('/forms/analytics/tasks').catch(() => ({ data: {} })),
+        api.get('/locations').catch(() => ({ data: [] }))
       ]);
       setTasks(tasksRes.data || []);
       setTemplates(templatesRes.data || []);
       setAnalytics(analyticsRes.data);
+      setLocations(locationsRes.data || []);
+
+      if ((locationsRes.data || []).length > 0) {
+        setNewTask((prev) => ({
+          ...prev,
+          location_id: prev.location_id || locationsRes.data[0].id
+        }));
+      }
     } catch (error) {
       console.error('Failed to load tasks:', error);
       toast.error('Failed to load tasks');
@@ -83,17 +70,33 @@ export default function TaskDashboardPage() {
       return;
     }
 
+    if (!newTask.location_id) {
+      toast.error('Please select a location');
+      return;
+    }
+
     try {
       await api.post('/tasks', {
-        ...newTask,
+        title: newTask.title,
+        description: newTask.description,
+        assigned_to: newTask.assigned_to || null,
+        location_id: newTask.location_id,
+        due_date: newTask.due_date ? new Date(newTask.due_date).toISOString() : null,
         status: 'pending'
       });
       toast.success('Task created');
       setShowCreateModal(false);
-      setNewTask({ title: '', description: '', priority: 'medium', due_date: '', assigned_to: '' });
+      setNewTask({
+        title: '',
+        description: '',
+        priority: 'medium',
+        due_date: '',
+        assigned_to: '',
+        location_id: locations[0]?.id || ''
+      });
       loadData();
     } catch (error) {
-      toast.error('Failed to create task');
+      toast.error(error.response?.data?.detail || 'Failed to create task');
     }
   };
 
@@ -195,6 +198,18 @@ export default function TaskDashboardPage() {
           </div>
         </div>
       </header>
+
+      <div className="mb-4">
+        <button
+          onClick={() => {
+            setSelectedTask(null);
+            setModalOpen(true);
+          }}
+          className="px-4 py-2 bg-blue-600 text-white rounded"
+        >
+          Create Task
+        </button>
+      </div>
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Stats Cards */}
@@ -438,6 +453,24 @@ export default function TaskDashboardPage() {
                 </Select>
               </div>
               <div>
+                <Label className="text-slate-300">Location</Label>
+                <Select
+                  value={newTask.location_id}
+                  onValueChange={(value) => setNewTask({ ...newTask, location_id: value })}
+                >
+                  <SelectTrigger className="mt-1 bg-slate-800 border-slate-600 text-white">
+                    <SelectValue placeholder="Select location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {locations.map((location) => (
+                      <SelectItem key={location.id} value={location.id}>
+                        {location.name || location.id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <Label className="text-slate-300">Due Date</Label>
                 <Input
                   type="date"
@@ -551,3 +584,5 @@ export default function TaskDashboardPage() {
     </div>
   );
 }
+
+

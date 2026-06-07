@@ -1,16 +1,42 @@
-import axios from 'axios';
+import axios from "axios";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-export const API = `${BACKEND_URL}/api`;
+/*
+  Frontend runs behind Caddy:
+    - frontend: /
+    - backend:  /api/*
+  So we use SAME-ORIGIN and call "/api/..." paths directly.
+*/
+
+export const API_BASE = "/api";
+export const API = API_BASE;
+
+export function apiUrl(path) {
+  if (!path.startsWith("/")) path = "/" + path;
+  if (path.startsWith("/api/")) return path;
+  return `${API_BASE}${path}`;
+}
 
 const api = axios.create({
-  baseURL: API,
+  baseURL: API_BASE,
 });
 
-// Add token to requests
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  let token = localStorage.getItem("token");
+
+  if (!token) {
+    try {
+      const raw = localStorage.getItem("auth-storage");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        token = parsed?.state?.token || null;
+      }
+    } catch (e) {
+      // ignore malformed localStorage
+    }
+  }
+
   if (token) {
+    config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;

@@ -69,7 +69,7 @@ const BookingModal = ({ isOpen, onClose, booking, onSuccess }) => {
       // For admin/staff, also fetch customers
       if (isAdminOrStaff) {
         try {
-          const customersRes = await api.get('/admin/users?role=customer');
+          const customersRes = { data: [] };
           setCustomers(customersRes.data || []);
         } catch (e) {
           console.log('Could not load customers');

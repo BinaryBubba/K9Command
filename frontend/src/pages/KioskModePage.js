@@ -2,9 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Clock, User, Coffee, LogIn, LogOut, AlertCircle, CheckCircle } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
-
-const API_URL = process.env.REACT_APP_BACKEND_URL;
-
+import { apiUrl } from "../utils/api";
 // Get device code from URL params or localStorage
 const getDeviceCode = () => {
   const params = new URLSearchParams(window.location.search);
@@ -42,7 +40,7 @@ export default function KioskModePage() {
     
     const fetchStatus = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/scheduling/kiosk/${deviceCode}/status`);
+        const response = await fetch(apiUrl(`/api/scheduling/kiosk/${deviceCode}/status`));
         if (response.ok) {
           const data = await response.json();
           setDeviceInfo(data);
@@ -86,7 +84,7 @@ export default function KioskModePage() {
     setMessage(null);
     
     try {
-      const response = await fetch(`${API_URL}/api/scheduling/kiosk/clock`, {
+      const response = await fetch(apiUrl(`/api/scheduling/kiosk/clock`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -102,7 +100,7 @@ export default function KioskModePage() {
         setMessage({ type: 'success', text: data.message });
         setPin('');
         // Refresh status
-        const statusRes = await fetch(`${API_URL}/api/scheduling/kiosk/${deviceCode}/status`);
+        const statusRes = await fetch(apiUrl(`/api/scheduling/kiosk/${deviceCode}/status`));
         if (statusRes.ok) {
           const statusData = await statusRes.json();
           setStaffOnSite(statusData.staff_on_site || []);

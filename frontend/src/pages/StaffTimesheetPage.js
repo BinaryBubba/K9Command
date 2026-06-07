@@ -59,7 +59,7 @@ const StaffTimesheetPage = () => {
     try {
       await api.post('/time-entries/clock-in', {
         staff_id: user.id,
-        location_id: user.location_id || 'main-kennel',
+        ...(user?.location_id ? { location_id: user.location_id } : {}),
       });
       toast.success('Clocked in successfully!');
       fetchData();

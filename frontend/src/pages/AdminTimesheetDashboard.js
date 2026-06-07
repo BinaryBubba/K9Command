@@ -8,9 +8,7 @@ import { Badge } from '../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import useAuthStore from '../store/authStore';
-
-const API_URL = process.env.REACT_APP_BACKEND_URL;
-
+import { apiUrl } from "../utils/api";
 export default function AdminTimesheetDashboard() {
   const navigate = useNavigate();
   const { token } = useAuthStore();
@@ -30,7 +28,7 @@ export default function AdminTimesheetDashboard() {
   // Fetch pay periods
   const fetchPayPeriods = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/api/timeclock/pay-periods`, {
+      const response = await fetch(apiUrl(`/api/timeclock/pay-periods`), {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
@@ -50,7 +48,7 @@ export default function AdminTimesheetDashboard() {
     if (!selectedPeriod) return;
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/timeclock/pay-periods/${selectedPeriod.id}/summary`, {
+      const response = await fetch(apiUrl(`/api/timeclock/pay-periods/${selectedPeriod.id}/summary`), {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
@@ -68,7 +66,7 @@ export default function AdminTimesheetDashboard() {
     if (!selectedPeriod) return;
     try {
       const response = await fetch(
-        `${API_URL}/api/scheduling/reports/discrepancies?start_date=${selectedPeriod.start_date}&end_date=${selectedPeriod.end_date}`,
+        `/api/scheduling/reports/discrepancies?start_date=${selectedPeriod.start_date}&end_date=${selectedPeriod.end_date}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (response.ok) {
@@ -100,7 +98,7 @@ export default function AdminTimesheetDashboard() {
     
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/timeclock/pay-periods`, {
+      const response = await fetch(apiUrl(`/api/timeclock/pay-periods`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -133,7 +131,7 @@ export default function AdminTimesheetDashboard() {
     if (!selectedPeriod) return;
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/timeclock/pay-periods/${selectedPeriod.id}/approve`, {
+      const response = await fetch(apiUrl(`/api/timeclock/pay-periods/${selectedPeriod.id}/approve`), {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -157,7 +155,7 @@ export default function AdminTimesheetDashboard() {
     if (!selectedPeriod) return;
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/timeclock/pay-periods/${selectedPeriod.id}/lock`, {
+      const response = await fetch(apiUrl(`/api/timeclock/pay-periods/${selectedPeriod.id}/lock`), {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -180,8 +178,8 @@ export default function AdminTimesheetDashboard() {
     if (!selectedPeriod) return;
     try {
       const url = type === 'detail' 
-        ? `${API_URL}/api/exports/timesheets/csv?pay_period_id=${selectedPeriod.id}`
-        : `${API_URL}/api/exports/timesheets/summary/csv?pay_period_id=${selectedPeriod.id}`;
+        ? `/api/exports/timesheets/csv?pay_period_id=${selectedPeriod.id}`
+        : `/api/exports/timesheets/summary/csv?pay_period_id=${selectedPeriod.id}`;
       
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` }

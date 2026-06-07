@@ -23,6 +23,7 @@ import StaffUploadPage from './pages/StaffUploadPage';
 import StaffBookingsPage from './pages/StaffBookingsPage';
 import StaffApprovePage from './pages/StaffApprovePage';
 import StaffTimesheetPage from './pages/StaffTimesheetPage';
+import MyTimePage from './pages/MyTimePage';
 import AdminTimesheetPage from './pages/AdminTimesheetPage';
 import ChatPage from './pages/ChatPage';
 import CustomerCalendarPage from './pages/CustomerCalendarPage';
@@ -64,8 +65,13 @@ import CustomerLeadsPage from './pages/CustomerLeadsPage';
 import AdminEmailTemplatesPage from './pages/AdminEmailTemplatesPage';
 import AdminStaffManagementPage from './pages/AdminStaffManagementPage';
 import AdminTimeManagementPage from './pages/AdminTimeManagementPage';
+import StaffHubPage from './pages/StaffHubPage';
+import TimeManagementHubPage from './pages/TimeManagementHubPage';
 import StaffTimeManagementPage from './pages/StaffTimeManagementPage';
 import AdminSettingsPage from './pages/AdminSettingsPage';
+import AdminOperationsHubPage from './pages/AdminOperationsHubPage';
+import AdminCustomerManagementHubPage from './pages/AdminCustomerManagementHubPage';
+import AdminAdministrationHubPage from './pages/AdminAdministrationHubPage';
 import StaffRequestPage from './pages/StaffRequestPage';
 
 // Store
@@ -210,7 +216,7 @@ function App() {
             path="/staff/timesheet"
             element={
               <ProtectedRoute allowedRoles={['staff']}>
-                <StaffTimesheetPage />
+                <MyTimePage />
               </ProtectedRoute>
             }
           />
@@ -226,7 +232,15 @@ function App() {
             path="/staff/time-clock"
             element={
               <ProtectedRoute allowedRoles={['staff']}>
-                <StaffTimeClockPage />
+                <MyTimePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/my-time"
+            element={
+              <ProtectedRoute allowedRoles={['staff']}>
+                <MyTimePage />
               </ProtectedRoute>
             }
           />
@@ -294,8 +308,31 @@ function App() {
               </ProtectedRoute>
             }
           />
-
           {/* Admin Routes */}
+          <Route
+            path="/admin/operations"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminOperationsHubPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/customer-management"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminCustomerManagementHubPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/administration"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminAdministrationHubPage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/admin/dashboard"
             element={
@@ -322,9 +359,13 @@ function App() {
           />
           <Route
             path="/admin/staff"
+            element={<Navigate to="/admin/staff-hub" replace />}
+          />
+          <Route
+            path="/admin/staff-hub"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
-                <AdminStaffPage />
+                <StaffHubPage />
               </ProtectedRoute>
             }
           />
@@ -370,9 +411,13 @@ function App() {
           />
           <Route
             path="/admin/time-management"
+            element={<Navigate to="/admin/time-management-hub" replace />}
+          />
+          <Route
+            path="/admin/time-management-hub"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
-                <AdminTimeManagementPage />
+                <TimeManagementHubPage />
               </ProtectedRoute>
             }
           />
@@ -412,7 +457,7 @@ function App() {
             path="/admin/tasks"
             element={
               <ProtectedRoute allowedRoles={['admin']}>
-                <TaskDashboardPage />
+                <AdminStaffPage />
               </ProtectedRoute>
             }
           />

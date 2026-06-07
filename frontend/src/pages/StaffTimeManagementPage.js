@@ -101,7 +101,7 @@ const StaffTimeManagementPage = () => {
 
   const handleClockIn = async () => {
     try {
-      const res = await api.post('/timeclock/clock-in');
+      const res = await api.post('/timeclock/clock-in', user?.location_id ? { location_id: user.location_id } : {});
       toast.success('Clocked in successfully!');
       setIsClockedIn(true);
       setCurrentEntry(res.data);

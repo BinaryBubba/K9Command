@@ -95,6 +95,15 @@ export function usePushNotifications() {
       }
       
       // Register service worker
+      const isDevHost =
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname === 'k9cmd.maniacranch.com';
+
+      if (isDevHost) {
+        return;
+      }
+
       const registration = await navigator.serviceWorker.register('/sw.js');
       await navigator.serviceWorker.ready;
       

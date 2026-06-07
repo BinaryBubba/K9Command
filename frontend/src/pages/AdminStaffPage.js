@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import api from '../utils/api';
 import useAuthStore from '../store/authStore';
 import TaskModal from '../components/TaskModal';
+import TaskRequiredFormModal from '../components/TaskRequiredFormModal';
 
 const AdminStaffPage = () => {
   const navigate = useNavigate();
@@ -21,9 +22,11 @@ const AdminStaffPage = () => {
   const [shifts, setShifts] = useState([]);
   const [staff, setStaff] = useState([]);
   const [locations, setLocations] = useState([]);
+  const [formTemplates, setFormTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [requiredFormTask, setRequiredFormTask] = useState(null);
   const [isRecurring, setIsRecurring] = useState(false);
   const [shiftModalOpen, setShiftModalOpen] = useState(false);
   const [selectedShift, setSelectedShift] = useState(null);
@@ -45,16 +48,18 @@ const AdminStaffPage = () => {
 
   const fetchData = async () => {
     try {
-      const [tasksRes, shiftsRes, staffRes, locationsRes] = await Promise.all([
+      const [tasksRes, shiftsRes, staffRes, locationsRes, formsRes] = await Promise.all([
         api.get('/tasks'),
         api.get('/shifts'),
         api.get('/admin/users?role=staff'),
         api.get('/locations'),
+        api.get('/forms/templates').catch(() => ({ data: [] })),
       ]);
       setTasks(tasksRes.data);
       setShifts(shiftsRes.data);
       setStaff(staffRes.data);
       setLocations(locationsRes.data);
+      setFormTemplates(formsRes.data || []);
     } catch (error) {
       toast.error('Failed to load data');
     } finally {
@@ -65,13 +70,25 @@ const AdminStaffPage = () => {
   const completedTasks = tasks.filter(t => t.status === 'completed').length;
   const pendingTasks = tasks.filter(t => t.status === 'pending').length;
 
+  const getFormTemplateName = (templateId) => {
+    const template = formTemplates.find(f => f.id === templateId);
+    return template?.name || 'Required Form';
+  };
+
   const handleCompleteTask = async (taskId) => {
+    const task = tasks.find(t => t.id === taskId);
+
+    if (task?.require_form_completion && task?.form_template_id) {
+      setRequiredFormTask(task);
+      return;
+    }
+
     try {
       await api.patch(`/tasks/${taskId}/complete`);
       toast.success('Task marked as complete');
       fetchData();
     } catch (error) {
-      toast.error('Failed to complete task');
+      toast.error(error.response?.data?.detail || 'Failed to complete task');
     }
   };
 
@@ -181,7 +198,12 @@ const AdminStaffPage = () => {
           <Button variant="ghost" onClick={() => navigate('/admin/dashboard')} className="flex items-center gap-2 mb-2">
             <ArrowLeftIcon size={18} /> Back to Dashboard
           </Button>
-          <h1 className="text-3xl font-serif font-bold text-primary">Staff & Task Management</h1>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <h1 className="text-3xl font-serif font-bold text-primary">Staff & Task Management</h1>
+            <Button variant="outline" onClick={() => navigate('/admin/staff-hub')}>
+              Open New Staff Hub
+            </Button>
+          </div>
           <p className="text-muted-foreground mt-1">Manage tasks, schedules, and staff assignments</p>
         </div>
       </header>
@@ -260,9 +282,23 @@ const AdminStaffPage = () => {
                             )}
                           </div>
                           <div className="flex items-center gap-2">
-                            <Badge className={task.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
-                              {task.status}
-                            </Badge>
+                            <div className="flex gap-2 flex-wrap">
+                              <div className="flex gap-2 flex-wrap">
+                                <Badge className={task.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
+                                  {task.status}
+                                </Badge>
+                                {task.require_form_completion && (
+                                  <Badge className="bg-orange-100 text-orange-800">
+                                    Form Required
+                                  </Badge>
+                                )}
+                              </div>
+                              {task.require_form_completion && (
+                                <Badge className="bg-orange-100 text-orange-800">
+                                  Form Required
+                                </Badge>
+                              )}
+                            </div>
                             {task.status !== 'completed' && (
                               <Button variant="ghost" size="sm" onClick={() => handleCompleteTask(task.id)} className="text-green-600">
                                 <CheckIcon size={16} />
@@ -399,8 +435,17 @@ const AdminStaffPage = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      <TaskRequiredFormModal
+        isOpen={!!requiredFormTask}
+        onClose={() => setRequiredFormTask(null)}
+        task={requiredFormTask}
+        onSuccess={() => {
+          setRequiredFormTask(null);
+          fetchData();
+        }}
+      />
     </div>
   );
 };
-
 export default AdminStaffPage;

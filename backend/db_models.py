@@ -1,7 +1,7 @@
 """
 SQLAlchemy ORM Models for PostgreSQL
 """
-from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, Text, ForeignKey, Enum, JSON
+from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, Text, ForeignKey, Enum, JSON, text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
@@ -84,6 +84,7 @@ class User(Base):
     role = Column(Enum(UserRole), nullable=False)
     location_id = Column(String, ForeignKey("locations.id"), nullable=True)
     is_active = Column(Boolean, default=True)
+    is_owner = Column(Boolean, nullable=False, server_default=text("false"), default=False)
     household_id = Column(String, nullable=True, index=True, unique=True)
     reset_token = Column(String, nullable=True)
     reset_token_expiry = Column(DateTime(timezone=True), nullable=True)
@@ -221,6 +222,11 @@ class Task(Base):
     completed_by = Column(String, ForeignKey("users.id"), nullable=True)
     completed_by_name = Column(String, nullable=True)
     checklist_items = Column(JSON, default=list)
+
+    # === Forms integration ===
+    form_template_id = Column(String, ForeignKey("form_templates.id"), nullable=True)
+    require_form_completion = Column(Boolean, default=False)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -351,3 +357,94 @@ class ChatMessage(Base):
     read = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+# ==================== STAFF REQUESTS ====================
+
+class StaffRequestStatus(str, enum.Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class StaffRequest(Base):
+    __tablename__ = "staff_requests"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    email = Column(String, unique=True, nullable=False, index=True)
+    full_name = Column(String, nullable=False)
+    phone = Column(String, nullable=True)
+    hashed_password = Column(String, nullable=False)
+
+    status = Column(Enum(StaffRequestStatus), default=StaffRequestStatus.PENDING, nullable=False)
+
+    reviewed_by = Column(String, ForeignKey("users.id"), nullable=True)
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    review_notes = Column(Text, nullable=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class FormTemplateORM(Base):
+    __tablename__ = "form_templates"
+
+    id = Column(String, primary_key=True, index=True)
+    name = Column(String, nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    location_id = Column(String, nullable=True, index=True)
+
+    fields = Column(JSON, nullable=False, default=list)
+    assignable_to = Column(String, nullable=False, default="all")
+
+    require_signature = Column(Boolean, nullable=False, default=False)
+    require_gps = Column(Boolean, nullable=False, default=False)
+    allow_save_draft = Column(Boolean, nullable=False, default=True)
+    allow_edit_after_submit = Column(Boolean, nullable=False, default=False)
+
+    notify_on_submit = Column(JSON, nullable=False, default=list)
+
+    is_active = Column(Boolean, nullable=False, default=True)
+    is_template = Column(Boolean, nullable=False, default=True)
+    version = Column(Integer, nullable=False, default=1)
+
+    category = Column(String, nullable=True, index=True)
+    tags = Column(JSON, nullable=False, default=list)
+
+    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class FormSubmissionORM(Base):
+    __tablename__ = "form_submissions"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    template_id = Column(String, ForeignKey("form_templates.id"), nullable=False, index=True)
+
+    staff_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    staff_name = Column(String, nullable=True)
+
+    location_id = Column(String, ForeignKey("locations.id"), nullable=True, index=True)
+
+    values = Column(JSON, nullable=False, default=dict)
+    attachments = Column(JSON, nullable=False, default=list)
+
+    signature_data = Column(Text, nullable=True)
+
+    gps_latitude = Column(Float, nullable=True)
+    gps_longitude = Column(Float, nullable=True)
+    gps_accuracy = Column(Float, nullable=True)
+
+    status = Column(String, nullable=False, default="draft")
+    submitted_at = Column(DateTime(timezone=True), nullable=True)
+
+    reviewed_by = Column(String, ForeignKey("users.id"), nullable=True)
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    review_notes = Column(Text, nullable=True)
+
+    related_type = Column(String, nullable=True)
+    related_id = Column(String, nullable=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+

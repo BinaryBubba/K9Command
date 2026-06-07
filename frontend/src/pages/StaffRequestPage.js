@@ -44,7 +44,7 @@ const StaffRequestPage = () => {
     setLoading(true);
     try {
       // Submit as staff role - backend will create a pending request
-      await api.post('/auth/register', {
+      await api.post('/auth/request-staff', {
         ...formData,
         role: 'staff'
       });

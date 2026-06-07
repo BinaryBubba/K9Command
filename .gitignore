@@ -146,3 +146,62 @@ __pycache__/
 
 # Node
 node_modules/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+infra/env/*.env
+infra/env/*.env.*
+infra/docker/caddy-root-ca.crt
+
+# Python generated files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# JavaScript generated files
+node_modules/
+build/
+dist/
+coverage/
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Local backup and temporary files
+*.bak
+*.bak.*
+*.disabled
+*.old
+*~
+_archive/
+
+# Local text scratch files
+New Text Document.txt
+dev-old.env.txt
+
+# Accidental shell-command artifacts
+/-H
+/-d
+/1
+/=
+/PY
+/block
+/dev@k9cmd-server
+/else:
+/if
+/old
+/ssh
+infra/docker/-H
+infra/docker/-d
+infra/docker/PY

@@ -55,7 +55,7 @@ const StaffBookingsPage = () => {
         api.get('/bookings'),
         api.get('/dogs'),
         api.get('/locations'),
-        api.get('/admin/users?role=customer'),
+        Promise.resolve({ data: [] }),
       ]);
       setBookings(bookingsRes.data);
       setAllDogs(dogsRes.data);

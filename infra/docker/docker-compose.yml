@@ -1,0 +1,159 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: myapp_postgres
+    environment:
+      POSTGRES_DB: myapp
+      POSTGRES_USER: myapp
+      POSTGRES_PASSWORD: myapp_dev_password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - myapp_net
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    container_name: myapp_redis
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+    volumes:
+      - redisdata:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - myapp_net
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ../../
+      dockerfile: infra/docker/backend.Dockerfile
+    container_name: myapp_backend
+
+    # IMPORTANT:
+    # Compose automatically reads ./ .env, but we also include it explicitly to avoid surprises.
+    env_file:
+      - ./.env
+      - ../env/dev.env
+
+    environment:
+      - DEV_MODE=${DEV_MODE}
+      - AUTO_INIT_DB=true
+      - DEV_ADMIN_SECRET=${DEV_ADMIN_SECRET}
+      - JWT_SECRET=${JWT_SECRET}
+      - OWNER_EMAIL=${OWNER_EMAIL}
+      - OWNER_PASSWORD=${OWNER_PASSWORD}
+      - OWNER_FULL_NAME=${OWNER_FULL_NAME}
+      - OWNER_PHONE=${OWNER_PHONE}
+
+    volumes:
+      - ../../backend:/workspace/backend
+    working_dir: /workspace/backend
+    ports:
+      - "8000:8000"
+      - "5678:5678"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - myapp_net
+    restart: unless-stopped
+
+    command:
+      - sh
+      - -lc
+      - |
+        set -e
+
+        WAIT="$$DEBUG_WAIT"
+        RELOAD="$$DEBUG_RELOAD"
+        if [ -z "$$WAIT" ]; then WAIT="0"; fi
+        if [ -z "$$RELOAD" ]; then RELOAD="0"; fi
+
+        DBGWAIT=""
+        if [ "$$WAIT" = "1" ]; then
+          DBGWAIT="--wait-for-client"
+        fi
+
+        UVICORN_EXTRA=""
+        WORKERS="--workers 1"
+        if [ "$$RELOAD" = "1" ]; then
+          UVICORN_EXTRA="--reload"
+          WORKERS=""
+        fi
+
+        exec python -Xfrozen_modules=off -m debugpy \
+          --listen 0.0.0.0:5678 $$DBGWAIT \
+          -m uvicorn app.main:app --host 0.0.0.0 --port 8000 $$WORKERS $$UVICORN_EXTRA
+
+    # NOTE: this requires your backend to expose /api/health.
+    # If it does NOT yet, change this URL to /docs temporarily (FastAPI always serves it),
+    # OR add a /api/health endpoint in app.main.
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health').read()\""]
+      interval: 10s
+      timeout: 3s
+      retries: 15
+
+  frontend:
+    build:
+      context: ../../
+      dockerfile: infra/docker/frontend.Dockerfile
+    container_name: myapp_frontend
+    env_file:
+      - ../env/dev.env
+    volumes:
+      - ../../frontend:/workspace/frontend
+      - frontend_node_modules:/workspace/frontend/node_modules
+    working_dir: /workspace/frontend
+    user: "0:0"
+    command: ["sh","-lc","npm install --legacy-peer-deps && HOST=0.0.0.0 PORT=5173 npm start"]
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    networks:
+      - myapp_net
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - node -e "require('http').get('http://127.0.0.1:5173/',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"
+      interval: 10s
+      timeout: 3s
+      retries: 15
+      start_period: 60s
+
+  caddy:
+    image: caddy:2
+    container_name: myapp_caddy
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - myapp_net
+    restart: unless-stopped
+
+networks:
+  myapp_net:
+
+volumes:
+  pgdata: {}
+  redisdata: {}
+  caddydata: {}
+  caddyconfig: {}
+  frontend_node_modules: {}

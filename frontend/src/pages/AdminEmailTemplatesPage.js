@@ -334,11 +334,11 @@ const AdminEmailTemplatesPage = () => {
           <div className="space-y-4 py-4">
             <div className="bg-slate-800 rounded-lg p-4">
               <Label className="text-slate-400 text-xs">Subject</Label>
-              <p className="text-white font-medium mt-1">{preview.subject}</p>
+              <p className="text-slate-900 font-medium mt-1">{preview.subject}</p>
             </div>
             <div className="bg-slate-800 rounded-lg p-4">
               <Label className="text-slate-400 text-xs">Body</Label>
-              <div className="text-slate-300 mt-2 whitespace-pre-wrap text-sm">{preview.body}</div>
+              <div className="text-slate-800 mt-2 whitespace-pre-wrap text-sm bg-white rounded-md border border-slate-200 p-4">{preview.body}</div>
             </div>
           </div>
           <DialogFooter>

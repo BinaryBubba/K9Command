@@ -101,7 +101,7 @@ export default function KennelManagementPage() {
     try {
       const payload = {
         ...formData,
-        location_id: 'main',
+        location_id: user?.location_id || '',
         min_weight: formData.min_weight ? parseFloat(formData.min_weight) : null,
         max_weight: formData.max_weight ? parseFloat(formData.max_weight) : null,
         price_modifier: parseFloat(formData.price_modifier) || 0,

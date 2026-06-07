@@ -6,9 +6,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import useAuthStore from '../store/authStore';
-
-const API_URL = process.env.REACT_APP_BACKEND_URL;
-
+import { apiUrl } from "../utils/api";
 export default function StaffTimeClockPage() {
   const navigate = useNavigate();
   const { user, token } = useAuthStore();
@@ -23,24 +21,13 @@ export default function StaffTimeClockPage() {
   // Fetch current time entry status
   const fetchCurrentEntry = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/api/timeclock/entries/current`, {
+      const response = await fetch(apiUrl(`/api/timeclock/entries/current`), {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
         const data = await response.json();
-        setCurrentEntry(data);
-        
-        // Check for active break
-        if (data) {
-          const breaksRes = await fetch(`${API_URL}/api/timeclock/breaks?time_entry_id=${data.id}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          if (breaksRes.ok) {
-            const breaks = await breaksRes.json();
-            const activeBreak = breaks.find(b => !b.end_time);
-            setCurrentBreak(activeBreak || null);
-          }
-        }
+        setCurrentEntry(data?.entry || null);
+        setCurrentBreak(null);
       }
     } catch (error) {
       console.error('Failed to fetch current entry:', error);
@@ -52,7 +39,7 @@ export default function StaffTimeClockPage() {
     try {
       const today = new Date().toISOString().split('T')[0];
       const response = await fetch(
-        `${API_URL}/api/timeclock/entries?start_date=${today}T00:00:00Z&end_date=${today}T23:59:59Z`,
+        apiUrl(`/api/timeclock/entries?start_date=${today}T00:00:00Z&end_date=${today}T23:59:59Z`),
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (response.ok) {
@@ -133,14 +120,14 @@ export default function StaffTimeClockPage() {
         }
       }
       
-      const response = await fetch(`${API_URL}/api/timeclock/clock-in`, {
+      const response = await fetch(apiUrl(`/api/timeclock/clock-in`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({
-          location_id: 'main', // TODO: Get from user's location
+          ...(user?.location_id ? { location_id: user.location_id } : {}),
           latitude: position?.latitude,
           longitude: position?.longitude,
           accuracy: position?.accuracy,
@@ -167,30 +154,17 @@ export default function StaffTimeClockPage() {
   const handleClockOut = async () => {
     setLoading(true);
     try {
-      let position = gpsPosition;
-      if (!position) {
-        try {
-          position = await getGPSPosition();
-        } catch (e) {}
-      }
-      
-      const params = new URLSearchParams();
-      if (position) {
-        params.append('latitude', position.latitude);
-        params.append('longitude', position.longitude);
-        params.append('accuracy', position.accuracy);
-      }
-      params.append('source', 'mobile');
-      
-      const response = await fetch(`${API_URL}/api/timeclock/clock-out?${params}`, {
+      const response = await fetch(apiUrl(`/api/timeclock/clock-out`), {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       if (response.ok) {
-        const data = await response.json();
+        await response.json();
         setCurrentEntry(null);
-        toast.success(`Clocked out! Worked ${data.regular_hours?.toFixed(1) || 0} hours`);
+        setCurrentBreak(null);
+        toast.success('Clocked out successfully!');
+        fetchCurrentEntry();
         fetchTodayEntries();
       } else {
         const error = await response.json();
@@ -204,81 +178,12 @@ export default function StaffTimeClockPage() {
 
   // Start Break
   const handleStartBreak = async () => {
-    if (!currentEntry) return;
-    setLoading(true);
-    try {
-      let position = gpsPosition;
-      if (!position) {
-        try {
-          position = await getGPSPosition();
-        } catch (e) {}
-      }
-      
-      const response = await fetch(`${API_URL}/api/timeclock/breaks/start`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          time_entry_id: currentEntry.id,
-          break_type: 'rest',
-          latitude: position?.latitude,
-          longitude: position?.longitude,
-          accuracy: position?.accuracy
-        })
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setCurrentBreak(data);
-        toast.success('Break started');
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Failed to start break');
-      }
-    } catch (error) {
-      toast.error('Failed to start break');
-    }
-    setLoading(false);
+    toast.error('Break controls are not available yet.');
   };
 
   // End Break
   const handleEndBreak = async () => {
-    if (!currentEntry) return;
-    setLoading(true);
-    try {
-      let position = gpsPosition;
-      if (!position) {
-        try {
-          position = await getGPSPosition();
-        } catch (e) {}
-      }
-      
-      const params = new URLSearchParams({ time_entry_id: currentEntry.id });
-      if (position) {
-        params.append('latitude', position.latitude);
-        params.append('longitude', position.longitude);
-        params.append('accuracy', position.accuracy);
-      }
-      
-      const response = await fetch(`${API_URL}/api/timeclock/breaks/end?${params}`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setCurrentBreak(null);
-        toast.success(`Break ended (${data.duration_minutes || 0} minutes)`);
-      } else {
-        const error = await response.json();
-        toast.error(error.detail || 'Failed to end break');
-      }
-    } catch (error) {
-      toast.error('Failed to end break');
-    }
-    setLoading(false);
+    toast.error('Break controls are not available yet.');
   };
 
   const formatTime = (dateStr) => {
