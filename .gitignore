@@ -205,3 +205,11 @@ dev-old.env.txt
 infra/docker/-H
 infra/docker/-d
 infra/docker/PY
+
+# Additional local artifacts
+*.bak2
+*.bak_*
+*.bak-*
+*.txt
+infra/docker/snapshots/
+/tatus --short
