@@ -448,3 +448,21 @@ class FormSubmissionORM(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+
+
+# ==================== ORGANIZATION ====================
+
+class Organization(Base):
+    __tablename__ = "organizations"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    name = Column(String, nullable=False)
+    slug = Column(String, nullable=False, unique=True, index=True)
+    timezone = Column(String, nullable=False, default="America/Chicago")
+    contact_email = Column(String, nullable=True)
+    contact_phone = Column(String, nullable=True)
+    address = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True)
+    feature_flags = Column(JSON, default=dict)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
