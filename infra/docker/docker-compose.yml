@@ -43,7 +43,7 @@ services:
 
     environment:
       - DEV_MODE=${DEV_MODE}
-      - AUTO_INIT_DB=true
+      - AUTO_INIT_DB=false
       - DEV_ADMIN_SECRET=${DEV_ADMIN_SECRET}
       - JWT_SECRET=${JWT_SECRET}
       - OWNER_EMAIL=${OWNER_EMAIL}
