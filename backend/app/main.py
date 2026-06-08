@@ -16,10 +16,18 @@ from auth import hash_password, verify_password, create_access_token, require_ro
 from app.routes.daily_updates import router as daily_updates_router
 from app.routes.households import router as households_router
 from app.routes.dogs import router as dogs_router
+from app.routes.vaccinations import router as vaccinations_router
+from app.routes.meet_and_greets import router as meet_and_greets_router
 from app.routes.dogs import router as dogs_router
+from app.routes.vaccinations import router as vaccinations_router
+from app.routes.meet_and_greets import router as meet_and_greets_router
 from app.routes.households import router as households_router
 from app.routes.dogs import router as dogs_router
+from app.routes.vaccinations import router as vaccinations_router
+from app.routes.meet_and_greets import router as meet_and_greets_router
 from app.routes.dogs import router as dogs_router
+from app.routes.vaccinations import router as vaccinations_router
+from app.routes.meet_and_greets import router as meet_and_greets_router
 
 
 # TEMP: in-memory form store (to be replaced with DB)
@@ -29,10 +37,18 @@ app = FastAPI(title="K9Command API")
 app.include_router(daily_updates_router, prefix="/api")
 app.include_router(households_router)
 app.include_router(dogs_router)
+app.include_router(vaccinations_router)
+app.include_router(meet_and_greets_router)
 app.include_router(dogs_router)
+app.include_router(vaccinations_router)
+app.include_router(meet_and_greets_router)
 app.include_router(households_router)
 app.include_router(dogs_router)
+app.include_router(vaccinations_router)
+app.include_router(meet_and_greets_router)
 app.include_router(dogs_router)
+app.include_router(vaccinations_router)
+app.include_router(meet_and_greets_router)
 
 
 

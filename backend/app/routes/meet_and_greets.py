@@ -1,0 +1,180 @@
+"""
+Meet and Greet API
+Handles scheduling, outcome recording, and eligibility updates.
+"""
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from datetime import datetime, timezone
+from database import get_db
+from auth import get_current_user, require_role
+from db_models import (
+    MeetAndGreet, MeetAndGreetOutcome, Dog as DogORM,
+    Household, User as UserORM, UserRole
+)
+import uuid
+
+router = APIRouter(prefix="/api/meet-and-greets", tags=["meet-and-greets"])
+
+
+@router.get("/dog/{dog_id}")
+async def list_dog_mags(
+    dog_id: str,
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await _verify_dog_access(dog_id, current_user.organization_id, db)
+    result = await db.execute(
+        select(MeetAndGreet).where(MeetAndGreet.dog_id == dog_id)
+        .order_by(MeetAndGreet.created_at.desc())
+    )
+    return [_mag_dict(m) for m in result.scalars().all()]
+
+
+@router.post("")
+async def schedule_mag(
+    data: dict,
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    org_id = current_user.organization_id
+    dog_id = data.get("dog_id", "").strip()
+    household_id = data.get("household_id", "").strip()
+
+    if not dog_id or not household_id:
+        raise HTTPException(status_code=400, detail="dog_id and household_id are required")
+
+    await _verify_dog_access(dog_id, org_id, db)
+
+    mag = MeetAndGreet(
+        id=str(uuid.uuid4()),
+        organization_id=org_id,
+        dog_id=dog_id,
+        household_id=household_id,
+        scheduled_at=_parse_date(data.get("scheduled_at")),
+        created_by=current_user.id,
+    )
+    db.add(mag)
+
+    # Update dog meet_and_greet_status to scheduled
+    dog_result = await db.execute(
+        select(DogORM).where(DogORM.id == dog_id)
+    )
+    dog = dog_result.scalar_one_or_none()
+    if dog:
+        dog.meet_and_greet_status = "scheduled"
+
+    await db.commit()
+    await db.refresh(mag)
+    return _mag_dict(mag)
+
+
+@router.post("/{mag_id}/outcome")
+async def record_outcome(
+    mag_id: str,
+    data: dict,
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    mag = await _get_mag_or_404(mag_id, current_user.organization_id, db)
+
+    outcome_str = data.get("outcome", "").upper()
+    try:
+        outcome = MeetAndGreetOutcome[outcome_str]
+    except KeyError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid outcome. Must be one of: {[o.value for o in MeetAndGreetOutcome]}"
+        )
+
+    if outcome == MeetAndGreetOutcome.CONDITIONAL and not data.get("conditions"):
+        raise HTTPException(status_code=400, detail="conditions are required for a conditional outcome")
+
+    mag.outcome = outcome
+    mag.conditions = data.get("conditions")
+    mag.notes = data.get("notes")
+    mag.conducted_by = current_user.id
+    mag.completed_at = datetime.now(timezone.utc)
+
+    # Update dog eligibility based on outcome
+    dog_result = await db.execute(
+        select(DogORM).where(DogORM.id == mag.dog_id)
+    )
+    dog = dog_result.scalar_one_or_none()
+
+    if dog:
+        if outcome == MeetAndGreetOutcome.PASS:
+            mag.boarding_eligible_granted = True
+            mag.daycare_eligible_granted = True
+            dog.boarding_eligible = True
+            dog.daycare_eligible = True
+            dog.meet_and_greet_status = "completed"
+            dog.meet_and_greet_outcome = "pass"
+        elif outcome == MeetAndGreetOutcome.CONDITIONAL:
+            mag.boarding_eligible_granted = data.get("boarding_eligible_granted", False)
+            mag.daycare_eligible_granted = data.get("daycare_eligible_granted", False)
+            dog.boarding_eligible = mag.boarding_eligible_granted
+            dog.daycare_eligible = mag.daycare_eligible_granted
+            dog.meet_and_greet_status = "completed"
+            dog.meet_and_greet_outcome = "conditional"
+        elif outcome == MeetAndGreetOutcome.FAIL:
+            mag.boarding_eligible_granted = False
+            mag.daycare_eligible_granted = False
+            dog.boarding_eligible = False
+            dog.daycare_eligible = False
+            dog.meet_and_greet_status = "completed"
+            dog.meet_and_greet_outcome = "fail"
+        elif outcome == MeetAndGreetOutcome.NO_SHOW:
+            dog.meet_and_greet_status = "required"
+            dog.meet_and_greet_outcome = "no_show"
+        elif outcome == MeetAndGreetOutcome.RESCHEDULED:
+            dog.meet_and_greet_status = "scheduled"
+            dog.meet_and_greet_outcome = "rescheduled"
+
+    await db.commit()
+    await db.refresh(mag)
+    return _mag_dict(mag)
+
+
+async def _verify_dog_access(dog_id: str, org_id: str, db: AsyncSession):
+    result = await db.execute(
+        select(DogORM).where(DogORM.id == dog_id, DogORM.organization_id == org_id)
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Dog not found")
+
+async def _get_mag_or_404(mag_id: str, org_id: str, db: AsyncSession) -> MeetAndGreet:
+    result = await db.execute(
+        select(MeetAndGreet).where(
+            MeetAndGreet.id == mag_id,
+            MeetAndGreet.organization_id == org_id
+        )
+    )
+    m = result.scalar_one_or_none()
+    if not m:
+        raise HTTPException(status_code=404, detail="Meet and greet not found")
+    return m
+
+def _parse_date(value):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+def _mag_dict(m: MeetAndGreet) -> dict:
+    return {
+        "id": m.id,
+        "dog_id": m.dog_id,
+        "household_id": m.household_id,
+        "scheduled_at": m.scheduled_at.isoformat() if m.scheduled_at else None,
+        "conducted_by": m.conducted_by,
+        "outcome": m.outcome.value if m.outcome else None,
+        "conditions": m.conditions,
+        "boarding_eligible_granted": m.boarding_eligible_granted,
+        "daycare_eligible_granted": m.daycare_eligible_granted,
+        "notes": m.notes,
+        "completed_at": m.completed_at.isoformat() if m.completed_at else None,
+        "created_at": m.created_at.isoformat() if m.created_at else None,
+    }
