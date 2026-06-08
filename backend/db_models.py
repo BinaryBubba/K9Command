@@ -116,6 +116,17 @@ class Location(Base):
 class Dog(Base):
     __tablename__ = "dogs"
     organization_id = Column(String, ForeignKey("organizations.id"), nullable=True, index=True)
+    household_id_new = None  # placeholder - household_id already exists
+    veterinarian_id = Column(String, ForeignKey("veterinarians.id"), nullable=True)
+    spay_neuter_status = Column(String, nullable=True)
+    microchip_number = Column(String, nullable=True)
+    meet_and_greet_status = Column(String, nullable=True, default="required")
+    meet_and_greet_outcome = Column(String, nullable=True)
+    boarding_eligible = Column(Boolean, default=False)
+    daycare_eligible = Column(Boolean, default=False)
+    is_deceased = Column(Boolean, default=False)
+    escape_risk = Column(Boolean, default=False)
+    medical_alert = Column(Boolean, default=False)
 
     id = Column(String, primary_key=True, default=generate_uuid)
     name = Column(String, nullable=False)
@@ -495,5 +506,176 @@ class FacilityStatus(Base):
     affects_bookings = Column(Boolean, default=True)
     set_by = Column(String, ForeignKey("users.id"), nullable=True)
     notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+# ==================== HOUSEHOLD & CONTACTS ====================
+
+class HouseholdStatus(str, enum.Enum):
+    ACTIVE = "active"
+    ARCHIVED = "archived"
+
+class MeetAndGreetStatus(str, enum.Enum):
+    REQUIRED = "required"
+    SCHEDULED = "scheduled"
+    COMPLETED = "completed"
+    WAIVED = "waived"
+
+class Household(Base):
+    __tablename__ = "households"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
+    display_name = Column(String, nullable=False)
+    status = Column(Enum(HouseholdStatus), default=HouseholdStatus.ACTIVE)
+    preferred_contact_method = Column(String, nullable=True)
+    general_notes = Column(Text, nullable=True)
+    referral_source = Column(String, nullable=True)
+    meet_and_greet_status = Column(Enum(MeetAndGreetStatus), default=MeetAndGreetStatus.REQUIRED)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    created_by = Column(String, ForeignKey("users.id"), nullable=True)
+    updated_by = Column(String, ForeignKey("users.id"), nullable=True)
+
+    # Relationships
+    contacts = relationship("Contact", back_populates="household", cascade="all, delete-orphan")
+
+
+class ContactType(str, enum.Enum):
+    PRIMARY = "primary"
+    SECONDARY = "secondary"
+    EMERGENCY = "emergency"
+    AUTHORIZED_PICKUP = "authorized_pickup"
+    OTHER = "other"
+
+
+class Contact(Base):
+    __tablename__ = "contacts"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
+    household_id = Column(String, ForeignKey("households.id"), nullable=False, index=True)
+    first_name = Column(String, nullable=False)
+    last_name = Column(String, nullable=True)
+    contact_type = Column(Enum(ContactType), default=ContactType.PRIMARY)
+    phone = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    is_primary = Column(Boolean, default=False)
+    is_emergency_contact = Column(Boolean, default=False)
+    is_authorized_pickup = Column(Boolean, default=False)
+    relationship_to_household = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    household = relationship("Household", back_populates="contacts")
+
+
+# ==================== VETERINARIAN ====================
+
+class Veterinarian(Base):
+    __tablename__ = "veterinarians"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
+    clinic_name = Column(String, nullable=False)
+    veterinarian_name = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    address = Column(Text, nullable=True)
+    emergency_instructions = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+# ==================== VACCINATION RECORDS ====================
+
+class VaccinationStatus(str, enum.Enum):
+    PENDING = "pending"
+    VERIFIED = "verified"
+    REJECTED = "rejected"
+
+
+class VaccinationRecord(Base):
+    __tablename__ = "vaccination_records"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
+    dog_id = Column(String, ForeignKey("dogs.id"), nullable=False, index=True)
+    vaccination_type = Column(String, nullable=False)
+    administration_date = Column(DateTime(timezone=True), nullable=True)
+    expiration_date = Column(DateTime(timezone=True), nullable=True)
+    provider = Column(String, nullable=True)
+    verification_status = Column(Enum(VaccinationStatus), default=VaccinationStatus.PENDING, nullable=False)
+    rejection_reason = Column(Text, nullable=True)
+    document_path = Column(Text, nullable=True)
+    uploaded_by = Column(String, ForeignKey("users.id"), nullable=True)
+    verified_by = Column(String, ForeignKey("users.id"), nullable=True)
+    verified_at = Column(DateTime(timezone=True), nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+# ==================== BEHAVIOR PROFILE ====================
+
+class BehaviorProfile(Base):
+    __tablename__ = "behavior_profiles"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
+    dog_id = Column(String, ForeignKey("dogs.id"), nullable=False, unique=True, index=True)
+    handling_restrictions = Column(Text, nullable=True)
+    known_triggers = Column(Text, nullable=True)
+    dog_compatibility = Column(String, nullable=True)
+    human_compatibility = Column(String, nullable=True)
+    food_guarding = Column(Boolean, default=False)
+    toy_guarding = Column(Boolean, default=False)
+    barrier_reactivity = Column(Boolean, default=False)
+    leash_behavior = Column(Text, nullable=True)
+    escape_behavior = Column(Text, nullable=True)
+    bite_history = Column(Boolean, default=False)
+    bite_history_detail = Column(Text, nullable=True)
+    muzzle_required = Column(Boolean, default=False)
+    handlers_required = Column(Integer, default=1)
+    approved_playgroups = Column(Text, nullable=True)
+    prohibited_pairings = Column(JSON, default=list)
+    active_safety_alert = Column(Boolean, default=False)
+    safety_alert_detail = Column(Text, nullable=True)
+    last_reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    reviewed_by = Column(String, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+# ==================== MEET AND GREET ====================
+
+class MeetAndGreetOutcome(str, enum.Enum):
+    PASS = "pass"
+    CONDITIONAL = "conditional"
+    FAIL = "fail"
+    NO_SHOW = "no_show"
+    RESCHEDULED = "rescheduled"
+
+
+class MeetAndGreet(Base):
+    __tablename__ = "meet_and_greets"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
+    dog_id = Column(String, ForeignKey("dogs.id"), nullable=False, index=True)
+    household_id = Column(String, ForeignKey("households.id"), nullable=False, index=True)
+    scheduled_at = Column(DateTime(timezone=True), nullable=True)
+    conducted_by = Column(String, ForeignKey("users.id"), nullable=True)
+    outcome = Column(Enum(MeetAndGreetOutcome), nullable=True)
+    conditions = Column(Text, nullable=True)
+    boarding_eligible_granted = Column(Boolean, default=False)
+    daycare_eligible_granted = Column(Boolean, default=False)
+    notes = Column(Text, nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    created_by = Column(String, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
