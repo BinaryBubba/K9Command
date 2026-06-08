@@ -99,3 +99,23 @@ def require_role(*allowed_roles: UserRole):
             raise HTTPException(status_code=403, detail="Insufficient permissions")
         return user
     return role_checker
+
+
+async def get_current_org(
+    current_user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Returns (user, organization) for the current request.
+    Raises 403 if the user has no organization assigned.
+    """
+    from db_models import Organization
+    if not current_user.organization_id:
+        raise HTTPException(status_code=403, detail="User has no organization assigned")
+    result = await db.execute(
+        select(Organization).where(Organization.id == current_user.organization_id)
+    )
+    org = result.scalar_one_or_none()
+    if not org:
+        raise HTTPException(status_code=403, detail="Organization not found")
+    return current_user, org
