@@ -14,6 +14,8 @@ from db_models import User as UserORM, Dog as DogORM, Location as LocationORM, B
 from models import UserCreate, LoginRequest, LoginResponse, UserResponse
 from auth import hash_password, verify_password, create_access_token, require_role
 from app.routes.daily_updates import router as daily_updates_router
+from app.routes.households import router as households_router
+from app.routes.households import router as households_router
 
 
 # TEMP: in-memory form store (to be replaced with DB)
@@ -21,6 +23,8 @@ FORM_TEMPLATES = {}
 
 app = FastAPI(title="K9Command API")
 app.include_router(daily_updates_router, prefix="/api")
+app.include_router(households_router)
+app.include_router(households_router)
 
 
 
