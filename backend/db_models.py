@@ -75,6 +75,7 @@ class ChatType(str, enum.Enum):
 
 class User(Base):
     __tablename__ = "users"
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=True, index=True)
 
     id = Column(String, primary_key=True, default=generate_uuid)
     email = Column(String, unique=True, nullable=False, index=True)
@@ -100,6 +101,7 @@ class User(Base):
 
 class Location(Base):
     __tablename__ = "locations"
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=True, index=True)
 
     id = Column(String, primary_key=True, default=generate_uuid)
     name = Column(String, nullable=False)
@@ -113,6 +115,7 @@ class Location(Base):
 
 class Dog(Base):
     __tablename__ = "dogs"
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=True, index=True)
 
     id = Column(String, primary_key=True, default=generate_uuid)
     name = Column(String, nullable=False)
@@ -158,6 +161,7 @@ class BookingDog(Base):
 
 class Booking(Base):
     __tablename__ = "bookings"
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=True, index=True)
 
     id = Column(String, primary_key=True, default=generate_uuid)
     household_id = Column(String, nullable=False, index=True)
@@ -210,6 +214,7 @@ class DailyUpdate(Base):
 
 class Task(Base):
     __tablename__ = "tasks"
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=True, index=True)
 
     id = Column(String, primary_key=True, default=generate_uuid)
     title = Column(String, nullable=False)
@@ -286,6 +291,7 @@ class Shift(Base):
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=True, index=True)
 
     id = Column(String, primary_key=True, default=generate_uuid)
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
@@ -300,6 +306,7 @@ class AuditLog(Base):
 
 class Incident(Base):
     __tablename__ = "incidents"
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=True, index=True)
 
     id = Column(String, primary_key=True, default=generate_uuid)
     title = Column(String, nullable=False)
@@ -464,5 +471,29 @@ class Organization(Base):
     address = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
     feature_flags = Column(JSON, default=dict)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+# ==================== FACILITY STATUS ====================
+
+class FacilityStatusType(str, enum.Enum):
+    OPEN = "open"
+    CLOSED = "closed"
+    HOLIDAY = "holiday"
+    EMERGENCY_CLOSURE = "emergency_closure"
+
+
+class FacilityStatus(Base):
+    __tablename__ = "facility_status"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
+    date = Column(DateTime(timezone=True), nullable=False)
+    status = Column(Enum(FacilityStatusType), nullable=False, default=FacilityStatusType.OPEN)
+    reason = Column(String, nullable=True)
+    affects_bookings = Column(Boolean, default=True)
+    set_by = Column(String, ForeignKey("users.id"), nullable=True)
+    notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
