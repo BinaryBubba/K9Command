@@ -162,8 +162,8 @@ class Dog(Base):
     household = relationship("User", back_populates="dogs", foreign_keys=[household_id])
 
 
-class BookingDog(Base):
-    """Association table for Booking <-> Dog many-to-many relationship"""
+class BookingDogLegacy(Base):
+    """Legacy association table - superseded by booking_dogs_v2"""
     __tablename__ = "booking_dogs"
 
     booking_id = Column(String, ForeignKey("bookings.id"), primary_key=True)
@@ -677,5 +677,71 @@ class MeetAndGreet(Base):
     notes = Column(Text, nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
     created_by = Column(String, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+# ==================== ROOMS ====================
+
+class Room(Base):
+    __tablename__ = "rooms"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
+    name = Column(String, nullable=False)
+    room_type = Column(String, nullable=True)
+    max_dogs = Column(Integer, default=3)
+    adjacency_group = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
+    is_out_of_service = Column(Boolean, default=False)
+    out_of_service_reason = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
+    sort_order = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+# ==================== SERVICE TYPES ====================
+
+class ServiceType(Base):
+    __tablename__ = "service_types"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
+    name = Column(String, nullable=False)
+    code = Column(String, nullable=False)
+    is_active = Column(Boolean, default=True)
+    is_overnight = Column(Boolean, default=False)
+    display_color = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+# ==================== BOOKING DOG (proper join table) ====================
+
+class ArrivalStatus(str, enum.Enum):
+    EXPECTED = "expected"
+    ARRIVED = "arrived"
+    NO_SHOW = "no_show"
+    CANCELLED = "cancelled"
+
+class DepartureStatus(str, enum.Enum):
+    EXPECTED = "expected"
+    DEPARTED = "departed"
+    EXTENDED = "extended"
+
+class BookingDog(Base):
+    __tablename__ = "booking_dogs_v2"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
+    booking_id = Column(String, ForeignKey("bookings.id"), nullable=False, index=True)
+    dog_id = Column(String, ForeignKey("dogs.id"), nullable=False, index=True)
+    room_id = Column(String, ForeignKey("rooms.id"), nullable=True)
+    arrival_status = Column(Enum(ArrivalStatus), default=ArrivalStatus.EXPECTED)
+    departure_status = Column(Enum(DepartureStatus), default=DepartureStatus.EXPECTED)
+    care_notes = Column(Text, nullable=True)
+    eligibility_override = Column(Boolean, default=False)
+    override_reason = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
