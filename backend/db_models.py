@@ -93,7 +93,7 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
-    dogs = relationship("Dog", back_populates="household", foreign_keys="Dog.household_id")
+    # dogs relationship removed - dogs now linked via Household not User
     bookings_created = relationship("Booking", back_populates="creator", foreign_keys="Booking.created_by")
     time_entries = relationship("TimeEntry", back_populates="staff")
     shifts = relationship("Shift", back_populates="staff")
@@ -133,7 +133,7 @@ class Dog(Base):
     breed = Column(String, nullable=False)
     age = Column(Integer, nullable=True)
     weight = Column(Float, nullable=True)
-    household_id = Column(String, ForeignKey("users.household_id"), nullable=False, index=True)
+    household_id = Column(String, ForeignKey("households.id"), nullable=False, index=True)
     photo_url = Column(Text, nullable=True)
     vaccination_file_url = Column(Text, nullable=True)
     behavioral_notes = Column(Text, nullable=True)
@@ -159,7 +159,7 @@ class Dog(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships
-    household = relationship("User", back_populates="dogs", foreign_keys=[household_id])
+    household = relationship("Household", foreign_keys=[household_id])
 
 
 class BookingDogLegacy(Base):
@@ -745,3 +745,113 @@ class BookingDog(Base):
     override_reason = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+# ==================== STAYS ====================
+
+class StayStatus(str, enum.Enum):
+    EXPECTED = "expected"
+    ON_SITE = "on_site"
+    TEMPORARILY_OFF_SITE = "temporarily_off_site"
+    CHECKED_OUT = "checked_out"
+
+
+class Stay(Base):
+    __tablename__ = "stays"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
+    booking_id = Column(String, ForeignKey("bookings.id"), nullable=False, index=True)
+    dog_id = Column(String, ForeignKey("dogs.id"), nullable=False, index=True)
+    status = Column(Enum(StayStatus), default=StayStatus.EXPECTED, nullable=False)
+    room_id = Column(String, ForeignKey("rooms.id"), nullable=True)
+    checked_in_at = Column(DateTime(timezone=True), nullable=True)
+    checked_in_by = Column(String, ForeignKey("users.id"), nullable=True)
+    checked_out_at = Column(DateTime(timezone=True), nullable=True)
+    checked_out_by = Column(String, ForeignKey("users.id"), nullable=True)
+    is_first_stay = Column(Boolean, default=False)
+    intake_condition_note = Column(Text, nullable=True)
+    belongings_note = Column(Text, nullable=True)
+    checkout_summary = Column(Text, nullable=True)
+    last_handoff_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+# ==================== STAY ALERTS ====================
+
+class StayAlertSeverity(str, enum.Enum):
+    INFO = "info"
+    CAUTION = "caution"
+    WARNING = "warning"
+
+
+class StayAlert(Base):
+    __tablename__ = "stay_alerts"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
+    stay_id = Column(String, ForeignKey("stays.id"), nullable=False, index=True)
+    dog_id = Column(String, ForeignKey("dogs.id"), nullable=False, index=True)
+    alert_message = Column(Text, nullable=False)
+    severity = Column(Enum(StayAlertSeverity), default=StayAlertSeverity.CAUTION, nullable=False)
+    created_by = Column(String, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    cleared_by = Column(String, ForeignKey("users.id"), nullable=True)
+    cleared_at = Column(DateTime(timezone=True), nullable=True)
+    cleared_reason = Column(Text, nullable=True)
+
+
+# ==================== STAY FEEDING OVERRIDE ====================
+
+class StayFeedingOverride(Base):
+    __tablename__ = "stay_feeding_overrides"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
+    stay_id = Column(String, ForeignKey("stays.id"), nullable=False, index=True)
+    dog_id = Column(String, ForeignKey("dogs.id"), nullable=False, index=True)
+    override_type = Column(String, nullable=False)
+    override_detail = Column(Text, nullable=False)
+    reason = Column(Text, nullable=True)
+    created_by = Column(String, ForeignKey("users.id"), nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+# ==================== CHECKOUT PICKUP RECORD ====================
+
+class CheckoutPickupRecord(Base):
+    __tablename__ = "checkout_pickup_records"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
+    stay_id = Column(String, ForeignKey("stays.id"), nullable=False, index=True)
+    pickup_person_name = Column(String, nullable=False)
+    relationship_to_household = Column(String, nullable=True)
+    is_authorized_pickup = Column(Boolean, default=False)
+    id_verified = Column(Boolean, default=False)
+    id_type = Column(String, nullable=True)
+    confirmed_by = Column(String, ForeignKey("users.id"), nullable=False)
+    confirmed_at = Column(DateTime(timezone=True), server_default=func.now())
+    notes = Column(Text, nullable=True)
+
+
+# ==================== ROOM ASSIGNMENT ====================
+
+class RoomAssignment(Base):
+    __tablename__ = "room_assignments"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
+    stay_id = Column(String, ForeignKey("stays.id"), nullable=False, index=True)
+    room_id = Column(String, ForeignKey("rooms.id"), nullable=False, index=True)
+    assigned_at = Column(DateTime(timezone=True), server_default=func.now())
+    assigned_by = Column(String, ForeignKey("users.id"), nullable=True)
+    ended_at = Column(DateTime(timezone=True), nullable=True)
+    reason_for_move = Column(Text, nullable=True)
+    compatibility_override = Column(Boolean, default=False)
+    override_reason = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
