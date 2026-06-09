@@ -1,354 +1,267 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import useAuthStore from '../store/authStore';
+import api from '../utils/api';
 import { Button } from '../components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
+import { Card, CardContent } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
-import { ArrowLeftIcon, SearchIcon, DogIcon, MailIcon, PhoneIcon, UserIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, XIcon } from 'lucide-react';
+import { Textarea } from '../components/ui/textarea';
+import { Badge } from '../components/ui/badge';
+import { ArrowLeftIcon, PlusIcon, SearchIcon, UsersIcon, DogIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import api from '../utils/api';
-import useAuthStore from '../store/authStore';
 
 const AdminCustomersPage = () => {
+  const { user } = useAuthStore();
   const navigate = useNavigate();
-  const user = useAuthStore((state) => state.user);
-  const [customers, setCustomers] = useState([]);
-  const [dogs, setDogs] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [households, setHouseholds] = useState([]);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [formData, setFormData] = useState({
-    full_name: '',
-    email: '',
-    phone: '',
-    password: '',
-    is_active: true,
-    notes: '',
-    address: '',
-    city: '',
-    state: '',
-    zip_code: '',
-    emergency_contact: '',
-    emergency_phone: '',
-  });
+  const [showCreate, setShowCreate] = useState(false);
 
-  useEffect(() => {
-    if (!user || user.role !== 'admin') {
-      navigate('/auth');
-      return;
-    }
-    fetchData();
-  }, [user, navigate]);
-
-  const fetchData = async () => {
+  const fetchHouseholds = useCallback(async () => {
     try {
-      const [usersRes, dogsRes] = await Promise.all([
-        api.get('/admin/users?role=customer'),
-        api.get('/dogs'),
-      ]);
-      setCustomers(usersRes.data);
-      setDogs(dogsRes.data);
-    } catch (error) {
-      toast.error('Failed to load data');
+      const res = await api.get('/households', { params: { search, limit: 100 } });
+      setHouseholds(res.data);
+    } catch {
+      toast.error('Failed to load customers');
     } finally {
       setLoading(false);
     }
-  };
+  }, [search]);
 
-  const handleToggleStatus = async (customerId, currentStatus) => {
-    try {
-      await api.patch(`/admin/users/${customerId}/status?is_active=${!currentStatus}`);
-      toast.success(`Customer ${currentStatus ? 'deactivated' : 'activated'}`);
-      fetchData();
-    } catch (error) {
-      toast.error('Failed to update customer status');
-    }
-  };
-
-  const openCreateModal = () => {
-    setEditMode(false);
-    setSelectedCustomer(null);
-    setFormData({ full_name: '', email: '', phone: '', password: '', is_active: true, notes: '', address: '', city: '', state: '', zip_code: '', emergency_contact: '', emergency_phone: '' });
-    setModalOpen(true);
-  };
-
-  const openEditModal = (customer) => {
-    setEditMode(true);
-    setSelectedCustomer(customer);
-    setFormData({
-      full_name: customer.full_name || '',
-      email: customer.email || '',
-      phone: customer.phone || '',
-      password: '',
-      is_active: customer.is_active !== false,
-      notes: customer.notes || '',
-      address: customer.address || '',
-      city: customer.city || '',
-      state: customer.state || '',
-      zip_code: customer.zip_code || '',
-      emergency_contact: customer.emergency_contact || '',
-      emergency_phone: customer.emergency_phone || '',
-    });
-    setModalOpen(true);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      if (editMode) {
-        await api.patch(`/admin/customers/${selectedCustomer.id}`, formData);
-        toast.success('Customer updated');
-      } else {
-        const result = await api.post('/admin/customers', formData);
-        toast.success(`Customer created! Temp password: ${result.data.temp_password}`);
-      }
-      setModalOpen(false);
-      fetchData();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to save customer');
-    }
-  };
-
-  const handleDelete = async (customerId) => {
-    if (!window.confirm('Are you sure you want to deactivate this customer?')) return;
-    try {
-      await api.delete(`/admin/customers/${customerId}`);
-      toast.success('Customer deactivated');
-      fetchData();
-    } catch (error) {
-      toast.error('Failed to deactivate customer');
-    }
-  };
-
-  const filteredCustomers = customers.filter((customer) =>
-    customer.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    customer.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const getDogsByHousehold = (householdId) => {
-    return dogs.filter(dog => dog.household_id === householdId);
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (!user) { navigate('/auth'); return; }
+    const timer = setTimeout(fetchHouseholds, 300);
+    return () => clearTimeout(timer);
+  }, [user, navigate, fetchHouseholds]);
 
   return (
     <div className="min-h-screen bg-[#F9F7F2]">
-      <header className="bg-white border-b border-border/40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4">
-          <Button variant="ghost" onClick={() => navigate('/admin/dashboard')} className="flex items-center gap-2 mb-2">
-            <ArrowLeftIcon size={18} /> Back to Dashboard
-          </Button>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-serif font-bold text-primary">Customer Management</h1>
-              <p className="text-muted-foreground mt-1">View and manage all customers and their dogs</p>
-            </div>
-            <Button onClick={openCreateModal} className="rounded-full">
-              <PlusIcon size={18} className="mr-2" /> Add Customer
+      <header className="bg-white border-b shadow-sm sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+              <ArrowLeftIcon size={18} />
             </Button>
+            <h1 className="text-lg font-serif font-bold text-primary">Customers</h1>
           </div>
+          <Button size="sm" onClick={() => setShowCreate(true)}>
+            <PlusIcon size={16} className="mr-1" /> New
+          </Button>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 md:px-8 py-8">
-        {/* Search */}
-        <Card className="mb-6 bg-white rounded-2xl border border-border/50 shadow-sm">
-          <CardContent className="p-6">
-            <div className="relative">
-              <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
-              <Input placeholder="Search by name or email..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card className="bg-white rounded-2xl border border-border/50 shadow-sm">
-            <CardContent className="p-6">
-              <p className="text-sm text-muted-foreground mb-1">Total Customers</p>
-              <p className="text-3xl font-serif font-bold text-primary">{customers.length}</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-white rounded-2xl border border-border/50 shadow-sm">
-            <CardContent className="p-6">
-              <p className="text-sm text-muted-foreground mb-1">Active Customers</p>
-              <p className="text-3xl font-serif font-bold text-green-600">{customers.filter(c => c.is_active !== false).length}</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-white rounded-2xl border border-border/50 shadow-sm">
-            <CardContent className="p-6">
-              <p className="text-sm text-muted-foreground mb-1">Total Dogs</p>
-              <p className="text-3xl font-serif font-bold text-secondary-foreground">{dogs.length}</p>
-            </CardContent>
-          </Card>
+      <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
+        <div className="relative">
+          <SearchIcon size={16} className="absolute left-3 top-3 text-muted-foreground" />
+          <Input
+            placeholder="Search households..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9"
+          />
         </div>
 
-        {/* Customers List */}
-        <div className="space-y-4">
-          {filteredCustomers.length === 0 ? (
-            <Card className="bg-white rounded-2xl border border-border/50 shadow-sm">
-              <CardContent className="p-12 text-center">
-                <UserIcon size={48} className="mx-auto text-muted-foreground/50 mb-4" />
-                <p className="text-muted-foreground">No customers found</p>
-              </CardContent>
-            </Card>
-          ) : (
-            filteredCustomers.map((customer) => {
-              const customerDogs = getDogsByHousehold(customer.household_id);
-              return (
-                <Card key={customer.id} className="bg-white rounded-2xl border border-border/50 shadow-sm">
-                  <CardContent className="p-6">
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                            <UserIcon className="text-primary" size={20} />
-                          </div>
-                          <div>
-                            <h3 className="text-lg font-semibold">{customer.full_name || 'Unknown'}</h3>
-                            <p className="text-sm text-muted-foreground flex items-center gap-1">
-                              <MailIcon size={14} /> {customer.email}
-                            </p>
-                            {customer.phone && (
-                              <p className="text-sm text-muted-foreground flex items-center gap-1">
-                                <PhoneIcon size={14} /> {customer.phone}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {customerDogs.length > 0 && (
-                          <div className="mt-4 pt-4 border-t border-border">
-                            <p className="text-sm font-medium mb-2">Dogs ({customerDogs.length})</p>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                              {customerDogs.map((dog) => (
-                                <div key={dog.id} className="p-2 rounded-lg bg-muted/30 border border-border text-sm">
-                                  <div className="flex items-center gap-2">
-                                    <DogIcon size={14} className="text-muted-foreground" />
-                                    <span className="font-medium">{dog.name}</span>
-                                  </div>
-                                  <p className="text-xs text-muted-foreground">{dog.breed}</p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+          </div>
+        ) : households.length === 0 ? (
+          <Card><CardContent className="py-12 text-center text-muted-foreground">
+            {search ? 'No households match your search' : 'No customers yet'}
+          </CardContent></Card>
+        ) : (
+          <div className="space-y-2">
+            {households.map(h => (
+              <Card key={h.id} className="cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => navigate(`/admin/customers/${h.id}`)}>
+                <CardContent className="py-3 px-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-primary/10 p-2 rounded-full">
+                        <UsersIcon size={16} className="text-primary" />
                       </div>
-                      
-                      <div className="flex flex-col items-end gap-2">
-                        <Badge className={customer.is_active !== false ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
-                          {customer.is_active !== false ? 'Active' : 'Inactive'}
-                        </Badge>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" onClick={() => openEditModal(customer)}>
-                            <EditIcon size={14} className="mr-1" /> Edit
-                          </Button>
-                          <Button
-                            variant={customer.is_active !== false ? 'destructive' : 'default'}
-                            size="sm"
-                            onClick={() => handleToggleStatus(customer.id, customer.is_active !== false)}
-                          >
-                            {customer.is_active !== false ? <XIcon size={14} /> : <CheckIcon size={14} />}
-                          </Button>
+                      <div>
+                        <p className="font-medium">{h.display_name}</p>
+                        <div className="flex items-center gap-3 mt-0.5">
+                          <MagStatusBadge status={h.meet_and_greet_status} />
                         </div>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              );
-            })
-          )}
-        </div>
+                    <Badge variant={h.status === 'active' ? 'outline' : 'secondary'} className="text-xs">
+                      {h.status}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </main>
 
-      {/* Create/Edit Modal */}
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editMode ? 'Edit Customer' : 'Add New Customer'}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
-                <Label>Full Name *</Label>
-                <Input value={formData.full_name} onChange={(e) => setFormData({ ...formData, full_name: e.target.value })} required />
+      {showCreate && (
+        <CreateHouseholdModal
+          onClose={() => setShowCreate(false)}
+          onSuccess={() => { setShowCreate(false); fetchHouseholds(); }}
+        />
+      )}
+    </div>
+  );
+};
+
+const MagStatusBadge = ({ status }) => {
+  const map = {
+    required: { label: 'M&G Required', className: 'text-amber-600' },
+    scheduled: { label: 'M&G Scheduled', className: 'text-blue-600' },
+    completed: { label: 'M&G Complete', className: 'text-green-600' },
+    waived: { label: 'M&G Waived', className: 'text-gray-500' },
+  };
+  const s = map[status] || map.required;
+  return <span className={`text-xs ${s.className}`}>{s.label}</span>;
+};
+
+const CreateHouseholdModal = ({ onClose, onSuccess }) => {
+  const [form, setForm] = useState({
+    display_name: '',
+    referral_source: '',
+    general_notes: '',
+    contact_first_name: '',
+    contact_last_name: '',
+    contact_phone: '',
+    contact_email: '',
+  });
+  const [duplicates, setDuplicates] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  const checkDuplicates = async () => {
+    if (!form.display_name && !form.contact_email && !form.contact_phone) return;
+    try {
+      const res = await api.get('/households/search/duplicates', {
+        params: {
+          name: form.display_name || undefined,
+          email: form.contact_email || undefined,
+          phone: form.contact_phone || undefined,
+        }
+      });
+      setDuplicates(res.data.matches || []);
+    } catch { /* silent */ }
+  };
+
+  const handleSubmit = async () => {
+    if (!form.display_name.trim()) { toast.error('Household name is required'); return; }
+    setSubmitting(true);
+    try {
+      const payload = {
+        display_name: form.display_name,
+        referral_source: form.referral_source || undefined,
+        general_notes: form.general_notes || undefined,
+      };
+      if (form.contact_first_name) {
+        payload.primary_contact = {
+          first_name: form.contact_first_name,
+          last_name: form.contact_last_name,
+          phone: form.contact_phone,
+          email: form.contact_email,
+          is_authorized_pickup: true,
+        };
+      }
+      await api.post('/households', payload);
+      toast.success('Household created');
+      onSuccess();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to create household');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-4">
+      <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="p-6 space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-bold">New Customer</h2>
+            <button onClick={onClose} className="text-muted-foreground text-xl">×</button>
+          </div>
+
+          <div>
+            <Label>Household Name *</Label>
+            <Input
+              placeholder="e.g. Smith Family"
+              value={form.display_name}
+              onChange={e => setForm(f => ({...f, display_name: e.target.value}))}
+              onBlur={checkDuplicates}
+              className="mt-1"
+            />
+          </div>
+
+          {duplicates.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-sm font-medium text-amber-800 mb-2">Possible duplicates found:</p>
+              {duplicates.map((d, i) => (
+                <p key={i} className="text-xs text-amber-700">· {d.household.display_name}</p>
+              ))}
+            </div>
+          )}
+
+          <div className="border-t pt-4">
+            <p className="text-sm font-medium text-muted-foreground mb-3">Primary Contact</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>First Name</Label>
+                <Input value={form.contact_first_name}
+                  onChange={e => setForm(f => ({...f, contact_first_name: e.target.value}))}
+                  className="mt-1" />
               </div>
               <div>
-                <Label>Email *</Label>
-                <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required disabled={editMode} />
+                <Label>Last Name</Label>
+                <Input value={form.contact_last_name}
+                  onChange={e => setForm(f => ({...f, contact_last_name: e.target.value}))}
+                  className="mt-1" />
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mt-3">
               <div>
                 <Label>Phone</Label>
-                <Input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
+                <Input value={form.contact_phone}
+                  onChange={e => setForm(f => ({...f, contact_phone: e.target.value}))}
+                  onBlur={checkDuplicates}
+                  className="mt-1" />
               </div>
-            </div>
-            
-            <div className="border-t pt-4">
-              <p className="text-sm font-medium mb-3">Address Information</p>
-              <div className="space-y-3">
-                <div>
-                  <Label>Street Address</Label>
-                  <Input value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="123 Main St" />
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <Label>City</Label>
-                    <Input value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} />
-                  </div>
-                  <div>
-                    <Label>State</Label>
-                    <Input value={formData.state} onChange={(e) => setFormData({ ...formData, state: e.target.value })} placeholder="CA" />
-                  </div>
-                  <div>
-                    <Label>Zip Code</Label>
-                    <Input value={formData.zip_code} onChange={(e) => setFormData({ ...formData, zip_code: e.target.value })} />
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="border-t pt-4">
-              <p className="text-sm font-medium mb-3">Emergency Contact</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Contact Name</Label>
-                  <Input value={formData.emergency_contact} onChange={(e) => setFormData({ ...formData, emergency_contact: e.target.value })} />
-                </div>
-                <div>
-                  <Label>Contact Phone</Label>
-                  <Input value={formData.emergency_phone} onChange={(e) => setFormData({ ...formData, emergency_phone: e.target.value })} />
-                </div>
-              </div>
-            </div>
-            
-            <div className="border-t pt-4">
               <div>
-                <Label>{editMode ? 'New Password (leave blank to keep current)' : 'Password *'}</Label>
-                <Input type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} required={!editMode} />
-              </div>
-              <div className="mt-3">
-                <Label>Notes</Label>
-                <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} className="w-full p-2 border rounded-lg" rows={2} />
+                <Label>Email</Label>
+                <Input value={form.contact_email}
+                  onChange={e => setForm(f => ({...f, contact_email: e.target.value}))}
+                  onBlur={checkDuplicates}
+                  className="mt-1" />
               </div>
             </div>
-            
-            <div className="flex gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={() => setModalOpen(false)} className="flex-1">Cancel</Button>
-              <Button type="submit" className="flex-1">{editMode ? 'Update' : 'Create'}</Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+          </div>
+
+          <div>
+            <Label>Referral Source</Label>
+            <Input placeholder="Google, word of mouth, etc."
+              value={form.referral_source}
+              onChange={e => setForm(f => ({...f, referral_source: e.target.value}))}
+              className="mt-1" />
+          </div>
+
+          <div>
+            <Label>Notes</Label>
+            <Textarea value={form.general_notes}
+              onChange={e => setForm(f => ({...f, general_notes: e.target.value}))}
+              className="mt-1" rows={2} />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+            <Button className="flex-1" onClick={handleSubmit} disabled={submitting}>
+              {submitting ? 'Creating...' : 'Create Customer'}
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

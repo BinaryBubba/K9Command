@@ -1,221 +1,236 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import api from '../utils/api';
 import { Button } from '../components/ui/button';
-import { Card, CardContent } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
 import {
-  UsersIcon,
-  DogIcon,
-  CalendarIcon,
-  AlertCircleIcon,
-  LogOutIcon,
-  ClockIcon,
-  ShieldCheckIcon,
-  ActivityIcon,
+  DogIcon, CalendarIcon, AlertCircleIcon, LogOutIcon,
+  ClockIcon, ActivityIcon, HomeIcon, UsersIcon, RefreshCwIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const AdminDashboard = () => {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
-  const [stats, setStats] = useState({});
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!user || user.role !== 'admin') {
-      navigate('/auth');
-      return;
-    }
-    fetchData();
-  }, [user, navigate]);
-
-  const fetchData = async () => {
+  const fetchDashboard = useCallback(async () => {
     try {
-      const statsRes = await api.get('/dashboard/stats');
-      setStats(statsRes.data);
-    } catch (error) {
-      toast.error('Failed to load dashboard data');
+      const res = await api.get('/dashboard');
+      setData(res.data);
+    } catch {
+      toast.error('Failed to load dashboard');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
+  useEffect(() => {
+    if (!user || user.role !== 'admin') { navigate('/auth'); return; }
+    fetchDashboard();
+    const interval = setInterval(fetchDashboard, 60000);
+    return () => clearInterval(interval);
+  }, [user, navigate, fetchDashboard]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-          <p className="mt-4 text-muted-foreground">Loading...</p>
-        </div>
+  const handleLogout = () => { logout(); navigate('/'); };
+
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        <p className="mt-4 text-muted-foreground">Loading K9CMD...</p>
       </div>
-    );
-  }
+    </div>
+  );
+
+  const pendingHandoff = data?.unacknowledged_handoffs?.length > 0;
 
   return (
     <div className="min-h-screen bg-[#F9F7F2]">
-      <header className="bg-white border-b border-border/40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex justify-between items-center">
+      {/* Header */}
+      <header className="bg-white border-b border-border/40 shadow-sm sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-serif font-bold text-primary">Admin Dashboard</h1>
-            <p className="text-sm text-muted-foreground">Welcome back, {user?.full_name}</p>
+            <h1 className="text-xl font-serif font-bold text-primary">K9 Command</h1>
+            <p className="text-xs text-muted-foreground">Welcome back, {user?.full_name}</p>
           </div>
-          <div className="flex items-center gap-4">
-            <Button
-              data-testid="admin-logout-button"
-              onClick={handleLogout}
-              variant="ghost"
-              className="flex items-center gap-2"
-            >
-              <LogOutIcon size={18} />
-              Logout
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={fetchDashboard}>
+              <RefreshCwIcon size={16} />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
+              <LogOutIcon size={16} className="mr-1" /> Logout
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 md:px-8 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          <Card data-testid="stat-customers" className="bg-white rounded-2xl border border-border/50 shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Customers</p>
-                  <p className="text-2xl font-serif font-bold text-primary mt-2">{stats.total_customers || 0}</p>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <UsersIcon className="text-primary" size={20} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      <main className="max-w-7xl mx-auto px-4 md:px-8 py-6 space-y-6">
 
-          <Card data-testid="stat-dogs" className="bg-white rounded-2xl border border-border/50 shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Dogs</p>
-                  <p className="text-2xl font-serif font-bold text-primary mt-2">{stats.total_dogs || 0}</p>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center">
-                  <DogIcon className="text-secondary-foreground" size={20} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Unacknowledged handoff banner */}
+        {pendingHandoff && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-amber-800">
+              <AlertCircleIcon size={18} />
+              <span className="font-medium">Unacknowledged shift handoff requires review</span>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => navigate('/admin/operations')}>
+              Review
+            </Button>
+          </div>
+        )}
 
-          <Card data-testid="stat-bookings" className="bg-white rounded-2xl border border-border/50 shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Bookings</p>
-                  <p className="text-2xl font-serif font-bold text-primary mt-2">{stats.total_bookings || 0}</p>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <CalendarIcon className="text-primary" size={20} />
-                </div>
+        {/* Warning alerts */}
+        {data?.warning_alerts?.length > 0 && (
+          <div className="space-y-2">
+            {data.warning_alerts.map(alert => (
+              <div key={alert.id} className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-3">
+                <AlertCircleIcon size={18} className="text-red-600 flex-shrink-0" />
+                <span className="text-red-800 text-sm font-medium">{alert.alert_message}</span>
+                <Badge variant="destructive" className="ml-auto">Warning</Badge>
               </div>
-            </CardContent>
-          </Card>
+            ))}
+          </div>
+        )}
 
-          <Card data-testid="stat-active" className="bg-white rounded-2xl border border-border/50 shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Active Now</p>
-                  <p className="text-2xl font-serif font-bold text-green-600 mt-2">{stats.active_bookings || 0}</p>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                  <AlertCircleIcon className="text-green-600" size={20} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="stat-staff" className="bg-white rounded-2xl border border-border/50 shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Staff</p>
-                  <p className="text-2xl font-serif font-bold text-primary mt-2">{stats.total_staff || 0}</p>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center">
-                  <UsersIcon className="text-secondary-foreground" size={20} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Summary cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <SummaryCard icon={<DogIcon size={20} />} label="On Site" value={data?.on_site_count ?? 0} color="blue" onClick={() => navigate('/admin/kennels')} />
+          <SummaryCard icon={<CalendarIcon size={20} />} label="Arriving Today" value={data?.arriving_today_count ?? 0} color="green" onClick={() => navigate('/admin/check-in-out')} />
+          <SummaryCard icon={<ClockIcon size={20} />} label="Departing Today" value={data?.departing_today_count ?? 0} color="orange" onClick={() => navigate('/admin/check-in-out')} />
+          <SummaryCard icon={<AlertCircleIcon size={20} />} label="Active Alerts" value={data?.active_alert_count ?? 0} color={data?.warning_alert_count > 0 ? 'red' : 'gray'} />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
-          <Card
-            data-testid="admin-nav-operations"
-            className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
-            onClick={() => navigate('/admin/operations')}
-          >
-            <CardContent className="p-8 text-center">
-              <ActivityIcon className="mx-auto mb-4 text-orange-600" size={32} />
-              <h3 className="text-lg font-semibold">Operations</h3>
-              <p className="text-sm text-muted-foreground">Daily ops, lodging, and check-in/out workflows</p>
+        {/* Two-column layout */}
+        <div className="grid md:grid-cols-2 gap-6">
+
+          {/* Arriving soon */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <CalendarIcon size={16} className="text-green-600" />
+                Arriving Soon
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {data?.arriving_soon?.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No arrivals in the next 2 hours</p>
+              ) : (
+                <div className="space-y-2">
+                  {data.arriving_soon.map(b => (
+                    <div key={b.booking_id} className="flex items-center justify-between py-2 border-b last:border-0">
+                      <div>
+                        <p className="text-sm font-medium">{b.dog_ids?.length} dog{b.dog_ids?.length !== 1 ? 's' : ''}</p>
+                        <p className="text-xs text-muted-foreground">{new Date(b.check_in_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                      </div>
+                      <Button size="sm" variant="outline" onClick={() => navigate('/admin/check-in-out')}>Check In</Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          <Card
-            data-testid="admin-nav-customer-management"
-            className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
-            onClick={() => navigate('/admin/customer-management')}
-          >
-            <CardContent className="p-8 text-center">
-              <UsersIcon className="mx-auto mb-4 text-primary" size={32} />
-              <h3 className="text-lg font-semibold">Customer Management</h3>
-              <p className="text-sm text-muted-foreground">Customers, bookings, and relationship tools</p>
+          {/* Departing soon */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <ClockIcon size={16} className="text-orange-600" />
+                Departing Soon
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {data?.departing_soon?.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No departures in the next 2 hours</p>
+              ) : (
+                <div className="space-y-2">
+                  {data.departing_soon.map(s => (
+                    <div key={s.stay_id} className="flex items-center justify-between py-2 border-b last:border-0">
+                      <p className="text-sm font-medium">Dog in {s.room_id ? 'Room' : 'unassigned'}</p>
+                      <Button size="sm" variant="outline" onClick={() => navigate('/admin/check-in-out')}>Check Out</Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          <Card
-            data-testid="admin-nav-staff-hub"
-            className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
-            onClick={() => navigate('/admin/staff-hub')}
-          >
-            <CardContent className="p-8 text-center">
-              <UsersIcon className="mx-auto mb-4 text-primary" size={32} />
-              <h3 className="text-lg font-semibold">Staff Hub</h3>
-              <p className="text-sm text-muted-foreground">Tasks, approvals, and kennel staff workflows</p>
-            </CardContent>
-          </Card>
-
-          <Card
-            data-testid="admin-nav-time-management-hub"
-            className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
-            onClick={() => navigate('/admin/time-management-hub')}
-          >
-            <CardContent className="p-8 text-center">
-              <ClockIcon className="mx-auto mb-4 text-green-600" size={32} />
-              <h3 className="text-lg font-semibold">Time Management</h3>
-              <p className="text-sm text-muted-foreground">Timesheets, schedules, PTO, and approvals</p>
-            </CardContent>
-          </Card>
-
-          <Card
-            data-testid="admin-nav-administration"
-            className="bg-white rounded-2xl border border-border/50 shadow-sm cursor-pointer hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
-            onClick={() => navigate('/admin/administration')}
-          >
-            <CardContent className="p-8 text-center">
-              <ShieldCheckIcon className="mx-auto mb-4 text-slate-700" size={32} />
-              <h3 className="text-lg font-semibold">Administration</h3>
-              <p className="text-sm text-muted-foreground">Reports, settings, staff admin, and oversight</p>
-            </CardContent>
-          </Card>
         </div>
+
+        {/* Room occupancy */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <HomeIcon size={16} className="text-blue-600" />
+              Room Occupancy
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
+              {data?.room_occupancy?.map(room => (
+                <div
+                  key={room.room_id}
+                  onClick={() => navigate('/admin/kennels')}
+                  className={`cursor-pointer rounded-lg p-2 text-center border transition-colors ${
+                    room.is_out_of_service ? 'bg-gray-100 border-gray-200 opacity-50' :
+                    room.current_dogs === 0 ? 'bg-green-50 border-green-200 hover:bg-green-100' :
+                    room.current_dogs >= room.max_dogs ? 'bg-red-50 border-red-200' :
+                    'bg-blue-50 border-blue-200 hover:bg-blue-100'
+                  }`}
+                >
+                  <p className="text-xs font-medium truncate">{room.room_name}</p>
+                  <p className="text-lg font-bold">{room.current_dogs}</p>
+                  <p className="text-xs text-muted-foreground">/{room.max_dogs}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Quick actions */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <QuickAction label="Check In / Out" icon={<ActivityIcon size={18} />} onClick={() => navigate('/admin/check-in-out')} />
+          <QuickAction label="Bookings" icon={<CalendarIcon size={18} />} onClick={() => navigate('/admin/bookings')} />
+          <QuickAction label="Customers" icon={<UsersIcon size={18} />} onClick={() => navigate('/admin/customers')} />
+          <QuickAction label="Kennels" icon={<HomeIcon size={18} />} onClick={() => navigate('/admin/kennels')} />
+        </div>
+
       </main>
     </div>
   );
 };
+
+const SummaryCard = ({ icon, label, value, color, onClick }) => {
+  const colors = {
+    blue: 'text-blue-600 bg-blue-50',
+    green: 'text-green-600 bg-green-50',
+    orange: 'text-orange-600 bg-orange-50',
+    red: 'text-red-600 bg-red-50',
+    gray: 'text-gray-600 bg-gray-50',
+  };
+  return (
+    <Card className={`cursor-pointer hover:shadow-md transition-shadow ${onClick ? '' : ''}`} onClick={onClick}>
+      <CardContent className="pt-4 pb-4">
+        <div className="flex items-center gap-3">
+          <div className={`p-2 rounded-lg ${colors[color] || colors.gray}`}>{icon}</div>
+          <div>
+            <p className="text-2xl font-bold">{value}</p>
+            <p className="text-xs text-muted-foreground">{label}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+const QuickAction = ({ label, icon, onClick }) => (
+  <Button variant="outline" className="h-16 flex flex-col gap-1 text-xs" onClick={onClick}>
+    {icon}
+    {label}
+  </Button>
+);
 
 export default AdminDashboard;
