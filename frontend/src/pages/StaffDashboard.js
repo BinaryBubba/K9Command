@@ -1,350 +1,204 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import api from '../utils/api';
 import { Button } from '../components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
-import { Checkbox } from '../components/ui/checkbox';
-import { CheckCircleIcon, ClockIcon, ListTodoIcon, LogOutIcon, ImageIcon, UploadIcon, MessageCircleIcon, CalendarClockIcon, MapPinIcon, CalendarIcon, ClipboardListIcon, UmbrellaIcon } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
+import {
+  DogIcon, CalendarIcon, AlertCircleIcon, LogOutIcon,
+  HomeIcon, ActivityIcon, ClipboardListIcon, RefreshCwIcon,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 const StaffDashboard = () => {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
-  const [stats, setStats] = useState({});
-  const [tasks, setTasks] = useState([]);
-  const [clockedIn, setClockedIn] = useState(false);
-  const [currentEntry, setCurrentEntry] = useState(null);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!user || user.role !== 'staff') {
-      navigate('/auth');
-      return;
-    }
-    fetchData();
-  }, [user, navigate]);
-
-  const fetchData = async () => {
+  const fetchDashboard = useCallback(async () => {
     try {
-      const [statsRes, tasksRes, currentRes] = await Promise.all([
-        api.get('/dashboard/stats'),
-        api.get('/tasks'),
-        api.get('/time-entries/current'),
-      ]);
-      setStats(statsRes.data);
-      setTasks(tasksRes.data.filter(t => t.status !== 'completed'));
-      setClockedIn(!!currentRes.data?.clocked_in);
-      setCurrentEntry(currentRes.data?.entry || null);
-    } catch (error) {
-      toast.error('Failed to load dashboard data');
+      const res = await api.get('/dashboard');
+      setData(res.data);
+    } catch {
+      toast.error('Failed to load dashboard');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleClockIn = async () => {
-    try {
-      const res = await api.post('/time-entries/clock-in', user?.location_id ? {
-        location_id: user.location_id,
-      } : {});
-      setClockedIn(true);
-      setCurrentEntry(res.data || null);
-      toast.success('Clocked in successfully!');
-      fetchData();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to clock in');
-    }
-  };
+  useEffect(() => {
+    if (!user) { navigate('/auth'); return; }
+    fetchDashboard();
+    const interval = setInterval(fetchDashboard, 60000);
+    return () => clearInterval(interval);
+  }, [user, navigate, fetchDashboard]);
 
-  const handleClockOut = async () => {
-    try {
-      await api.post('/time-entries/clock-out');
-      setClockedIn(false);
-      setCurrentEntry(null);
-      toast.success('Clocked out successfully!');
-      fetchData();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to clock out');
-    }
-  };
+  const handleLogout = () => { logout(); navigate('/'); };
 
-  const handleCompleteTask = async (taskId) => {
-    try {
-      await api.patch(`/tasks/${taskId}/complete`);
-      setTasks(tasks.filter(t => t.id !== taskId));
-      toast.success('Task completed!');
-    } catch (error) {
-      toast.error('Failed to complete task');
-    }
-  };
-
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-          <p className="mt-4 text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#F9F7F2]">
-      {/* Header */}
-      <header className="bg-white border-b border-border/40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h1 className="text-2xl font-serif font-bold text-primary">Staff Dashboard</h1>
-              <p className="text-sm text-muted-foreground">Welcome back, {user?.full_name}</p>
-            </div>
-            <Button
-              data-testid="staff-logout-button"
-              onClick={handleLogout}
-              variant="ghost"
-              className="flex items-center gap-2"
-            >
-              <LogOutIcon size={18} />
-              Logout
-            </Button>
+      <header className="bg-white border-b shadow-sm sticky top-0 z-10">
+        <div className="max-w-2xl mx-auto px-4 py-3 flex justify-between items-center">
+          <div>
+            <h1 className="text-lg font-serif font-bold text-primary">K9 Command</h1>
+            <p className="text-xs text-muted-foreground">Hi {user?.full_name?.split(' ')[0]}</p>
           </div>
-          
-          {/* My Time */}
-          <div className="flex gap-4">
-            {!clockedIn ? (
-              <Button
-                data-testid="clock-in-button"
-                onClick={handleClockIn}
-                className="rounded-full bg-primary hover:bg-primary/90 flex items-center gap-2"
-              >
-                <ClockIcon size={18} />
-                Clock In
-              </Button>
-            ) : (
-              <Button
-                data-testid="clock-out-button"
-                onClick={handleClockOut}
-                variant="destructive"
-                className="rounded-full flex items-center gap-2"
-              >
-                <ClockIcon size={18} />
-                Clock Out
-              </Button>
-            )}
-            {clockedIn && (
-              <span className="flex items-center gap-2 text-sm text-green-600 font-medium">
-                <div className="w-2 h-2 rounded-full bg-green-600 animate-pulse"></div>
-                Currently Clocked In
-              </span>
-            )}
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" onClick={fetchDashboard}>
+              <RefreshCwIcon size={16} />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
+              <LogOutIcon size={16} />
+            </Button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 md:px-8 py-8">
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <Card data-testid="stat-tasks" className="bg-white rounded-2xl border border-border/50 shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Today's Tasks</p>
-                  <p className="text-3xl font-serif font-bold text-primary mt-2">{stats.todays_tasks || 0}</p>
-                </div>
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <ListTodoIcon className="text-primary" size={24} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      <main className="max-w-2xl mx-auto px-4 py-5 space-y-5">
 
-          <Card data-testid="stat-active-dogs" className="bg-white rounded-2xl border border-border/50 shadow-sm">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
+        {/* Warning alerts — always at top */}
+        {data?.warning_alerts?.length > 0 && (
+          <div className="space-y-2">
+            {data.warning_alerts.map(alert => (
+              <div key={alert.id} className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
+                <AlertCircleIcon size={16} className="text-red-600 mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Active Dogs</p>
-                  <p className="text-3xl font-serif font-bold text-secondary-foreground mt-2">{stats.active_bookings || 0}</p>
-                </div>
-                <div className="w-12 h-12 rounded-full bg-secondary/20 flex items-center justify-center">
-                  <CheckCircleIcon className="text-secondary-foreground" size={24} />
+                  <p className="text-sm font-medium text-red-800">{alert.alert_message}</p>
+                  <p className="text-xs text-red-600 mt-0.5">Severity: Warning</p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            ))}
+          </div>
+        )}
+
+        {/* Summary row */}
+        <div className="grid grid-cols-3 gap-3">
+          <StatPill icon={<DogIcon size={16} />} value={data?.on_site_count ?? 0} label="On Site" color="blue" />
+          <StatPill icon={<CalendarIcon size={16} />} value={data?.arriving_today_count ?? 0} label="Arriving" color="green" />
+          <StatPill icon={<AlertCircleIcon size={16} />} value={data?.active_alert_count ?? 0} label="Alerts"
+            color={data?.warning_alert_count > 0 ? 'red' : 'gray'} />
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <Card data-testid="action-time-clock" className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-2xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/staff/my-time')}>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                  <MapPinIcon size={24} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-serif font-bold">My Time</h3>
-                  <p className="text-sm opacity-90">GPS clock in/out</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="action-schedule" className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white rounded-2xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/staff/my-time')}>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                  <CalendarIcon size={24} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-serif font-bold">My Schedule</h3>
-                  <p className="text-sm opacity-90">View shifts & swaps</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="action-upload-photos" className="bg-gradient-to-br from-primary to-primary/80 text-white rounded-2xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/staff/upload')}>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                  <UploadIcon size={24} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-serif font-bold">Upload Photos</h3>
-                  <p className="text-sm opacity-90">Add updates</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="action-view-bookings" className="bg-gradient-to-br from-secondary to-secondary/80 text-secondary-foreground rounded-2xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/staff/bookings')}>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center">
-                  <ImageIcon size={24} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-serif font-bold">Bookings</h3>
-                  <p className="text-sm opacity-90">Today's guests</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          
-
-          <Card data-testid="action-chat" className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-2xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/staff/chat')}>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                  <MessageCircleIcon size={24} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-serif font-bold">Messages</h3>
-                  <p className="text-sm opacity-90">Chat with admin</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="action-forms" className="bg-gradient-to-br from-teal-500 to-teal-600 text-white rounded-2xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/staff/forms')}>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                  <ClipboardListIcon size={24} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-serif font-bold">Forms</h3>
-                  <p className="text-sm opacity-90">Fill out forms</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="action-tasks" className="bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-2xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/staff/tasks')}>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                  <ListTodoIcon size={24} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-serif font-bold">My Tasks</h3>
-                  <p className="text-sm opacity-90">View & complete</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="action-time-off" className="bg-gradient-to-br from-pink-500 to-pink-600 text-white rounded-2xl shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all duration-300" onClick={() => navigate('/staff/time-off')}>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                  <UmbrellaIcon size={24} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-serif font-bold">Time Off</h3>
-                  <p className="text-sm opacity-90">Request leave</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Quick actions — big tap targets for phone */}
+        <div className="grid grid-cols-2 gap-3">
+          <ActionCard
+            icon={<ActivityIcon size={22} />}
+            label="Check In / Out"
+            sublabel={`${data?.arriving_today_count ?? 0} arriving · ${data?.departing_today_count ?? 0} departing`}
+            onClick={() => navigate('/staff/check-in-out')}
+            highlight={data?.arriving_today_count > 0 || data?.departing_today_count > 0}
+          />
+          <ActionCard
+            icon={<HomeIcon size={22} />}
+            label="Occupancy Board"
+            sublabel={`${data?.on_site_count ?? 0} dogs on site`}
+            onClick={() => navigate('/admin/kennels')}
+          />
+          <ActionCard
+            icon={<ClipboardListIcon size={22} />}
+            label="My Tasks"
+            sublabel="View assigned tasks"
+            onClick={() => navigate('/staff/tasks')}
+          />
+          <ActionCard
+            icon={<CalendarIcon size={22} />}
+            label="Bookings"
+            sublabel="View schedule"
+            onClick={() => navigate('/staff/bookings')}
+          />
         </div>
 
-        {/* Task List */}
-        <Card data-testid="task-list" className="bg-white rounded-2xl border border-border/50 shadow-sm">
-          <CardHeader className="border-b border-border/40">
-            <CardTitle className="text-2xl font-serif flex items-center gap-2">
-              <ListTodoIcon className="text-primary" />
-              Today's Tasks
+        {/* Caution alerts */}
+        {data?.caution_alerts?.length > 0 && (
+          <Card>
+            <CardHeader className="pb-2 pt-4">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <AlertCircleIcon size={14} className="text-amber-500" />
+                Active Alerts
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {data.caution_alerts.slice(0, 5).map(alert => (
+                <div key={alert.id} className="flex items-start gap-2 p-2 bg-amber-50 rounded border border-amber-100">
+                  <AlertCircleIcon size={14} className="text-amber-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-amber-800">{alert.alert_message}</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Room occupancy compact */}
+        <Card>
+          <CardHeader className="pb-2 pt-4">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <HomeIcon size={14} className="text-blue-500" />
+              Rooms
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-6">
-            {tasks.length === 0 ? (
-              <div className="text-center py-12">
-                <CheckCircleIcon size={48} className="mx-auto text-green-500 mb-4" />
-                <p className="text-muted-foreground">All tasks completed! Great work!</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {tasks.map((task) => (
-                  <div
-                    key={task.id}
-                    data-testid={`task-item-${task.id}`}
-                    className="flex items-start gap-4 p-4 bg-[#F9F7F2] rounded-xl border border-border/30 hover:border-primary/30 transition-all"
-                  >
-                    <Checkbox
-                      data-testid={`task-checkbox-${task.id}`}
-                      checked={false}
-                      onCheckedChange={() => handleCompleteTask(task.id)}
-                      className="mt-1"
-                    />
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-lg">{task.title}</h4>
-                      {task.description && (
-                        <p className="text-sm text-muted-foreground mt-1">{task.description}</p>
-                      )}
-                      {task.due_date && (
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Due: {new Date(task.due_date).toLocaleString()}
-                        </p>
-                      )}
-                    </div>
+          <CardContent>
+            <div className="grid grid-cols-8 gap-1">
+              {data?.room_occupancy?.map(room => (
+                <div key={room.room_id} className="text-center">
+                  <div className={`h-8 w-full rounded flex items-center justify-center text-xs font-bold ${
+                    room.is_out_of_service ? 'bg-gray-200 text-gray-400' :
+                    room.current_dogs === 0 ? 'bg-green-100 text-green-700' :
+                    room.current_dogs >= room.max_dogs ? 'bg-red-100 text-red-700' :
+                    'bg-blue-100 text-blue-700'
+                  }`}>
+                    {room.current_dogs}
                   </div>
-                ))}
-              </div>
-            )}
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{room.room_name.replace('Room ', '')}</p>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
+
       </main>
     </div>
   );
 };
+
+const StatPill = ({ icon, value, label, color }) => {
+  const colors = {
+    blue: 'bg-blue-50 text-blue-700',
+    green: 'bg-green-50 text-green-700',
+    red: 'bg-red-50 text-red-700',
+    gray: 'bg-gray-50 text-gray-600',
+  };
+  return (
+    <div className={`rounded-xl p-3 text-center ${colors[color] || colors.gray}`}>
+      <div className="flex justify-center mb-1">{icon}</div>
+      <p className="text-xl font-bold">{value}</p>
+      <p className="text-xs">{label}</p>
+    </div>
+  );
+};
+
+const ActionCard = ({ icon, label, sublabel, onClick, highlight }) => (
+  <button
+    onClick={onClick}
+    className={`w-full text-left p-4 rounded-xl border transition-all active:scale-95 ${
+      highlight
+        ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+        : 'bg-white border-border hover:shadow-md'
+    }`}
+  >
+    <div className="mb-2">{icon}</div>
+    <p className="font-semibold text-sm">{label}</p>
+    <p className={`text-xs mt-0.5 ${highlight ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+      {sublabel}
+    </p>
+  </button>
+);
 
 export default StaffDashboard;
