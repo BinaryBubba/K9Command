@@ -855,3 +855,129 @@ class RoomAssignment(Base):
     compatibility_override = Column(Boolean, default=False)
     override_reason = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+# ==================== FEEDING ====================
+
+class FeedingPlan(Base):
+    __tablename__ = "feeding_plans"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
+    dog_id = Column(String, ForeignKey("dogs.id"), nullable=False, index=True)
+    food_name = Column(String, nullable=False)
+    amount = Column(String, nullable=False)
+    frequency = Column(String, nullable=False)
+    scheduled_times = Column(JSON, default=list)
+    preparation_instructions = Column(Text, nullable=True)
+    supplements = Column(Text, nullable=True)
+    food_supplied_by_owner = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class AppetiteRating(str, enum.Enum):
+    EXCELLENT = "excellent"
+    GOOD = "good"
+    FAIR = "fair"
+    POOR = "poor"
+    REFUSED = "refused"
+
+
+class FeedingEvent(Base):
+    __tablename__ = "feeding_events"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
+    stay_id = Column(String, ForeignKey("stays.id"), nullable=False, index=True)
+    dog_id = Column(String, ForeignKey("dogs.id"), nullable=False, index=True)
+    scheduled_time = Column(DateTime(timezone=True), nullable=True)
+    completed_time = Column(DateTime(timezone=True), nullable=True)
+    completed_by = Column(String, ForeignKey("users.id"), nullable=True)
+    amount_offered = Column(String, nullable=True)
+    amount_eaten = Column(String, nullable=True)
+    appetite_rating = Column(Enum(AppetiteRating), nullable=True)
+    refusal_reason = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+# ==================== MEDICATIONS ====================
+
+class MedicationStatus(str, enum.Enum):
+    DUE = "due"
+    ADMINISTERED = "administered"
+    REFUSED = "refused"
+    MISSED = "missed"
+    HELD = "held"
+    NOT_APPLICABLE = "not_applicable"
+
+
+class Medication(Base):
+    __tablename__ = "medications"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
+    dog_id = Column(String, ForeignKey("dogs.id"), nullable=False, index=True)
+    name = Column(String, nullable=False)
+    dose = Column(String, nullable=False)
+    route = Column(String, nullable=True)
+    frequency = Column(String, nullable=False)
+    scheduled_times = Column(JSON, default=list)
+    start_date = Column(DateTime(timezone=True), nullable=True)
+    end_date = Column(DateTime(timezone=True), nullable=True)
+    as_needed = Column(Boolean, default=False)
+    storage_instructions = Column(Text, nullable=True)
+    administration_instructions = Column(Text, nullable=True)
+    prescriber = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class MedicationAdministration(Base):
+    __tablename__ = "medication_administrations"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
+    stay_id = Column(String, ForeignKey("stays.id"), nullable=False, index=True)
+    dog_id = Column(String, ForeignKey("dogs.id"), nullable=False, index=True)
+    medication_id = Column(String, ForeignKey("medications.id"), nullable=False, index=True)
+    scheduled_time = Column(DateTime(timezone=True), nullable=True)
+    administered_time = Column(DateTime(timezone=True), nullable=True)
+    administered_by = Column(String, ForeignKey("users.id"), nullable=True)
+    status = Column(Enum(MedicationStatus), default=MedicationStatus.DUE, nullable=False)
+    dose_administered = Column(String, nullable=True)
+    exception_reason = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
+    reviewed_by = Column(String, ForeignKey("users.id"), nullable=True)
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+# ==================== SHIFT HANDOFF ====================
+
+class ShiftHandoff(Base):
+    __tablename__ = "shift_handoffs"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
+    staff_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    shift_start = Column(DateTime(timezone=True), nullable=True)
+    shift_end = Column(DateTime(timezone=True), nullable=True)
+    dogs_on_site_snapshot = Column(JSON, default=list)
+    outstanding_care = Column(JSON, default=list)
+    active_medications = Column(JSON, default=list)
+    active_alerts = Column(JSON, default=list)
+    open_incidents = Column(JSON, default=list)
+    staff_notes = Column(Text, nullable=True)
+    follow_up_items = Column(JSON, default=list)
+    submitted_at = Column(DateTime(timezone=True), nullable=True)
+    acknowledged_by = Column(String, ForeignKey("users.id"), nullable=True)
+    acknowledged_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
