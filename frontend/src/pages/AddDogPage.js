@@ -1,394 +1,223 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import useAuthStore from '../store/authStore';
+import api from '../utils/api';
 import { Button } from '../components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
-import { Checkbox } from '../components/ui/checkbox';
-import { ArrowLeftIcon, DogIcon } from 'lucide-react';
+import { ArrowLeftIcon, AlertCircleIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import api from '../utils/api';
 
 const AddDogPage = () => {
+  const { user } = useAuthStore();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [photoFile, setPhotoFile] = useState(null);
-  const [photoPreview, setPhotoPreview] = useState(null);
-  const [formData, setFormData] = useState({
+  const [searchParams] = useSearchParams();
+  const prefillHouseholdId = searchParams.get('household_id');
+
+  const [households, setHouseholds] = useState([]);
+  const [form, setForm] = useState({
+    household_id: prefillHouseholdId || '',
     name: '',
     breed: '',
     age: '',
     weight: '',
-    gender: 'male',
+    gender: '',
     color: '',
-    birthday: '',
+    spay_neuter_status: '',
+    microchip_number: '',
     meal_routine: '',
-    medication_requirements: '',
     allergies: '',
-    friendly_to_cats: false,
-    friendly_with_dogs: true,
-    seizure_activity: false,
-    afraid_of_thunder: false,
-    afraid_of_fireworks: false,
-    resource_guarding: false,
-    fence_aggression: false,
-    incidents_of_aggression: '',
-    other_notes: '',
+    behavioral_notes: '',
+    escape_risk: false,
+    medical_alert: false,
+    bite_history: false,
+    food_guarding: false,
   });
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  useEffect(() => {
+    if (!user) { navigate('/auth'); return; }
+    api.get('/households', { params: { limit: 100 } })
+      .then(r => setHouseholds(r.data))
+      .catch(() => {});
+  }, [user, navigate]);
 
+  const f = (field) => (e) => {
+    const val = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+    setForm(prev => ({...prev, [field]: val}));
+  };
+
+  const handleSubmit = async () => {
+    if (!form.household_id) { toast.error('Select a household'); return; }
+    if (!form.name.trim()) { toast.error('Dog name is required'); return; }
+    if (!form.breed.trim()) { toast.error('Breed is required'); return; }
+    setSubmitting(true);
     try {
       const payload = {
-        ...formData,
-        age: formData.age ? parseInt(formData.age) : null,
-        weight: formData.weight ? parseFloat(formData.weight) : null,
-        birthday: formData.birthday || null,
+        ...form,
+        age: form.age ? parseInt(form.age) : undefined,
+        weight: form.weight ? parseFloat(form.weight) : undefined,
       };
-
-      const response = await api.post('/dogs', payload);
-      const dogId = response.data.id;
-      
-      // Upload photo if provided
-      if (photoFile) {
-        const photoFormData = new FormData();
-        photoFormData.append('file', photoFile);
-        await api.post(`/dogs/${dogId}/upload-photo`, photoFormData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-      }
-
-      toast.success(`${formData.name} has been added successfully!`);
-      navigate('/customer/dashboard');
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to add dog');
+      const res = await api.post('/dogs', payload);
+      toast.success(`${form.name} added successfully`);
+      navigate(`/admin/customers`);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to add dog');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
-  };
-
-  const handlePhotoChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setPhotoFile(file);
-      setPhotoPreview(URL.createObjectURL(file));
-    }
-  };
-
-  const handleChange = (field, value) => {
-    setFormData({ ...formData, [field]: value });
   };
 
   return (
     <div className="min-h-screen bg-[#F9F7F2]">
-      <header className="bg-white border-b border-border/40 shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 md:px-8 py-4">
-          <Button
-            data-testid="back-button"
-            variant="ghost"
-            onClick={() => navigate('/customer/dashboard')}
-            className="flex items-center gap-2 mb-2"
-          >
+      <header className="bg-white border-b shadow-sm sticky top-0 z-10">
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
             <ArrowLeftIcon size={18} />
-            Back to Dashboard
           </Button>
-          <h1 className="text-3xl font-serif font-bold text-primary">Add a New Dog</h1>
-          <p className="text-muted-foreground mt-1">Tell us all about your furry friend</p>
+          <h1 className="text-lg font-serif font-bold text-primary">Add Dog</h1>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 md:px-8 py-8">
-        <form onSubmit={handleSubmit}>
-          {/* Basic Information */}
-          <Card data-testid="basic-info-card" className="mb-6 bg-white rounded-2xl border border-border/50 shadow-sm">
-            <CardHeader className="border-b border-border/40">
-              <CardTitle className="text-2xl font-serif">Basic Information</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              {/* Photo Upload */}
-              <div className="mb-6">
-                <Label htmlFor="photo">Dog Photo</Label>
-                <div className="mt-2 flex items-center gap-4">
-                  {photoPreview ? (
-                    <img
-                      src={photoPreview}
-                      alt="Dog preview"
-                      className="w-24 h-24 rounded-full object-cover border-2 border-primary"
-                    />
-                  ) : (
-                    <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center border-2 border-dashed border-border">
-                      <DogIcon size={32} className="text-muted-foreground" />
-                    </div>
-                  )}
-                  <div>
-                    <Input
-                      id="photo"
-                      data-testid="dog-photo-input"
-                      type="file"
-                      accept="image/*"
-                      onChange={handlePhotoChange}
-                      className="max-w-xs"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">Upload a photo of your dog</p>
-                  </div>
-                </div>
-              </div>
+      <main className="max-w-2xl mx-auto px-4 py-6 space-y-5">
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <Label htmlFor="name">Name *</Label>
-                  <Input
-                    id="name"
-                    data-testid="dog-name-input"
-                    value={formData.name}
-                    onChange={(e) => handleChange('name', e.target.value)}
-                    required
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="breed">Breed *</Label>
-                  <Input
-                    id="breed"
-                    data-testid="dog-breed-input"
-                    value={formData.breed}
-                    onChange={(e) => handleChange('breed', e.target.value)}
-                    required
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="gender">Gender</Label>
-                  <select
-                    id="gender"
-                    data-testid="dog-gender-select"
-                    value={formData.gender}
-                    onChange={(e) => handleChange('gender', e.target.value)}
-                    className="w-full mt-1 p-2 border rounded-xl"
-                  >
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                  </select>
-                </div>
-                <div>
-                  <Label htmlFor="age">Age (years)</Label>
-                  <Input
-                    id="age"
-                    data-testid="dog-age-input"
-                    type="number"
-                    value={formData.age}
-                    onChange={(e) => handleChange('age', e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="weight">Weight (lbs)</Label>
-                  <Input
-                    id="weight"
-                    data-testid="dog-weight-input"
-                    type="number"
-                    step="0.1"
-                    value={formData.weight}
-                    onChange={(e) => handleChange('weight', e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="color">Color</Label>
-                  <Input
-                    id="color"
-                    data-testid="dog-color-input"
-                    value={formData.color}
-                    onChange={(e) => handleChange('color', e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="birthday">Birthday</Label>
-                  <Input
-                    id="birthday"
-                    data-testid="dog-birthday-input"
-                    type="date"
-                    value={formData.birthday}
-                    onChange={(e) => handleChange('birthday', e.target.value)}
-                    className="mt-1"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Medical & Care */}
-          <Card data-testid="medical-care-card" className="mb-6 bg-white rounded-2xl border border-border/50 shadow-sm">
-            <CardHeader className="border-b border-border/40">
-              <CardTitle className="text-2xl font-serif">Medical & Care Information</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div>
-                <Label htmlFor="meal_routine">Meal Routine</Label>
-                <Textarea
-                  id="meal_routine"
-                  data-testid="dog-meal-routine-input"
-                  value={formData.meal_routine}
-                  onChange={(e) => handleChange('meal_routine', e.target.value)}
-                  placeholder="E.g., 2 cups dry food, twice daily"
-                  className="mt-1"
-                  rows={3}
-                />
-              </div>
-              <div>
-                <Label htmlFor="medication_requirements">Medication Requirements</Label>
-                <Textarea
-                  id="medication_requirements"
-                  data-testid="dog-medication-input"
-                  value={formData.medication_requirements}
-                  onChange={(e) => handleChange('medication_requirements', e.target.value)}
-                  placeholder="List any medications and dosage"
-                  className="mt-1"
-                  rows={3}
-                />
-              </div>
-              <div>
-                <Label htmlFor="allergies">Allergies</Label>
-                <Textarea
-                  id="allergies"
-                  data-testid="dog-allergies-input"
-                  value={formData.allergies}
-                  onChange={(e) => handleChange('allergies', e.target.value)}
-                  placeholder="Food, environmental, or medication allergies"
-                  className="mt-1"
-                  rows={2}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Behavior & Temperament */}
-          <Card data-testid="behavior-card" className="mb-6 bg-white rounded-2xl border border-border/50 shadow-sm">
-            <CardHeader className="border-b border-border/40">
-              <CardTitle className="text-2xl font-serif">Behavior & Temperament</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="flex items-center space-x-3">
-                  <Checkbox
-                    id="friendly_to_cats"
-                    data-testid="dog-friendly-cats-checkbox"
-                    checked={formData.friendly_to_cats}
-                    onCheckedChange={(checked) => handleChange('friendly_to_cats', checked)}
-                  />
-                  <Label htmlFor="friendly_to_cats" className="cursor-pointer">Friendly to Cats</Label>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Checkbox
-                    id="friendly_with_dogs"
-                    data-testid="dog-friendly-dogs-checkbox"
-                    checked={formData.friendly_with_dogs}
-                    onCheckedChange={(checked) => handleChange('friendly_with_dogs', checked)}
-                  />
-                  <Label htmlFor="friendly_with_dogs" className="cursor-pointer">Friendly with Dogs</Label>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Checkbox
-                    id="seizure_activity"
-                    data-testid="dog-seizure-checkbox"
-                    checked={formData.seizure_activity}
-                    onCheckedChange={(checked) => handleChange('seizure_activity', checked)}
-                  />
-                  <Label htmlFor="seizure_activity" className="cursor-pointer">Seizure Activity</Label>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Checkbox
-                    id="afraid_of_thunder"
-                    data-testid="dog-thunder-checkbox"
-                    checked={formData.afraid_of_thunder}
-                    onCheckedChange={(checked) => handleChange('afraid_of_thunder', checked)}
-                  />
-                  <Label htmlFor="afraid_of_thunder" className="cursor-pointer">Afraid of Thunder</Label>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Checkbox
-                    id="afraid_of_fireworks"
-                    data-testid="dog-fireworks-checkbox"
-                    checked={formData.afraid_of_fireworks}
-                    onCheckedChange={(checked) => handleChange('afraid_of_fireworks', checked)}
-                  />
-                  <Label htmlFor="afraid_of_fireworks" className="cursor-pointer">Afraid of Fireworks</Label>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Checkbox
-                    id="resource_guarding"
-                    data-testid="dog-resource-guarding-checkbox"
-                    checked={formData.resource_guarding}
-                    onCheckedChange={(checked) => handleChange('resource_guarding', checked)}
-                  />
-                  <Label htmlFor="resource_guarding" className="cursor-pointer">Resource Guarding</Label>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Checkbox
-                    id="fence_aggression"
-                    data-testid="dog-fence-aggression-checkbox"
-                    checked={formData.fence_aggression}
-                    onCheckedChange={(checked) => handleChange('fence_aggression', checked)}
-                  />
-                  <Label htmlFor="fence_aggression" className="cursor-pointer">Fence Aggression</Label>
-                </div>
-              </div>
-              <div className="mt-6">
-                <Label htmlFor="incidents_of_aggression">Incidents of Aggression</Label>
-                <Textarea
-                  id="incidents_of_aggression"
-                  data-testid="dog-aggression-input"
-                  value={formData.incidents_of_aggression}
-                  onChange={(e) => handleChange('incidents_of_aggression', e.target.value)}
-                  placeholder="Please describe any aggressive incidents"
-                  className="mt-1"
-                  rows={3}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Additional Notes */}
-          <Card data-testid="notes-card" className="mb-6 bg-white rounded-2xl border border-border/50 shadow-sm">
-            <CardHeader className="border-b border-border/40">
-              <CardTitle className="text-2xl font-serif">Additional Notes</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <Textarea
-                id="other_notes"
-                data-testid="dog-other-notes-input"
-                value={formData.other_notes}
-                onChange={(e) => handleChange('other_notes', e.target.value)}
-                placeholder="Any other important information we should know"
-                rows={4}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Submit Button */}
-          <div className="flex gap-4 justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate('/customer/dashboard')}
-              className="rounded-full px-8"
+        {/* Household */}
+        <Card>
+          <CardHeader className="pb-2 pt-4">
+            <CardTitle className="text-sm">Household *</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <select
+              className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+              value={form.household_id}
+              onChange={f('household_id')}
             >
-              Cancel
-            </Button>
-            <Button
-              data-testid="submit-dog-button"
-              type="submit"
-              disabled={loading}
-              className="rounded-full px-8 py-6 text-lg font-semibold"
-            >
-              {loading ? 'Adding...' : 'Add Dog'}
-            </Button>
-          </div>
-        </form>
+              <option value="">Select household...</option>
+              {households.map(h => (
+                <option key={h.id} value={h.id}>{h.display_name}</option>
+              ))}
+            </select>
+          </CardContent>
+        </Card>
+
+        {/* Basic info */}
+        <Card>
+          <CardHeader className="pb-2 pt-4">
+            <CardTitle className="text-sm">Basic Info</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Name *</Label>
+                <Input value={form.name} onChange={f('name')} className="mt-1" placeholder="Dog's name" />
+              </div>
+              <div>
+                <Label>Breed *</Label>
+                <Input value={form.breed} onChange={f('breed')} className="mt-1" placeholder="e.g. Golden Retriever" />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label>Age (years)</Label>
+                <Input type="number" value={form.age} onChange={f('age')} className="mt-1" min="0" max="30" />
+              </div>
+              <div>
+                <Label>Weight (lbs)</Label>
+                <Input type="number" value={form.weight} onChange={f('weight')} className="mt-1" />
+              </div>
+              <div>
+                <Label>Gender</Label>
+                <select className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
+                  value={form.gender} onChange={f('gender')}>
+                  <option value="">--</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Color / Markings</Label>
+                <Input value={form.color} onChange={f('color')} className="mt-1" />
+              </div>
+              <div>
+                <Label>Spay / Neuter</Label>
+                <select className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
+                  value={form.spay_neuter_status} onChange={f('spay_neuter_status')}>
+                  <option value="">Unknown</option>
+                  <option value="neutered">Neutered</option>
+                  <option value="spayed">Spayed</option>
+                  <option value="intact">Intact</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <Label>Microchip Number</Label>
+              <Input value={form.microchip_number} onChange={f('microchip_number')} className="mt-1" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Safety flags */}
+        <Card>
+          <CardHeader className="pb-2 pt-4">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <AlertCircleIcon size={14} className="text-red-500" />
+              Safety Flags
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { field: 'escape_risk', label: '⚠️ Escape Risk' },
+                { field: 'medical_alert', label: '🏥 Medical Alert' },
+                { field: 'bite_history', label: '🦷 Bite History' },
+                { field: 'food_guarding', label: '🍖 Food Guarding' },
+              ].map(({ field, label }) => (
+                <label key={field} className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${
+                  form[field] ? 'bg-red-50 border-red-200' : 'border-border hover:bg-muted'
+                }`}>
+                  <input type="checkbox" checked={form[field]} onChange={f(field)} className="w-4 h-4" />
+                  <span className="text-sm font-medium">{label}</span>
+                </label>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Care info */}
+        <Card>
+          <CardHeader className="pb-2 pt-4">
+            <CardTitle className="text-sm">Care Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div>
+              <Label>Feeding Routine</Label>
+              <Textarea value={form.meal_routine} onChange={f('meal_routine')}
+                placeholder="e.g. 2 cups twice daily, morning and evening" className="mt-1" rows={2} />
+            </div>
+            <div>
+              <Label>Allergies</Label>
+              <Input value={form.allergies} onChange={f('allergies')} className="mt-1"
+                placeholder="e.g. chicken, grain-free required" />
+            </div>
+            <div>
+              <Label>Behavioral Notes</Label>
+              <Textarea value={form.behavioral_notes} onChange={f('behavioral_notes')}
+                placeholder="General notes about temperament, handling preferences..." className="mt-1" rows={3} />
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex gap-3 pb-6">
+          <Button variant="outline" className="flex-1" onClick={() => navigate(-1)}>Cancel</Button>
+          <Button className="flex-1" onClick={handleSubmit} disabled={submitting}>
+            {submitting ? 'Adding...' : 'Add Dog'}
+          </Button>
+        </div>
+
       </main>
     </div>
   );
