@@ -233,24 +233,28 @@ const CreateBookingModal = ({ onClose, onSuccess }) => {
             </select>
           </div>
 
-          {dogs.length > 0 && (
-            <div>
-              <Label>Dogs *</Label>
+          <div>
+            <Label>Dogs *</Label>
+            {!form.household_id ? (
+              <p className="text-xs text-muted-foreground mt-2 italic">Select a household above to see their dogs</p>
+            ) : dogs.length === 0 ? (
+              <p className="text-xs text-amber-600 mt-2">No dogs found for this household — add a dog to this household first</p>
+            ) : (
               <div className="flex flex-wrap gap-2 mt-2">
                 {dogs.map(dog => (
-                  <button key={dog.id} onClick={() => toggleDog(dog.id)}
+                  <button key={dog.id} type="button" onClick={() => toggleDog(dog.id)}
                     className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
                       form.dog_ids.includes(dog.id)
                         ? 'bg-primary text-primary-foreground border-primary'
                         : 'border-border hover:bg-muted'
                     }`}>
                     {dog.name}
-                    {!dog.boarding_eligible && <span className="ml-1 text-xs opacity-60">(ineligible)</span>}
+                    {!dog.boarding_eligible && <span className="ml-1 text-xs opacity-60">(needs M&G)</span>}
                   </button>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
