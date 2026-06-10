@@ -135,7 +135,6 @@ async def create_dog(
         daycare_eligible=False,
         escape_risk=data.get("escape_risk", False),
         medical_alert=data.get("medical_alert", False),
-        is_deceased=False,
     )
     db.add(dog)
     await db.flush()
@@ -173,7 +172,7 @@ async def update_dog(
         "meal_routine", "medication_requirements", "allergies",
         "behavioral_notes", "internal_notes", "escape_risk",
         "medical_alert", "boarding_eligible", "daycare_eligible",
-        "meet_and_greet_status", "is_active", "is_deceased",
+        "meet_and_greet_status",
     ]
     for field in allowed:
         if field in data:
