@@ -152,21 +152,44 @@ const CreateHouseholdModal = ({ onClose, onSuccess }) => {
     if (!form.display_name.trim()) { toast.error('Household name is required'); return; }
     setSubmitting(true);
     try {
+      if (!form.contact_first_name.trim()) { toast.error('Primary contact first name is required'); setSubmitting(false); return; }
+      if (!form.emergency_first_name?.trim()) { toast.error('Emergency contact first name is required'); setSubmitting(false); return; }
+      if (!form.emergency_phone?.trim()) { toast.error('Emergency contact phone is required'); setSubmitting(false); return; }
       const payload = {
         display_name: form.display_name,
         referral_source: form.referral_source || undefined,
         general_notes: form.general_notes || undefined,
-      };
-      if (form.contact_first_name) {
-        payload.primary_contact = {
+        primary_contact: {
           first_name: form.contact_first_name,
           last_name: form.contact_last_name,
           phone: form.contact_phone,
           email: form.contact_email,
           is_authorized_pickup: true,
-        };
+          is_emergency_contact: false,
+        },
+      };
+      const hhRes = await api.post('/households', payload);
+      const hhId = hhRes.data.id;
+      if (form.secondary_first_name?.trim()) {
+        await api.post(\`/households/\${hhId}/contacts\`, {
+          first_name: form.secondary_first_name,
+          last_name: form.secondary_last_name,
+          phone: form.secondary_phone,
+          email: form.secondary_email,
+          contact_type: 'secondary',
+          is_authorized_pickup: true,
+          is_emergency_contact: false,
+        }).catch(() => {});
       }
-      await api.post('/households', payload);
+      await api.post(\`/households/\${hhId}/contacts\`, {
+        first_name: form.emergency_first_name,
+        last_name: form.emergency_last_name,
+        phone: form.emergency_phone,
+        relationship_to_household: form.emergency_relationship,
+        contact_type: 'emergency',
+        is_authorized_pickup: false,
+        is_emergency_contact: true,
+      });
       toast.success('Household created');
       onSuccess();
     } catch (err) {
@@ -205,14 +228,14 @@ const CreateHouseholdModal = ({ onClose, onSuccess }) => {
             </div>
           )}
 
-          <div className="border-t pt-4">
-            <p className="text-sm font-medium text-muted-foreground mb-3">Primary Contact</p>
+          <div className="border-t pt-4 space-y-3">
+            <p className="text-sm font-medium text-muted-foreground">Primary Contact *</p>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>First Name</Label>
+                <Label>First Name *</Label>
                 <Input value={form.contact_first_name}
                   onChange={e => setForm(f => ({...f, contact_first_name: e.target.value}))}
-                  className="mt-1" />
+                  className="mt-1" placeholder="Required" />
               </div>
               <div>
                 <Label>Last Name</Label>
@@ -221,20 +244,82 @@ const CreateHouseholdModal = ({ onClose, onSuccess }) => {
                   className="mt-1" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 mt-3">
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Phone</Label>
                 <Input value={form.contact_phone}
                   onChange={e => setForm(f => ({...f, contact_phone: e.target.value}))}
-                  onBlur={checkDuplicates}
-                  className="mt-1" />
+                  onBlur={checkDuplicates} className="mt-1" />
               </div>
               <div>
                 <Label>Email</Label>
                 <Input value={form.contact_email}
                   onChange={e => setForm(f => ({...f, contact_email: e.target.value}))}
-                  onBlur={checkDuplicates}
+                  onBlur={checkDuplicates} className="mt-1" />
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t pt-4 space-y-3">
+            <p className="text-sm font-medium text-muted-foreground">Secondary Contact <span className="text-xs font-normal">(optional — spouse, partner)</span></p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>First Name</Label>
+                <Input value={form.secondary_first_name || ""}
+                  onChange={e => setForm(f => ({...f, secondary_first_name: e.target.value}))}
                   className="mt-1" />
+              </div>
+              <div>
+                <Label>Last Name</Label>
+                <Input value={form.secondary_last_name || ""}
+                  onChange={e => setForm(f => ({...f, secondary_last_name: e.target.value}))}
+                  className="mt-1" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Phone</Label>
+                <Input value={form.secondary_phone || ""}
+                  onChange={e => setForm(f => ({...f, secondary_phone: e.target.value}))}
+                  className="mt-1" />
+              </div>
+              <div>
+                <Label>Email</Label>
+                <Input value={form.secondary_email || ""}
+                  onChange={e => setForm(f => ({...f, secondary_email: e.target.value}))}
+                  className="mt-1" />
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t pt-4 space-y-3">
+            <p className="text-sm font-medium text-muted-foreground">Emergency Contact <span className="text-xs text-red-500">*required</span></p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>First Name *</Label>
+                <Input value={form.emergency_first_name || ""}
+                  onChange={e => setForm(f => ({...f, emergency_first_name: e.target.value}))}
+                  className="mt-1" placeholder="Required" />
+              </div>
+              <div>
+                <Label>Last Name</Label>
+                <Input value={form.emergency_last_name || ""}
+                  onChange={e => setForm(f => ({...f, emergency_last_name: e.target.value}))}
+                  className="mt-1" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Phone *</Label>
+                <Input value={form.emergency_phone || ""}
+                  onChange={e => setForm(f => ({...f, emergency_phone: e.target.value}))}
+                  className="mt-1" placeholder="Required" />
+              </div>
+              <div>
+                <Label>Relationship</Label>
+                <Input value={form.emergency_relationship || ""}
+                  onChange={e => setForm(f => ({...f, emergency_relationship: e.target.value}))}
+                  className="mt-1" placeholder="e.g. Neighbor, sibling" />
               </div>
             </div>
           </div>
