@@ -24,7 +24,6 @@ router = APIRouter(prefix="/api/dogs", tags=["dogs"])
 async def list_dogs(
     household_id: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
-    active_only: bool = Query(True),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     current_user: UserORM = Depends(get_current_user),
@@ -36,8 +35,6 @@ async def list_dogs(
 
     q = select(DogORM).where(DogORM.organization_id == org_id)
 
-    if active_only:
-        q = q.where(DogORM.is_active == True)
     if household_id:
         q = q.where(DogORM.household_id == household_id)
     if search:
