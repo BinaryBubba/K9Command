@@ -300,3 +300,5 @@ const CreateBookingModal = ({ onClose, onSuccess }) => {
 };
 
 export default AdminBookingsPage;
+
+export { CreateBookingModal };

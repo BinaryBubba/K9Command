@@ -6,7 +6,8 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { ArrowLeftIcon, CalendarIcon, DogIcon, ClockIcon } from 'lucide-react';
+import { ArrowLeftIcon, CalendarIcon, DogIcon, ClockIcon, PlusIcon } from 'lucide-react';
+import { CreateBookingModal } from './AdminBookingsPage';
 import { toast } from 'sonner';
 
 const STATUS_COLORS = {
@@ -22,6 +23,7 @@ const StaffBookingsPage = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('today');
+  const [showCreate, setShowCreate] = useState(false);
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
@@ -65,6 +67,9 @@ const StaffBookingsPage = () => {
           </Button>
           <h1 className="text-lg font-serif font-bold text-primary">Bookings</h1>
         </div>
+        <Button size="sm" onClick={() => setShowCreate(true)}>
+          <PlusIcon size={16} className="mr-1" /> New
+        </Button>
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-6">
@@ -135,6 +140,12 @@ const StaffBookingsPage = () => {
           </TabsContent>
         </Tabs>
       </main>
+      {showCreate && (
+        <CreateBookingModal
+          onClose={() => setShowCreate(false)}
+          onSuccess={() => { setShowCreate(false); fetchBookings(); toast.success('Booking created'); }}
+        />
+      )}
     </div>
   );
 };
