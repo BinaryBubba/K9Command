@@ -32,7 +32,7 @@ async def list_tasks(
     if status:
         q = q.where(Task.status == status.upper())
     else:
-        q = q.where(Task.status.notin_(['COMPLETED', 'CANCELLED']))
+        q = q.where(Task.status.notin_(['COMPLETED', 'CANCELLED', 'completed', 'cancelled']))
     if assigned_to:
         q = q.where(Task.assigned_to == assigned_to)
     if priority:
@@ -87,7 +87,7 @@ async def get_my_tasks(
         select(Task).where(
             Task.organization_id == current_user.organization_id,
             Task.assigned_to == current_user.id,
-            Task.status.notin_(['COMPLETED', 'CANCELLED']),
+            Task.status.notin_(['COMPLETED', 'CANCELLED', 'completed', 'cancelled']),
         ).order_by(Task.due_date.asc().nullsfirst(), Task.priority.desc())
     )
     return [_task_dict(t) for t in result.scalars().all()]

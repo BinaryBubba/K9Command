@@ -103,9 +103,9 @@ async def get_unacknowledged(
     result = await db.execute(
         select(Incident).where(
             Incident.organization_id == current_user.organization_id,
-            Incident.severity.in_([IncidentSeverity.WARNING, IncidentSeverity.CRITICAL]),
+            Incident.severity.in_(['WARNING', 'CRITICAL', 'warning', 'critical']),
             Incident.acknowledged_at.is_(None),
-            Incident.status != IncidentStatus.CLOSED,
+            Incident.status.notin_(['CLOSED', 'closed']),
         ).order_by(Incident.occurred_at.desc())
     )
     return [_incident_dict(i) for i in result.scalars().all()]

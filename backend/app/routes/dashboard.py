@@ -199,33 +199,39 @@ async def get_dashboard(
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 async def _get_open_incidents(org_id: str, db) -> list:
-    from sqlalchemy import select
+    from sqlalchemy import text
     result = await db.execute(
-        select(Incident).where(
-            Incident.organization_id == org_id,
-            Incident.status.notin_([IncidentStatus.CLOSED, IncidentStatus.RESOLVED]),
-        ).order_by(Incident.occurred_at.desc()).limit(5)
+        text("""SELECT id, title, severity::text, status::text, acknowledged_at
+                FROM incidents
+                WHERE organization_id = :org_id
+                AND status::text NOT IN ('CLOSED', 'RESOLVED')
+                ORDER BY occurred_at DESC LIMIT 5"""),
+        {"org_id": org_id}
     )
-    return [{"id": i.id, "title": i.title, "severity": i.severity.value if hasattr(i.severity, "value") else i.severity,
-             "status": i.status.value if hasattr(i.status, "value") else i.status,
-             "requires_acknowledgment": i.severity in [IncidentSeverity.WARNING, IncidentSeverity.CRITICAL] and not i.acknowledged_at}
-            for i in result.scalars().all()]
+    rows = result.fetchall()
+    return [{"id": r[0], "title": r[1], "severity": r[2].lower() if r[2] else None,
+             "status": r[3].lower() if r[3] else None,
+             "requires_acknowledgment": r[2] in ['WARNING', 'CRITICAL'] and not r[4]}
+            for r in rows]
 
 async def _get_overdue_tasks(org_id: str, db) -> list:
-    from sqlalchemy import select
+    from sqlalchemy import text
     from datetime import datetime, timezone
     now = datetime.now(timezone.utc)
     result = await db.execute(
-        select(Task).where(
-            Task.organization_id == org_id,
-            Task.status.notin_(["COMPLETED", "CANCELLED"]),
-            Task.due_date < now,
-            Task.due_date.isnot(None),
-        ).limit(5)
+        text("""SELECT id, title, priority, due_date
+                FROM tasks
+                WHERE organization_id = :org_id
+                AND status::text NOT IN ('COMPLETED', 'CANCELLED', 'completed', 'cancelled')
+                AND due_date IS NOT NULL
+                AND due_date < :now
+                LIMIT 5"""),
+        {"org_id": org_id, "now": now}
     )
-    return [{"id": t.id, "title": t.title, "priority": t.priority.value if hasattr(t.priority, "value") else t.priority,
-             "due_date": t.due_date.isoformat() if t.due_date else None}
-            for t in result.scalars().all()]
+    rows = result.fetchall()
+    return [{"id": r[0], "title": r[1], "priority": r[2].lower() if r[2] else None,
+             "due_date": r[3].isoformat() if r[3] else None}
+            for r in rows]
 
 def _alert_summary(a: StayAlert) -> dict:
     return {
