@@ -10,7 +10,8 @@ from datetime import datetime, timezone, timedelta
 from database import get_db
 from auth import get_current_user
 from db_models import (
-    Stay, StayStatus, StayAlert, StayAlertSeverity,
+    Stay, StayStatus, StayAlert,
+    Task, TaskStatus, Incident, IncidentStatus, IncidentSeverity, StayAlertSeverity,
     Booking, BookingStatus, BookingDog,
     Dog as DogORM, Room, User as UserORM,
     VaccinationRecord, VaccinationStatus,
@@ -187,15 +188,44 @@ async def get_dashboard(
         # Vaccination warnings
         "vaccination_warnings": vax_warnings,
 
-        # Placeholders for future phases
+        # Open incidents needing attention
+        "open_incidents": await _get_open_incidents(org_id, db),
+        "overdue_tasks": await _get_overdue_tasks(org_id, db),
         "overdue_medications": [],
-        "overdue_tasks": [],
-        "open_incidents": [],
         "unacknowledged_handoffs": [],
     }
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
+async def _get_open_incidents(org_id: str, db) -> list:
+    from sqlalchemy import select
+    result = await db.execute(
+        select(Incident).where(
+            Incident.organization_id == org_id,
+            Incident.status.notin_([IncidentStatus.CLOSED, IncidentStatus.RESOLVED]),
+        ).order_by(Incident.occurred_at.desc()).limit(5)
+    )
+    return [{"id": i.id, "title": i.title, "severity": i.severity.value if hasattr(i.severity, "value") else i.severity,
+             "status": i.status.value if hasattr(i.status, "value") else i.status,
+             "requires_acknowledgment": i.severity in [IncidentSeverity.WARNING, IncidentSeverity.CRITICAL] and not i.acknowledged_at}
+            for i in result.scalars().all()]
+
+async def _get_overdue_tasks(org_id: str, db) -> list:
+    from sqlalchemy import select
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        select(Task).where(
+            Task.organization_id == org_id,
+            Task.status.notin_(["COMPLETED", "CANCELLED"]),
+            Task.due_date < now,
+            Task.due_date.isnot(None),
+        ).limit(5)
+    )
+    return [{"id": t.id, "title": t.title, "priority": t.priority.value if hasattr(t.priority, "value") else t.priority,
+             "due_date": t.due_date.isoformat() if t.due_date else None}
+            for t in result.scalars().all()]
 
 def _alert_summary(a: StayAlert) -> dict:
     return {

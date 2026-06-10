@@ -1,372 +1,304 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import useAuthStore from '../store/authStore';
+import api from '../utils/api';
 import { Button } from '../components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
-import { ArrowLeftIcon, AlertTriangleIcon, PlusIcon, EditIcon, TrashIcon, SearchIcon, CheckIcon } from 'lucide-react';
+import { Textarea } from '../components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { ArrowLeftIcon, PlusIcon, AlertCircleIcon, CheckCircleIcon, ShieldAlertIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import api from '../utils/api';
-import useAuthStore from '../store/authStore';
+
+const SEVERITY_COLORS = {
+  info: 'bg-blue-100 text-blue-700',
+  caution: 'bg-amber-100 text-amber-700',
+  warning: 'bg-orange-100 text-orange-700',
+  critical: 'bg-red-100 text-red-700',
+};
+
+const SEVERITY_ICONS = {
+  info: '📋',
+  caution: '⚠️',
+  warning: '🚨',
+  critical: '🔴',
+};
+
+const STATUS_COLORS = {
+  open: 'bg-red-100 text-red-700',
+  acknowledged: 'bg-amber-100 text-amber-700',
+  resolved: 'bg-blue-100 text-blue-700',
+  closed: 'bg-gray-100 text-gray-600',
+};
 
 const AdminIncidentsPage = () => {
+  const { user } = useAuthStore();
   const navigate = useNavigate();
-  const user = useAuthStore((state) => state.user);
   const [incidents, setIncidents] = useState([]);
-  const [dogs, setDogs] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [unacknowledged, setUnacknowledged] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [selectedIncident, setSelectedIncident] = useState(null);
-  const [formData, setFormData] = useState({
-    description: '',
-    severity: 'low',
-    dog_ids: [],
-    status: 'open',
-    resolution: '',
-  });
+  const [showCreate, setShowCreate] = useState(false);
 
-  useEffect(() => {
-    if (!user || user.role !== 'admin') {
-      navigate('/auth');
-      return;
-    }
-    fetchData();
-  }, [user, navigate]);
-
-  const fetchData = async () => {
+  const fetchIncidents = useCallback(async () => {
     try {
-      const [incidentsRes, dogsRes] = await Promise.all([
+      const [allRes, unackRes] = await Promise.all([
         api.get('/incidents'),
-        api.get('/dogs'),
+        api.get('/incidents/unacknowledged'),
       ]);
-      setIncidents(incidentsRes.data?.incidents || incidentsRes.data || []);
-      setDogs(dogsRes.data);
-    } catch (error) {
+      setIncidents(allRes.data);
+      setUnacknowledged(unackRes.data);
+    } catch {
       toast.error('Failed to load incidents');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const openCreateModal = () => {
-    setEditMode(false);
-    setSelectedIncident(null);
-    setFormData({ description: '', severity: 'low', dog_ids: [], status: 'open', resolution: '' });
-    setModalOpen(true);
-  };
+  useEffect(() => {
+    if (!user) { navigate('/auth'); return; }
+    fetchIncidents();
+  }, [user, navigate, fetchIncidents]);
 
-  const openEditModal = (incident) => {
-    setEditMode(true);
-    setSelectedIncident(incident);
-    setFormData({
-      description: incident.description || '',
-      severity: incident.severity || 'low',
-      dog_ids: incident.dog_ids || [],
-      status: incident.status || 'open',
-      resolution: incident.resolution || '',
-    });
-    setModalOpen(true);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const acknowledge = async (id) => {
     try {
-      if (editMode) {
-        await api.patch(`/incidents/${selectedIncident.id}`, formData);
-        toast.success('Incident updated');
-      } else {
-        await api.post('/incidents', formData);
-        toast.success('Incident reported');
-      }
-      setModalOpen(false);
-      fetchData();
-    } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to save incident');
+      await api.post(`/incidents/${id}/acknowledge`);
+      toast.success('Incident acknowledged');
+      fetchIncidents();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to acknowledge');
     }
   };
 
-  const handleDelete = async (incidentId) => {
-    if (!window.confirm('Are you sure you want to delete this incident?')) return;
+  const resolve = async (id) => {
+    const notes = window.prompt('Resolution notes (optional):');
+    if (notes === null) return;
     try {
-      await api.delete(`/incidents/${incidentId}`);
-      toast.success('Incident deleted');
-      fetchData();
-    } catch (error) {
-      toast.error('Failed to delete incident');
-    }
-  };
-
-  const handleResolve = async (incidentId) => {
-    const resolution = window.prompt('Enter resolution notes:');
-    if (!resolution) return;
-    try {
-      await api.patch(`/incidents/${incidentId}`, { status: 'resolved', resolution });
+      await api.post(`/incidents/${id}/resolve`, { resolution_notes: notes });
       toast.success('Incident resolved');
-      fetchData();
-    } catch (error) {
+      fetchIncidents();
+    } catch {
       toast.error('Failed to resolve incident');
     }
   };
 
-  const getSeverityColor = (severity) => {
-    const colors = {
-      low: 'bg-green-100 text-green-800',
-      medium: 'bg-yellow-100 text-yellow-800',
-      high: 'bg-orange-100 text-orange-800',
-      critical: 'bg-red-100 text-red-800',
-    };
-    return colors[severity] || 'bg-gray-100 text-gray-800';
-  };
-
-  const getStatusColor = (status) => {
-    const colors = {
-      open: 'bg-red-100 text-red-800',
-      investigating: 'bg-yellow-100 text-yellow-800',
-      resolved: 'bg-green-100 text-green-800',
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800';
-  };
-
-  const getDogName = (dogId) => {
-    const dog = dogs.find(d => d.id === dogId);
-    return dog?.name || 'Unknown';
-  };
-
-  let filteredIncidents = incidents;
-  if (searchQuery) {
-    filteredIncidents = filteredIncidents.filter(i => 
-      i.description?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }
-  if (statusFilter !== 'all') {
-    filteredIncidents = filteredIncidents.filter(i => i.status === statusFilter);
-  }
-
-  const openIncidents = incidents.filter(i => i.status === 'open').length;
-  const criticalIncidents = incidents.filter(i => i.severity === 'critical').length;
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#F9F7F2]">
-      <header className="bg-white border-b border-border/40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4">
-          <Button variant="ghost" onClick={() => navigate('/admin/dashboard')} className="flex items-center gap-2 mb-2">
-            <ArrowLeftIcon size={18} /> Back to Dashboard
-          </Button>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-serif font-bold text-primary">Incident Reports</h1>
-              <p className="text-muted-foreground mt-1">Track and manage all incidents</p>
-            </div>
-            <Button onClick={openCreateModal} className="rounded-full">
-              <PlusIcon size={18} className="mr-2" /> Report Incident
+      <header className="bg-white border-b shadow-sm sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+              <ArrowLeftIcon size={18} />
             </Button>
+            <h1 className="text-lg font-serif font-bold text-primary">Incidents</h1>
           </div>
+          <Button size="sm" onClick={() => setShowCreate(true)}>
+            <PlusIcon size={16} className="mr-1" /> Report
+          </Button>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 md:px-8 py-8">
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="bg-white rounded-2xl border border-border/50 shadow-sm">
-            <CardContent className="p-6">
-              <p className="text-sm text-muted-foreground mb-1">Total Incidents</p>
-              <p className="text-3xl font-serif font-bold text-primary">{incidents.length}</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-white rounded-2xl border border-border/50 shadow-sm">
-            <CardContent className="p-6">
-              <p className="text-sm text-muted-foreground mb-1">Open</p>
-              <p className="text-3xl font-serif font-bold text-red-600">{openIncidents}</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-white rounded-2xl border border-border/50 shadow-sm">
-            <CardContent className="p-6">
-              <p className="text-sm text-muted-foreground mb-1">Critical</p>
-              <p className="text-3xl font-serif font-bold text-orange-600">{criticalIncidents}</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-white rounded-2xl border border-border/50 shadow-sm">
-            <CardContent className="p-6">
-              <p className="text-sm text-muted-foreground mb-1">Resolved</p>
-              <p className="text-3xl font-serif font-bold text-green-600">{incidents.filter(i => i.status === 'resolved').length}</p>
-            </CardContent>
-          </Card>
-        </div>
+      <main className="max-w-4xl mx-auto px-4 py-6 space-y-5">
 
-        {/* Filters */}
-        <Card className="mb-6 bg-white rounded-2xl border border-border/50 shadow-sm">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
-                <Input placeholder="Search incidents..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
+        {/* Unacknowledged banner */}
+        {unacknowledged.length > 0 && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p className="text-sm font-semibold text-red-800 flex items-center gap-2 mb-3">
+              <ShieldAlertIcon size={16} />
+              {unacknowledged.length} incident{unacknowledged.length !== 1 ? 's' : ''} require owner acknowledgment
+            </p>
+            {unacknowledged.map(inc => (
+              <div key={inc.id} className="flex items-center justify-between py-2 border-t border-red-100">
+                <div>
+                  <p className="text-sm font-medium text-red-800">{inc.title}</p>
+                  <p className="text-xs text-red-600">{new Date(inc.occurred_at || inc.created_at).toLocaleString()}</p>
+                </div>
+                {user?.role === 'admin' && (
+                  <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white"
+                    onClick={() => acknowledge(inc.id)}>
+                    Acknowledge
+                  </Button>
+                )}
               </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[150px]"><SelectValue placeholder="Filter status" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="open">Open</SelectItem>
-                  <SelectItem value="investigating">Investigating</SelectItem>
-                  <SelectItem value="resolved">Resolved</SelectItem>
-                </SelectContent>
-              </Select>
+            ))}
+          </div>
+        )}
+
+        <Tabs defaultValue="open">
+          <TabsList className="w-full mb-4">
+            <TabsTrigger value="open" className="flex-1">
+              Open ({incidents.filter(i => i.status === 'open' || i.status === 'acknowledged').length})
+            </TabsTrigger>
+            <TabsTrigger value="resolved" className="flex-1">
+              Resolved ({incidents.filter(i => i.status === 'resolved' || i.status === 'closed').length})
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="open">
+            <IncidentList
+              incidents={incidents.filter(i => i.status === 'open' || i.status === 'acknowledged')}
+              onAcknowledge={acknowledge}
+              onResolve={resolve}
+              isAdmin={user?.role === 'admin'}
+            />
+          </TabsContent>
+          <TabsContent value="resolved">
+            <IncidentList
+              incidents={incidents.filter(i => i.status === 'resolved' || i.status === 'closed')}
+              isAdmin={user?.role === 'admin'}
+            />
+          </TabsContent>
+        </Tabs>
+      </main>
+
+      {showCreate && (
+        <CreateIncidentModal
+          onClose={() => setShowCreate(false)}
+          onSuccess={() => { setShowCreate(false); fetchIncidents(); }}
+        />
+      )}
+    </div>
+  );
+};
+
+const IncidentList = ({ incidents, onAcknowledge, onResolve, isAdmin }) => {
+  if (incidents.length === 0) return (
+    <Card><CardContent className="py-10 text-center text-muted-foreground">No incidents</CardContent></Card>
+  );
+  return (
+    <div className="space-y-3">
+      {incidents.map(inc => (
+        <Card key={inc.id} className={inc.severity === 'critical' ? 'border-red-300' : ''}>
+          <CardContent className="py-4 px-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <span>{SEVERITY_ICONS[inc.severity] || '📋'}</span>
+                  <p className="font-medium text-sm">{inc.title}</p>
+                  <Badge className={`text-xs ${SEVERITY_COLORS[inc.severity] || SEVERITY_COLORS.info}`}>
+                    {inc.severity}
+                  </Badge>
+                  <Badge className={`text-xs ${STATUS_COLORS[inc.status] || STATUS_COLORS.open}`}>
+                    {inc.status}
+                  </Badge>
+                  {inc.requires_acknowledgment && (
+                    <Badge className="text-xs bg-red-100 text-red-700">Needs ack</Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">{inc.description}</p>
+                {inc.immediate_action_taken && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Action taken: {inc.immediate_action_taken}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground mt-1">
+                  {inc.occurred_at ? new Date(inc.occurred_at).toLocaleString() : new Date(inc.created_at).toLocaleString()}
+                </p>
+              </div>
+              <div className="flex flex-col gap-1.5 shrink-0">
+                {inc.requires_acknowledgment && isAdmin && onAcknowledge && (
+                  <Button size="sm" variant="outline" className="text-xs text-red-600 border-red-200"
+                    onClick={() => onAcknowledge(inc.id)}>
+                    Acknowledge
+                  </Button>
+                )}
+                {inc.status !== 'resolved' && inc.status !== 'closed' && onResolve && (
+                  <Button size="sm" variant="outline" className="text-xs"
+                    onClick={() => onResolve(inc.id)}>
+                    <CheckCircleIcon size={12} className="mr-1" /> Resolve
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
+      ))}
+    </div>
+  );
+};
 
-        {/* Incidents List */}
-        <div className="space-y-4">
-          {filteredIncidents.length === 0 ? (
-            <Card className="bg-white rounded-2xl border border-border/50 shadow-sm">
-              <CardContent className="p-12 text-center">
-                <AlertTriangleIcon size={48} className="mx-auto text-muted-foreground/50 mb-4" />
-                <p className="text-muted-foreground">No incidents found</p>
-              </CardContent>
-            </Card>
-          ) : (
-            filteredIncidents.map((incident) => (
-              <Card key={incident.id} className={`rounded-2xl border shadow-sm ${incident.status === 'open' ? 'border-red-200 bg-red-50/30' : 'bg-white border-border/50'}`}>
-                <CardContent className="p-6">
-                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <AlertTriangleIcon className={incident.severity === 'critical' ? 'text-red-600' : 'text-orange-500'} size={20} />
-                        <h3 className="text-lg font-semibold">Incident #{incident.id.slice(0, 8)}</h3>
-                        <Badge className={getSeverityColor(incident.severity)}>{incident.severity}</Badge>
-                        <Badge className={getStatusColor(incident.status)}>{incident.status}</Badge>
-                      </div>
-                      <p className="text-muted-foreground mb-2">{incident.description}</p>
-                      
-                      {incident.dog_ids?.length > 0 && (
-                        <p className="text-sm">
-                          <span className="font-medium">Dogs involved:</span>{' '}
-                          {incident.dog_ids.map(getDogName).join(', ')}
-                        </p>
-                      )}
-                      
-                      {incident.resolution && (
-                        <p className="text-sm text-green-600 mt-2">
-                          <span className="font-medium">Resolution:</span> {incident.resolution}
-                        </p>
-                      )}
-                      
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Reported: {new Date(incident.created_at).toLocaleString()}
-                      </p>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      {incident.status !== 'resolved' && (
-                        <Button size="sm" onClick={() => handleResolve(incident.id)} className="bg-green-600 hover:bg-green-700">
-                          <CheckIcon size={14} className="mr-1" /> Resolve
-                        </Button>
-                      )}
-                      <Button variant="outline" size="sm" onClick={() => openEditModal(incident)}>
-                        <EditIcon size={14} />
-                      </Button>
-                      <Button variant="destructive" size="sm" onClick={() => handleDelete(incident.id)}>
-                        <TrashIcon size={14} />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+const CreateIncidentModal = ({ onClose, onSuccess }) => {
+  const [form, setForm] = useState({
+    title: '', description: '', severity: 'caution',
+    immediate_action_taken: '', location_description: '',
+    follow_up_required: false,
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!form.title.trim()) { toast.error('Title is required'); return; }
+    if (!form.description.trim()) { toast.error('Description is required'); return; }
+    setSubmitting(true);
+    try {
+      await api.post('/incidents', form);
+      toast.success('Incident reported');
+      onSuccess();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to report incident');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-4">
+      <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="p-6 space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-bold">Report Incident</h2>
+            <button onClick={onClose} className="text-muted-foreground text-xl">×</button>
+          </div>
+          <div>
+            <Label>Title *</Label>
+            <Input value={form.title} onChange={e => setForm(f=>({...f,title:e.target.value}))} className="mt-1" placeholder="Brief description of what happened" />
+          </div>
+          <div>
+            <Label>Severity *</Label>
+            <select className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
+              value={form.severity} onChange={e => setForm(f=>({...f,severity:e.target.value}))}>
+              <option value="info">📋 Info — FYI only</option>
+              <option value="caution">⚠️ Caution — monitor</option>
+              <option value="warning">🚨 Warning — owner acknowledgment required</option>
+              <option value="critical">🔴 Critical — immediate action required</option>
+            </select>
+          </div>
+          <div>
+            <Label>Full Description *</Label>
+            <Textarea value={form.description} onChange={e => setForm(f=>({...f,description:e.target.value}))} className="mt-1" rows={3} placeholder="What happened, when, and who was involved" />
+          </div>
+          <div>
+            <Label>Immediate Action Taken</Label>
+            <Textarea value={form.immediate_action_taken} onChange={e => setForm(f=>({...f,immediate_action_taken:e.target.value}))} className="mt-1" rows={2} placeholder="What did you do right away?" />
+          </div>
+          <div>
+            <Label>Location</Label>
+            <Input value={form.location_description} onChange={e => setForm(f=>({...f,location_description:e.target.value}))} className="mt-1" placeholder="e.g. Outdoor play yard, Room 3" />
+          </div>
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input type="checkbox" checked={form.follow_up_required}
+              onChange={e => setForm(f=>({...f,follow_up_required:e.target.checked}))} className="w-4 h-4" />
+            Follow-up required
+          </label>
+          {(form.severity === 'warning' || form.severity === 'critical') && (
+            <div className="bg-amber-50 border border-amber-200 rounded p-3 text-xs text-amber-800">
+              ⚠️ This incident will require owner acknowledgment before it can be closed.
+            </div>
           )}
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+            <Button className="flex-1" onClick={handleSubmit} disabled={submitting}>
+              {submitting ? 'Reporting...' : 'Report Incident'}
+            </Button>
+          </div>
         </div>
-      </main>
-
-      {/* Create/Edit Modal */}
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{editMode ? 'Edit Incident' : 'Report New Incident'}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label>Description *</Label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full p-2 border rounded-lg"
-                rows={3}
-                placeholder="Describe the incident in detail..."
-                required
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Severity</Label>
-                <Select value={formData.severity} onValueChange={(v) => setFormData({ ...formData, severity: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="critical">Critical</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Status</Label>
-                <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="open">Open</SelectItem>
-                    <SelectItem value="investigating">Investigating</SelectItem>
-                    <SelectItem value="resolved">Resolved</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <Label>Dogs Involved</Label>
-              <Select
-                value={formData.dog_ids[0] || 'none'}
-                onValueChange={(v) => setFormData({ ...formData, dog_ids: v && v !== 'none' ? [v] : [] })}
-              >
-                <SelectTrigger><SelectValue placeholder="Select dog (optional)" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {dogs.map((dog) => (
-                    <SelectItem key={dog.id} value={dog.id}>{dog.name} - {dog.breed}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {formData.status === 'resolved' && (
-              <div>
-                <Label>Resolution</Label>
-                <textarea
-                  value={formData.resolution}
-                  onChange={(e) => setFormData({ ...formData, resolution: e.target.value })}
-                  className="w-full p-2 border rounded-lg"
-                  rows={2}
-                  placeholder="How was this resolved?"
-                />
-              </div>
-            )}
-            <div className="flex gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={() => setModalOpen(false)} className="flex-1">Cancel</Button>
-              <Button type="submit" className="flex-1">{editMode ? 'Update' : 'Report'}</Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+      </div>
     </div>
   );
 };
