@@ -171,7 +171,7 @@ const CreateHouseholdModal = ({ onClose, onSuccess }) => {
       const hhRes = await api.post('/households', payload);
       const hhId = hhRes.data.id;
       if (form.secondary_first_name?.trim()) {
-        await api.post(\`/households/\${hhId}/contacts\`, {
+        await api.post(`/households/${hhId}/contacts`, {
           first_name: form.secondary_first_name,
           last_name: form.secondary_last_name,
           phone: form.secondary_phone,
@@ -181,7 +181,7 @@ const CreateHouseholdModal = ({ onClose, onSuccess }) => {
           is_emergency_contact: false,
         }).catch(() => {});
       }
-      await api.post(\`/households/\${hhId}/contacts\`, {
+      await api.post(`/households/${hhId}/contacts`, {
         first_name: form.emergency_first_name,
         last_name: form.emergency_last_name,
         phone: form.emergency_phone,
