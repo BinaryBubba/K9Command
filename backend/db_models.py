@@ -30,7 +30,7 @@ class BookingStatus(str, enum.Enum):
     CANCELLED = "cancelled"
 
 
-class TaskStatus(str, enum.Enum):
+class TaskStatusLegacy(str, enum.Enum):
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -223,7 +223,7 @@ class DailyUpdate(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
-class Task(Base):
+class TaskLegacy(Base):
     __tablename__ = "tasks"
     organization_id = Column(String, ForeignKey("organizations.id"), nullable=True, index=True)
 
@@ -233,7 +233,7 @@ class Task(Base):
     assigned_to = Column(String, ForeignKey("users.id"), nullable=True)
     location_id = Column(String, ForeignKey("locations.id"), nullable=False)
     due_date = Column(DateTime(timezone=True), nullable=True)
-    status = Column(Enum(TaskStatus), default=TaskStatus.PENDING)
+    status = Column(Enum(TaskStatusLegacy), default=TaskStatusLegacy.PENDING)
     completed_at = Column(DateTime(timezone=True), nullable=True)
     completed_by = Column(String, ForeignKey("users.id"), nullable=True)
     completed_by_name = Column(String, nullable=True)
@@ -315,7 +315,7 @@ class AuditLog(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
-class Incident(Base):
+class IncidentLegacy(Base):
     __tablename__ = "incidents"
     organization_id = Column(String, ForeignKey("organizations.id"), nullable=True, index=True)
 
@@ -979,5 +979,87 @@ class ShiftHandoff(Base):
     submitted_at = Column(DateTime(timezone=True), nullable=True)
     acknowledged_by = Column(String, ForeignKey("users.id"), nullable=True)
     acknowledged_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+# ==================== TASKS ====================
+
+class TaskStatus(str, enum.Enum):
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+    OVERDUE = "overdue"
+
+class TaskPriority(str, enum.Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    URGENT = "urgent"
+
+class Task(Base):
+    __tablename__ = "tasks"
+    __table_args__ = {"extend_existing": True}
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    status = Column(Enum(TaskStatus), default=TaskStatus.PENDING, nullable=False)
+    priority = Column(Enum(TaskPriority), default=TaskPriority.MEDIUM, nullable=False)
+    assigned_to = Column(String, ForeignKey("users.id"), nullable=True, index=True)
+    created_by = Column(String, ForeignKey("users.id"), nullable=False)
+    dog_id = Column(String, ForeignKey("dogs.id"), nullable=True, index=True)
+    stay_id = Column(String, ForeignKey("stays.id"), nullable=True)
+    due_date = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    completed_by = Column(String, ForeignKey("users.id"), nullable=True)
+    checklist = Column(JSON, default=list)
+    recurrence = Column(String, nullable=True)
+    tags = Column(JSON, default=list)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+# ==================== INCIDENTS ====================
+
+class IncidentSeverity(str, enum.Enum):
+    INFO = "info"           # Tier 1 - FYI only
+    CAUTION = "caution"     # Tier 2 - monitor
+    WARNING = "warning"     # Tier 3 - owner acknowledgment required
+    CRITICAL = "critical"   # Tier 4 - immediate action required
+
+class IncidentStatus(str, enum.Enum):
+    OPEN = "open"
+    ACKNOWLEDGED = "acknowledged"
+    RESOLVED = "resolved"
+    CLOSED = "closed"
+
+class Incident(Base):
+    __tablename__ = "incidents"
+    __table_args__ = {"extend_existing": True}
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=False)
+    severity = Column(Enum(IncidentSeverity), nullable=False)
+    status = Column(Enum(IncidentStatus), default=IncidentStatus.OPEN, nullable=False)
+    dog_id = Column(String, ForeignKey("dogs.id"), nullable=True, index=True)
+    stay_id = Column(String, ForeignKey("stays.id"), nullable=True)
+    reported_by = Column(String, ForeignKey("users.id"), nullable=False)
+    assigned_to = Column(String, ForeignKey("users.id"), nullable=True)
+    occurred_at = Column(DateTime(timezone=True), nullable=False)
+    location_description = Column(String, nullable=True)
+    witness_names = Column(Text, nullable=True)
+    immediate_action_taken = Column(Text, nullable=True)
+    follow_up_required = Column(Boolean, default=False)
+    follow_up_notes = Column(Text, nullable=True)
+    acknowledged_by = Column(String, ForeignKey("users.id"), nullable=True)
+    acknowledged_at = Column(DateTime(timezone=True), nullable=True)
+    resolved_by = Column(String, ForeignKey("users.id"), nullable=True)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+    resolution_notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
