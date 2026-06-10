@@ -46,7 +46,7 @@ const AdminDashboard = () => {
     </div>
   );
 
-  const pendingHandoff = data?.unacknowledged_handoffs?.length > 0;
+  const pendingHandoff = data?.unacknowledged_handoffs?.length > 0 ?? false;
 
   return (
     <div className="min-h-screen bg-[#F9F7F2]">
