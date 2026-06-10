@@ -33,6 +33,10 @@ import StaffDashboard from './pages/StaffDashboard';
 import StaffHubPage from './pages/StaffHubPage';
 import StaffBookingsPage from './pages/StaffBookingsPage';
 
+// Pages - Customer
+import CustomerDashboard from "./pages/CustomerDashboard";
+import CustomerProfilePage from "./pages/CustomerProfilePage";
+import DogProfilePage from "./pages/DogProfilePage";
 // Store
 import useAuthStore from './store/authStore';
 
@@ -236,6 +240,30 @@ function App() {
           />
 
           {/* Fallback */}
+          <Route
+            path="/customer/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={["customer", "admin", "staff"]}>
+                <CustomerDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/dogs/:dogId"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "staff"]}>
+                <DogProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/customers/:householdId"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "staff"]}>
+                <CustomerProfilePage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

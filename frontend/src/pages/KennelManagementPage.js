@@ -158,10 +158,15 @@ const KennelManagementPage = () => {
   );
 };
 
-const DogCard = ({ stay }) => (
-  <div className={`flex items-center justify-between p-2 rounded-lg border ${
-    stay.has_warning ? 'bg-red-50 border-red-200' : 'bg-muted/50 border-border'
-  }`}>
+const DogCard = ({ stay }) => {
+  const navigate = useNavigate();
+  return (
+  <div
+    className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer hover:shadow-sm transition-shadow ${
+      stay.has_warning ? 'bg-red-50 border-red-200' : 'bg-muted/50 border-border'
+    }`}
+    onClick={() => navigate(`/admin/dogs/${stay.dog_id}`)}
+  >
     <div className="flex items-center gap-2">
       <DogIcon size={14} className={stay.has_warning ? 'text-red-600' : 'text-muted-foreground'} />
       <div>
@@ -184,6 +189,7 @@ const DogCard = ({ stay }) => (
       )}
     </div>
   </div>
-);
+  );
+};
 
 export default KennelManagementPage;

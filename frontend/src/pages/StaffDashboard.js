@@ -80,9 +80,10 @@ const StaffDashboard = () => {
         )}
 
         {/* Summary row */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <StatPill icon={<DogIcon size={16} />} value={data?.on_site_count ?? 0} label="On Site" color="blue" />
           <StatPill icon={<CalendarIcon size={16} />} value={data?.arriving_today_count ?? 0} label="Arriving" color="green" />
+          <StatPill icon={<ClockIcon size={16} />} value={data?.departing_today_count ?? 0} label="Departing" color="orange" />
           <StatPill icon={<AlertCircleIcon size={16} />} value={data?.active_alert_count ?? 0} label="Alerts"
             color={data?.warning_alert_count > 0 ? 'red' : 'gray'} />
         </div>
@@ -173,6 +174,7 @@ const StatPill = ({ icon, value, label, color }) => {
     blue: 'bg-blue-50 text-blue-700',
     green: 'bg-green-50 text-green-700',
     red: 'bg-red-50 text-red-700',
+    orange: 'bg-orange-50 text-orange-700',
     gray: 'bg-gray-50 text-gray-600',
   };
   return (
