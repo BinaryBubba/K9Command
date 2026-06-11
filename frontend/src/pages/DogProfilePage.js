@@ -291,10 +291,11 @@ const VaccinationsTab = ({ dogId, vaccinations, onRefresh, isStaff }) => {
                     {v.provider && ` · ${v.provider}`}
                   </p>
                   {v.document_url && (
-                    <a href={v.document_url} target="_blank" rel="noopener noreferrer"
+                    <button type="button"
+                      onClick={() => window.open(v.document_url, '_blank', 'noopener,noreferrer')}
                       className="text-xs text-blue-600 flex items-center gap-1 mt-1 hover:underline">
                       <FileTextIcon size={11} /> View document
-                    </a>
+                    </button>
                   )}
                 </div>
               </div>
@@ -328,9 +329,14 @@ const DogNotesTab = ({ dogId, notes, onRefresh }) => {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef();
 
+  const [imagePreviews, setImagePreviews] = useState([]);
+
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    // Show local preview immediately
+    const localUrl = URL.createObjectURL(file);
+    setImagePreviews(prev => [...prev, localUrl]);
     setUploading(true);
     try {
       const formData = new FormData();
@@ -338,7 +344,10 @@ const DogNotesTab = ({ dogId, notes, onRefresh }) => {
       const res = await api.post('/uploads/dog-photo', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       setImageKeys(prev => [...prev, res.data.key]);
       toast.success('Image uploaded');
-    } catch { toast.error('Upload failed'); }
+    } catch {
+      toast.error('Upload failed');
+      setImagePreviews(prev => prev.slice(0, -1));
+    }
     finally { setUploading(false); }
   };
 
@@ -382,12 +391,21 @@ const DogNotesTab = ({ dogId, notes, onRefresh }) => {
                 <input type="checkbox" checked={isAlert} onChange={e => setIsAlert(e.target.checked)} className="w-4 h-4" />
                 🚨 Mark as aggressive behavior alert
               </label>
-              <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
-                  <UploadIcon size={14} className="mr-1" /> {uploading ? 'Uploading...' : 'Add Photo'}
-                </Button>
-                {imageKeys.length > 0 && <span className="text-xs text-green-600">{imageKeys.length} photo{imageKeys.length !== 1 ? 's' : ''}</span>}
-                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                    <UploadIcon size={14} className="mr-1" /> {uploading ? 'Uploading...' : 'Add Photo'}
+                  </Button>
+                  {imageKeys.length > 0 && <span className="text-xs text-green-600">✓ {imageKeys.length} photo{imageKeys.length !== 1 ? 's' : ''} ready</span>}
+                  <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                </div>
+                {imagePreviews.length > 0 && (
+                  <div className="flex gap-2 flex-wrap">
+                    {imagePreviews.map((url, i) => (
+                      <img key={i} src={url} alt="preview" className="h-16 w-16 object-cover rounded border" />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex gap-2">

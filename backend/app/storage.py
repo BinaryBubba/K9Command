@@ -58,6 +58,15 @@ def get_presigned_url(bucket: str, key: str, expires_in: int = 3600) -> Optional
     except Exception:
         return None
 
+def get_public_url(bucket: str, key: str) -> Optional[str]:
+    """Get a direct public URL for publicly accessible buckets."""
+    if not key:
+        return None
+    public_base = os.getenv("MINIO_PUBLIC_URL", "")
+    if public_base:
+        return f"{public_base}/{bucket}/{key}"
+    return get_presigned_url(bucket, key)
+
 def delete_file(bucket: str, key: str) -> bool:
     """Delete a file from storage."""
     try:

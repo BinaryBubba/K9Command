@@ -203,8 +203,8 @@ def _vax_dict(v: VaccinationRecord) -> dict:
     doc_url = None
     if v.document_path:
         try:
-            from app.storage import get_presigned_url, BUCKET_VACCINATIONS
-            doc_url = get_presigned_url(BUCKET_VACCINATIONS, v.document_path)
+            from app.storage import get_presigned_url, get_public_url, BUCKET_VACCINATIONS
+            doc_url = get_public_url(BUCKET_VACCINATIONS, v.document_path)
         except Exception:
             pass
     return {

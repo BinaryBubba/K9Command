@@ -46,8 +46,10 @@ import useAuthStore from './store/authStore';
 
 // Protected Route Component
 const AppLayout = ({ children }) => {
-  const { user } = useAuthStore();
-  return <div className={user ? 'md:ml-52' : ''}>{children}</div>;
+  const location = useLocation();
+  const publicPaths = ['/', '/auth', '/forgot-password', '/staff-request'];
+  const isPublic = publicPaths.includes(location.pathname);
+  return <div className={isPublic ? '' : 'md:ml-52'}>{children}</div>;
 };
 
 const ProtectedRoute = ({ children, allowedRoles }) => {

@@ -357,7 +357,7 @@ def _mag_dict(m: MeetAndGreet) -> dict:
 # ── Dog Notes ────────────────────────────────────────────────────────────────
 
 from db_models import DogNote
-from app.storage import get_presigned_url, BUCKET_DOGS
+from app.storage import get_presigned_url, get_public_url, BUCKET_DOGS
 
 @router.get("/{dog_id}/notes")
 async def get_dog_notes(
@@ -379,7 +379,7 @@ async def get_dog_notes(
         # Generate presigned URLs for images
         if note.image_keys:
             keys = note.image_keys if isinstance(note.image_keys, list) else []
-            n["image_urls"] = [u for u in [get_presigned_url(BUCKET_DOGS, k) for k in keys] if u]
+            n["image_urls"] = [u for u in [get_public_url(BUCKET_DOGS, k) for k in keys] if u]
         out.append(n)
     return out
 
