@@ -134,6 +134,10 @@ services:
     container_name: myapp_minio
     hostname: minio
     command: server /data --console-address ":9001"
+    networks:
+      myapp_net:
+        aliases:
+          - minioserver
     environment:
       MINIO_ROOT_USER: k9cmd_minio
       MINIO_ROOT_PASSWORD: K9cmd_MinIO_2024!
@@ -142,8 +146,6 @@ services:
     ports:
       - "9000:9000"
       - "9001:9001"
-    networks:
-      - myapp_net
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
