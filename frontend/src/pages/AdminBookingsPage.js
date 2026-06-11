@@ -90,7 +90,7 @@ const AdminBookingsPage = () => {
         ) : (
           <div className="space-y-2">
             {bookings.map(b => (
-              <Card key={b.id} className="cursor-pointer hover:shadow-md transition-shadow">
+              <Card key={b.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate(`/admin/bookings/${b.id}`)}>
                 <CardContent className="py-3 px-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3">

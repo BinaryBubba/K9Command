@@ -35,6 +35,7 @@ import StaffBookingsPage from './pages/StaffBookingsPage';
 
 // Components
 import NavBar from './components/NavBar';
+import BookingProfilePage from './pages/BookingProfilePage';
 import MeetAndGreetPage from './pages/MeetAndGreetPage';
 // Pages - Customer
 import CustomerDashboard from "./pages/CustomerDashboard";
@@ -274,6 +275,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["admin", "staff"]}>
                 <MeetAndGreetPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/bookings/:bookingId"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "staff"]}>
+                <BookingProfilePage />
               </ProtectedRoute>
             }
           />
