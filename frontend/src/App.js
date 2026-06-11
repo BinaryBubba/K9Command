@@ -33,6 +33,8 @@ import StaffDashboard from './pages/StaffDashboard';
 import StaffHubPage from './pages/StaffHubPage';
 import StaffBookingsPage from './pages/StaffBookingsPage';
 
+// Components
+import NavBar from './components/NavBar';
 // Pages - Customer
 import CustomerDashboard from "./pages/CustomerDashboard";
 import CustomerProfilePage from "./pages/CustomerProfilePage";
@@ -60,6 +62,8 @@ function App() {
     <div className="App">
       <Toaster position="top-right" richColors />
       <BrowserRouter>
+        <NavBar />
+        <div className="md:ml-52">
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />
@@ -266,6 +270,7 @@ function App() {
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </div>
       </BrowserRouter>
     </div>
   );
