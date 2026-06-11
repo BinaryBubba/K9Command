@@ -153,6 +153,27 @@ services:
       timeout: 10s
       retries: 3
 
+  minio-init:
+    image: minio/minio:latest
+    container_name: myapp_minio_init
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - myapp_net
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://myapp_minio:9000 k9cmd_minio K9cmd_MinIO_2024! &&
+      mc mb --ignore-existing local/dog-files &&
+      mc mb --ignore-existing local/vaccination-records &&
+      mc mb --ignore-existing local/incident-photos &&
+      mc mb --ignore-existing local/mag-photos &&
+      mc anonymous set download local/dog-files &&
+      mc anonymous set download local/vaccination-records &&
+      mc anonymous set download local/mag-photos &&
+      echo done"
+    restart: "no"
+
   caddy:
     image: caddy:2
     container_name: myapp_caddy
