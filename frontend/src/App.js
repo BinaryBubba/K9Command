@@ -122,6 +122,14 @@ function App() {
             }
           />
           <Route
+            path="/admin/check-in-out"
+            element={
+              <ProtectedRoute allowedRoles={['staff', 'admin']}>
+                <CheckInOutPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/staff/daily-ops"
             element={
               <ProtectedRoute allowedRoles={['staff', 'admin']}>
