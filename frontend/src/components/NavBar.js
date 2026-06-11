@@ -14,7 +14,6 @@ const NavBar = () => {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const location = useLocation();
   const publicRoutes = ['/', '/auth', '/forgot-password', '/staff-request'];
   if (!user || publicRoutes.includes(location.pathname)) return null;
 
