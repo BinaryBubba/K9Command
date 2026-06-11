@@ -378,7 +378,8 @@ async def get_dog_notes(
         n = _note_dict(note)
         # Generate presigned URLs for images
         if note.image_keys:
-            n["image_urls"] = [get_presigned_url(BUCKET_DOGS, k) for k in note.image_keys]
+            keys = note.image_keys if isinstance(note.image_keys, list) else []
+            n["image_urls"] = [u for u in [get_presigned_url(BUCKET_DOGS, k) for k in keys] if u]
         out.append(n)
     return out
 
