@@ -133,3 +133,4 @@ websockets==15.0.1
 yarl==1.22.0
 zipp==3.23.0
 passlib[bcrypt]==1.7.4
+minio>=7.0.0

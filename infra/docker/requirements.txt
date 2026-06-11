@@ -4,3 +4,4 @@ python-dotenv==1.0.1
 psycopg[binary]==3.2.1
 redis==5.0.8
 pyjwt==2.9.0
+minio>=7.0.0

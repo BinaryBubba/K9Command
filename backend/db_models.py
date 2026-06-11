@@ -1063,3 +1063,19 @@ class Incident(Base):
     resolution_notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+# ==================== DOG NOTES ====================
+
+class DogNote(Base):
+    __tablename__ = "dog_notes"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
+    dog_id = Column(String, ForeignKey("dogs.id"), nullable=False, index=True)
+    note_text = Column(String(500), nullable=False)
+    is_alert = Column(Boolean, default=False)
+    image_keys = Column(JSON, default=list)
+    created_by = Column(String, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

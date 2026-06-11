@@ -129,6 +129,28 @@ services:
       retries: 15
       start_period: 60s
 
+  minio:
+    image: minio/minio:latest
+    container_name: myapp_minio
+    hostname: minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: k9cmd_minio
+      MINIO_ROOT_PASSWORD: K9cmd_MinIO_2024!
+    volumes:
+      - miniodata:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - myapp_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   caddy:
     image: caddy:2
     container_name: myapp_caddy
@@ -152,6 +174,7 @@ networks:
   myapp_net:
 
 volumes:
+  miniodata:
   pgdata: {}
   redisdata: {}
   caddydata: {}

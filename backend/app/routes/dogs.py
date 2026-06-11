@@ -352,3 +352,96 @@ def _mag_dict(m: MeetAndGreet) -> dict:
         "daycare_eligible_granted": m.daycare_eligible_granted,
         "completed_at": m.completed_at.isoformat() if m.completed_at else None,
     }
+
+
+# ── Dog Notes ────────────────────────────────────────────────────────────────
+
+from db_models import DogNote
+from app.storage import get_presigned_url, BUCKET_DOGS
+
+@router.get("/{dog_id}/notes")
+async def get_dog_notes(
+    dog_id: str,
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await _get_dog_or_404(dog_id, current_user.organization_id, db)
+    result = await db.execute(
+        select(DogNote).where(
+            DogNote.dog_id == dog_id,
+            DogNote.organization_id == current_user.organization_id,
+        ).order_by(DogNote.created_at.desc())
+    )
+    notes = result.scalars().all()
+    out = []
+    for note in notes:
+        n = _note_dict(note)
+        # Generate presigned URLs for images
+        if note.image_keys:
+            n["image_urls"] = [get_presigned_url(BUCKET_DOGS, k) for k in note.image_keys]
+        out.append(n)
+    return out
+
+
+@router.post("/{dog_id}/notes")
+async def add_dog_note(
+    dog_id: str,
+    data: dict,
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await _get_dog_or_404(dog_id, current_user.organization_id, db)
+    note_text = data.get("note_text", "").strip()
+    if not note_text:
+        raise HTTPException(status_code=400, detail="note_text is required")
+    if len(note_text) > 500:
+        raise HTTPException(status_code=400, detail="note_text cannot exceed 500 characters")
+
+    note = DogNote(
+        id=str(uuid.uuid4()),
+        organization_id=current_user.organization_id,
+        dog_id=dog_id,
+        note_text=note_text,
+        is_alert=data.get("is_alert", False),
+        image_keys=data.get("image_keys", []),
+        created_by=current_user.id,
+    )
+    db.add(note)
+    await db.commit()
+    await db.refresh(note)
+    return _note_dict(note)
+
+
+@router.delete("/{dog_id}/notes/{note_id}")
+async def delete_dog_note(
+    dog_id: str,
+    note_id: str,
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(DogNote).where(
+            DogNote.id == note_id,
+            DogNote.dog_id == dog_id,
+            DogNote.organization_id == current_user.organization_id,
+        )
+    )
+    note = result.scalar_one_or_none()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    await db.delete(note)
+    await db.commit()
+    return {"deleted": True}
+
+
+def _note_dict(n: DogNote) -> dict:
+    return {
+        "id": n.id,
+        "dog_id": n.dog_id,
+        "note_text": n.note_text,
+        "is_alert": n.is_alert,
+        "image_keys": n.image_keys or [],
+        "image_urls": [],
+        "created_by": n.created_by,
+        "created_at": n.created_at.isoformat() if n.created_at else None,
+    }
