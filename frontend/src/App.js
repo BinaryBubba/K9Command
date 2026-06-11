@@ -253,6 +253,7 @@ function App() {
           />
 
           {/* Fallback */}
+          <Route path="/minio/*" element={null} />
           <Route
             path="/customer/dashboard"
             element={
