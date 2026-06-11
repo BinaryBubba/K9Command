@@ -291,11 +291,11 @@ const VaccinationsTab = ({ dogId, vaccinations, onRefresh, isStaff }) => {
                     {v.provider && ` · ${v.provider}`}
                   </p>
                   {v.document_url && (
-                    <button type="button"
-                      onClick={() => window.open(v.document_url, '_blank', 'noopener,noreferrer')}
-                      className="text-xs text-blue-600 flex items-center gap-1 mt-1 hover:underline">
+                    <a href={v.document_url} target="_blank" rel="noopener noreferrer"
+                      className="text-xs text-blue-600 flex items-center gap-1 mt-1 hover:underline"
+                      onClick={e => e.stopPropagation()}>
                       <FileTextIcon size={11} /> View document
-                    </button>
+                    </a>
                   )}
                 </div>
               </div>
@@ -356,7 +356,7 @@ const DogNotesTab = ({ dogId, notes, onRefresh }) => {
     try {
       await api.post(`/dogs/${dogId}/notes`, { note_text: noteText, is_alert: isAlert, image_keys: imageKeys });
       toast.success('Note added');
-      setNoteText(''); setIsAlert(false); setImageKeys([]); setShowAdd(false);
+      setNoteText(''); setIsAlert(false); setImageKeys([]); setImagePreviews([]); setShowAdd(false);
       onRefresh();
     } catch (err) { toast.error(err.response?.data?.detail || 'Failed'); }
   };
