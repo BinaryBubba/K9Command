@@ -66,6 +66,12 @@ async def add_vaccination(
         uploaded_by=current_user.id,
         notes=data.get("notes"),
     )
+    # If staff is submitting on behalf of customer, auto-verify
+    if current_user.role in ["admin", "staff"] and data.get("auto_verify"):
+        record.verification_status = VaccinationStatus.VERIFIED
+        record.verified_by = current_user.id
+        from datetime import datetime, timezone
+        record.verified_at = datetime.now(timezone.utc)
     db.add(record)
     await db.commit()
     await db.refresh(record)
@@ -194,6 +200,13 @@ def _parse_date(value) -> Optional[datetime]:
         return None
 
 def _vax_dict(v: VaccinationRecord) -> dict:
+    doc_url = None
+    if v.document_path:
+        try:
+            from app.storage import get_presigned_url, BUCKET_VACCINATIONS
+            doc_url = get_presigned_url(BUCKET_VACCINATIONS, v.document_path)
+        except Exception:
+            pass
     return {
         "id": v.id,
         "dog_id": v.dog_id,
@@ -204,6 +217,7 @@ def _vax_dict(v: VaccinationRecord) -> dict:
         "verification_status": v.verification_status.value,
         "rejection_reason": v.rejection_reason,
         "document_path": v.document_path,
+        "document_url": doc_url,
         "uploaded_by": v.uploaded_by,
         "verified_by": v.verified_by,
         "verified_at": v.verified_at.isoformat() if v.verified_at else None,

@@ -200,15 +200,43 @@ const DepartureCard = ({ departure, onCheckOut }) => (
   </Card>
 );
 
+const BELONGINGS_OPTIONS = [
+  { key: 'leash', label: '🦮 Leash' },
+  { key: 'collar', label: '🔔 Collar' },
+  { key: 'bed_blanket', label: '🛏️ Bed/Blanket' },
+  { key: 'food', label: '🍖 Food (owner-supplied)' },
+  { key: 'medication', label: '💊 Medication' },
+  { key: 'toys', label: '🎾 Toys' },
+  { key: 'crate', label: '📦 Crate' },
+];
+
 const CheckInModal = ({ arrival, rooms, onClose, onSuccess }) => {
   const [form, setForm] = useState({
     room_id: '',
     intake_condition_note: '',
-    belongings_note: '',
+    belongings_checked: {},
+    belongings_other: '',
     feeding_override_detail: '',
     feeding_override_reason: '',
   });
+  const [dogInfo, setDogInfo] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (arrival.dog_id) {
+      api.get(`/dogs/${arrival.dog_id}`).then(r => setDogInfo(r.data)).catch(() => {});
+    }
+  }, [arrival.dog_id]);
+
+  const toggleBelonging = (key) => {
+    setForm(f => ({ ...f, belongings_checked: { ...f.belongings_checked, [key]: !f.belongings_checked[key] } }));
+  };
+
+  const buildBelongingsNote = () => {
+    const checked = BELONGINGS_OPTIONS.filter(o => form.belongings_checked[o.key]).map(o => o.label.split(' ').slice(1).join(' '));
+    if (form.belongings_other) checked.push(form.belongings_other);
+    return checked.join(', ');
+  };
 
   const handleSubmit = async () => {
     if (!form.room_id) { toast.error('Please select a room'); return; }
@@ -219,7 +247,7 @@ const CheckInModal = ({ arrival, rooms, onClose, onSuccess }) => {
         dog_id: arrival.dog_id,
         room_id: form.room_id,
         intake_condition_note: form.intake_condition_note || undefined,
-        belongings_note: form.belongings_note || undefined,
+        belongings_note: buildBelongingsNote() || undefined,
       };
       if (form.feeding_override_detail) {
         payload.feeding_override = {
@@ -237,6 +265,9 @@ const CheckInModal = ({ arrival, rooms, onClose, onSuccess }) => {
     }
   };
 
+  const rooms_only = rooms.filter(r => !r.room_type || r.room_type === 'room');
+  const crates = rooms.filter(r => r.room_type && r.room_type !== 'room');
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-4">
       <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -251,64 +282,87 @@ const CheckInModal = ({ arrival, rooms, onClose, onSuccess }) => {
             <button onClick={onClose} className="text-muted-foreground text-xl">×</button>
           </div>
 
+          {/* M&G and vaccination status */}
+          {dogInfo && (
+            <div className="space-y-1">
+              {dogInfo.meet_and_greet_status !== 'completed' && (
+                <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+                  <AlertCircleIcon size={12} /> Meet & greet not completed — owner override required
+                </div>
+              )}
+            </div>
+          )}
+
           <div>
             <Label>Assign Room *</Label>
             <div className="grid grid-cols-4 gap-2 mt-2">
-              {rooms.map(room => (
-                <button
-                  key={room.id}
+              {rooms_only.map(room => (
+                <button key={room.id} type="button"
                   onClick={() => setForm(f => ({...f, room_id: room.id}))}
-                  className={`p-2 rounded-lg border text-sm font-medium transition-colors ${
-                    form.room_id === room.id
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : room.is_out_of_service
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : 'border-border hover:bg-muted'
+                  className={`p-2 rounded-lg border text-xs font-medium transition-colors ${
+                    form.room_id === room.id ? 'bg-primary text-primary-foreground border-primary' :
+                    room.is_out_of_service ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
+                    'border-border hover:bg-muted'
                   }`}
                   disabled={room.is_out_of_service}
-                >
-                  {room.name}
-                </button>
+                >{room.name}</button>
               ))}
             </div>
+            {crates.length > 0 && (
+              <div>
+                <p className="text-xs text-muted-foreground mt-3 mb-1">Crates</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {crates.map(crate => (
+                    <button key={crate.id} type="button"
+                      onClick={() => setForm(f => ({...f, room_id: crate.id}))}
+                      className={`p-2 rounded-lg border text-xs font-medium transition-colors ${
+                        form.room_id === crate.id ? 'bg-primary text-primary-foreground border-primary' :
+                        crate.is_out_of_service ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
+                        'border-border hover:bg-muted'
+                      }`}
+                      disabled={crate.is_out_of_service}
+                    >{crate.name}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <Label>Belongings Left With Dog</Label>
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              {BELONGINGS_OPTIONS.map(opt => (
+                <label key={opt.key} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer text-sm transition-colors ${
+                  form.belongings_checked[opt.key] ? 'bg-primary/10 border-primary/30' : 'border-border hover:bg-muted'
+                }`}>
+                  <input type="checkbox" checked={!!form.belongings_checked[opt.key]} onChange={() => toggleBelonging(opt.key)} className="w-3.5 h-3.5" />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+            <Input placeholder="Other items..." value={form.belongings_other}
+              onChange={e => setForm(f => ({...f, belongings_other: e.target.value}))} className="mt-2" />
           </div>
 
           <div>
             <Label>Intake Condition Note</Label>
-            <Textarea
-              placeholder="Any observations at drop-off..."
+            <Textarea placeholder="Any observations at drop-off..."
               value={form.intake_condition_note}
               onChange={e => setForm(f => ({...f, intake_condition_note: e.target.value}))}
-              className="mt-1"
-              rows={2}
-            />
-          </div>
-
-          <div>
-            <Label>Belongings</Label>
-            <Input
-              placeholder="Food, medications, toys, blanket..."
-              value={form.belongings_note}
-              onChange={e => setForm(f => ({...f, belongings_note: e.target.value}))}
-              className="mt-1"
-            />
+              className="mt-1" rows={2} />
           </div>
 
           <div>
             <Label>Feeding Override (if owner gave instructions)</Label>
-            <Input
-              placeholder="e.g. Only 1 cup per meal this stay"
+            <Input placeholder="e.g. Only 1 cup per meal this stay"
               value={form.feeding_override_detail}
               onChange={e => setForm(f => ({...f, feeding_override_detail: e.target.value}))}
-              className="mt-1"
-            />
+              className="mt-1" />
             {form.feeding_override_detail && (
-              <Input
-                placeholder="Reason (e.g. recent vet visit)"
+              <Input placeholder="Reason (e.g. recent vet visit)"
                 value={form.feeding_override_reason}
                 onChange={e => setForm(f => ({...f, feeding_override_reason: e.target.value}))}
-                className="mt-2"
-              />
+                className="mt-2" />
             )}
           </div>
 
@@ -330,7 +384,13 @@ const CheckOutModal = ({ departure, onClose, onSuccess }) => {
     relationship_to_household: '',
     is_authorized_pickup: false,
     id_verified: false,
+    id_type: '',
     checkout_summary: '',
+    appetite_rating: '',
+    dogs_played_well_with: '',
+    medication_compliance: '',
+    concerns: '',
+    overall_notes: '',
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -338,7 +398,22 @@ const CheckOutModal = ({ departure, onClose, onSuccess }) => {
     if (!form.pickup_person_name.trim()) { toast.error('Pickup person name is required'); return; }
     setSubmitting(true);
     try {
-      await api.post(`/stays/${departure.id}/check-out`, form);
+      const summary = [
+        form.appetite_rating ? `Appetite: ${form.appetite_rating}` : '',
+        form.dogs_played_well_with ? `Played well with: ${form.dogs_played_well_with}` : '',
+        form.medication_compliance ? `Medication: ${form.medication_compliance}` : '',
+        form.concerns ? `Concerns: ${form.concerns}` : '',
+        form.overall_notes,
+      ].filter(Boolean).join(' · ');
+
+      await api.post(`/stays/${departure.id}/check-out`, {
+        pickup_person_name: form.pickup_person_name,
+        relationship_to_household: form.relationship_to_household,
+        is_authorized_pickup: form.is_authorized_pickup,
+        id_verified: form.id_verified,
+        id_type: form.id_type,
+        checkout_summary: summary || form.overall_notes,
+      });
       onSuccess();
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Check-out failed');
@@ -350,69 +425,89 @@ const CheckOutModal = ({ departure, onClose, onSuccess }) => {
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-4">
       <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="p-6 space-y-5">
+        <div className="p-6 space-y-4">
           <div className="flex justify-between items-start">
             <h2 className="text-lg font-bold">Check Out — {departure.dog_name}</h2>
             <button onClick={onClose} className="text-muted-foreground text-xl">×</button>
           </div>
 
-          <div>
-            <Label>Pickup Person Name *</Label>
-            <Input
-              placeholder="Full name"
-              value={form.pickup_person_name}
-              onChange={e => setForm(f => ({...f, pickup_person_name: e.target.value}))}
-              className="mt-1"
-            />
-          </div>
-
-          <div>
-            <Label>Relationship to Household</Label>
-            <Input
-              placeholder="e.g. Owner, spouse, dog walker"
-              value={form.relationship_to_household}
-              onChange={e => setForm(f => ({...f, relationship_to_household: e.target.value}))}
-              className="mt-1"
-            />
-          </div>
-
-          <div className="flex gap-6">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.is_authorized_pickup}
-                onChange={e => setForm(f => ({...f, is_authorized_pickup: e.target.checked}))}
-                className="w-4 h-4"
-              />
-              <span className="text-sm">Authorized pickup</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.id_verified}
-                onChange={e => setForm(f => ({...f, id_verified: e.target.checked}))}
-                className="w-4 h-4"
-              />
-              <span className="text-sm">ID verified</span>
-            </label>
-          </div>
-
-          {!form.is_authorized_pickup && form.pickup_person_name && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center gap-2">
-              <AlertCircleIcon size={16} className="text-amber-600" />
-              <span className="text-sm text-amber-800">This person is not marked as an authorized pickup — owner acknowledgment required</span>
+          <div className="border-b pb-4 space-y-3">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pickup Info</p>
+            <div>
+              <Label>Pickup Person Name *</Label>
+              <Input placeholder="Full name" value={form.pickup_person_name}
+                onChange={e => setForm(f => ({...f, pickup_person_name: e.target.value}))} className="mt-1" />
             </div>
-          )}
+            <div>
+              <Label>Relationship to Household</Label>
+              <Input placeholder="e.g. Owner, spouse, dog walker" value={form.relationship_to_household}
+                onChange={e => setForm(f => ({...f, relationship_to_household: e.target.value}))} className="mt-1" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                <input type="checkbox" checked={form.is_authorized_pickup}
+                  onChange={e => setForm(f => ({...f, is_authorized_pickup: e.target.checked}))} className="w-4 h-4" />
+                Authorized pickup
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                <input type="checkbox" checked={form.id_verified}
+                  onChange={e => setForm(f => ({...f, id_verified: e.target.checked}))} className="w-4 h-4" />
+                ID verified
+              </label>
+            </div>
+            {form.id_verified && (
+              <Input placeholder="ID type (e.g. Driver's license)" value={form.id_type}
+                onChange={e => setForm(f => ({...f, id_type: e.target.value}))} />
+            )}
+            {!form.is_authorized_pickup && form.pickup_person_name && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center gap-2">
+                <AlertCircleIcon size={16} className="text-amber-600" />
+                <span className="text-sm text-amber-800">Not an authorized pickup — owner acknowledgment required</span>
+              </div>
+            )}
+          </div>
 
-          <div>
-            <Label>Checkout Summary</Label>
-            <Textarea
-              placeholder="How was the stay? Any notes for the customer..."
-              value={form.checkout_summary}
-              onChange={e => setForm(f => ({...f, checkout_summary: e.target.value}))}
-              className="mt-1"
-              rows={2}
-            />
+          <div className="space-y-3">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Stay Report</p>
+            <div>
+              <Label>Appetite</Label>
+              <select className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
+                value={form.appetite_rating} onChange={e => setForm(f => ({...f, appetite_rating: e.target.value}))}>
+                <option value="">Not recorded</option>
+                <option value="Excellent - ate everything">Excellent</option>
+                <option value="Good - ate most meals">Good</option>
+                <option value="Fair - ate some meals">Fair</option>
+                <option value="Poor - barely ate">Poor</option>
+                <option value="Refused food">Refused food</option>
+              </select>
+            </div>
+            <div>
+              <Label>Dogs Played Well With</Label>
+              <Input placeholder="Names of compatible dogs, or 'all'" value={form.dogs_played_well_with}
+                onChange={e => setForm(f => ({...f, dogs_played_well_with: e.target.value}))} className="mt-1" />
+            </div>
+            <div>
+              <Label>Medication Compliance</Label>
+              <select className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
+                value={form.medication_compliance} onChange={e => setForm(f => ({...f, medication_compliance: e.target.value}))}>
+                <option value="">N/A - no medications</option>
+                <option value="All medications given as scheduled">All given as scheduled</option>
+                <option value="Most medications given, some refusals">Some refusals</option>
+                <option value="Difficulty administering medications">Difficulty administering</option>
+              </select>
+            </div>
+            <div>
+              <Label>Concerns or Incidents</Label>
+              <Textarea placeholder="Any health concerns, behavioral issues, or incidents during the stay..."
+                value={form.concerns} onChange={e => setForm(f => ({...f, concerns: e.target.value}))}
+                className="mt-1" rows={2} />
+            </div>
+            <div>
+              <Label>Overall Notes for Owner</Label>
+              <Textarea placeholder="General summary for the customer..."
+                value={form.overall_notes} onChange={e => setForm(f => ({...f, overall_notes: e.target.value}))}
+                className="mt-1" rows={2} />
+            </div>
           </div>
 
           <div className="flex gap-3 pt-2">
