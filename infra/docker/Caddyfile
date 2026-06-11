@@ -7,7 +7,7 @@
   # --- MinIO file storage ---
   handle /minio/* {
     uri strip_prefix /minio
-    reverse_proxy 172.18.0.7:9000
+    reverse_proxy 172.18.0.50:9000
   }
   # --- API goes to backend (KEEP /api prefix) ---
   handle /api/* {
