@@ -169,3 +169,93 @@ def _status_dict(s: FacilityStatus) -> dict:
         "set_by": s.set_by,
         "created_at": s.created_at.isoformat() if s.created_at else None,
     }
+
+# ── Room Management ──────────────────────────────────────────────────────────
+
+@router.get("/rooms")
+async def list_rooms(
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from db_models import Room
+    from sqlalchemy import select
+    result = await db.execute(
+        select(Room).where(Room.organization_id == current_user.organization_id)
+        .order_by(Room.sort_order)
+    )
+    return [_room_dict(r) for r in result.scalars().all()]
+
+
+@router.patch("/rooms/{room_id}")
+async def update_room(
+    room_id: str,
+    data: dict,
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    from db_models import Room
+    from sqlalchemy import select
+    result = await db.execute(
+        select(Room).where(
+            Room.id == room_id,
+            Room.organization_id == current_user.organization_id
+        )
+    )
+    room = result.scalar_one_or_none()
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+
+    allowed = ["name", "max_dogs", "adjacency_group", "is_active",
+               "is_out_of_service", "out_of_service_reason", "notes", "sort_order"]
+    for field in allowed:
+        if field in data:
+            setattr(room, field, data[field])
+
+    await db.commit()
+    await db.refresh(room)
+    return _room_dict(room)
+
+
+@router.post("/rooms")
+async def create_room(
+    data: dict,
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    from db_models import Room
+    import uuid
+    name = data.get("name", "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="name is required")
+
+    room = Room(
+        id=str(uuid.uuid4()),
+        organization_id=current_user.organization_id,
+        name=name,
+        room_type=data.get("room_type", "room"),
+        max_dogs=data.get("max_dogs", 3),
+        adjacency_group=data.get("adjacency_group"),
+        is_active=True,
+        is_out_of_service=False,
+        sort_order=data.get("sort_order", 99),
+        notes=data.get("notes"),
+    )
+    db.add(room)
+    await db.commit()
+    await db.refresh(room)
+    return _room_dict(room)
+
+
+def _room_dict(r) -> dict:
+    return {
+        "id": r.id,
+        "name": r.name,
+        "room_type": getattr(r, "room_type", "room"),
+        "max_dogs": r.max_dogs,
+        "adjacency_group": r.adjacency_group,
+        "is_active": r.is_active,
+        "is_out_of_service": r.is_out_of_service,
+        "out_of_service_reason": r.out_of_service_reason,
+        "notes": r.notes,
+        "sort_order": r.sort_order,
+    }
