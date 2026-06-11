@@ -45,6 +45,11 @@ import DogProfilePage from "./pages/DogProfilePage";
 import useAuthStore from './store/authStore';
 
 // Protected Route Component
+const AppLayout = ({ children }) => {
+  const { user } = useAuthStore();
+  return <div className={user ? 'md:ml-52' : ''}>{children}</div>;
+};
+
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const user = useAuthStore((state) => state.user);
 
@@ -65,7 +70,7 @@ function App() {
       <Toaster position="top-right" richColors />
       <BrowserRouter>
         <NavBar />
-        <div className="md:ml-52">
+        <AppLayout>
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />
@@ -288,7 +293,7 @@ function App() {
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-        </div>
+        </AppLayout>
       </BrowserRouter>
     </div>
   );

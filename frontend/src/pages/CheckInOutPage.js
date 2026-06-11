@@ -3,17 +3,25 @@ import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import api from '../utils/api';
 import { Button } from '../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
-import {
-  ArrowLeftIcon, CheckCircleIcon, AlertCircleIcon,
-  DogIcon, ClockIcon, UserIcon,
-} from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { AlertCircleIcon, CheckCircleIcon, ClockIcon, DogIcon, PlusIcon, UploadIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { useRef } from 'react';
+
+const BELONGINGS_OPTIONS = [
+  { key: 'leash', label: '🦮 Leash' },
+  { key: 'collar', label: '🔔 Collar' },
+  { key: 'bed_blanket', label: '🛏️ Bed/Blanket' },
+  { key: 'food', label: '🍖 Food (owner-supplied)' },
+  { key: 'medication', label: '💊 Medication' },
+  { key: 'toys', label: '🎾 Toys' },
+  { key: 'crate', label: '📦 Crate' },
+];
 
 const CheckInOutPage = () => {
   const { user } = useAuthStore();
@@ -22,19 +30,19 @@ const CheckInOutPage = () => {
   const [departures, setDepartures] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [checkingIn, setCheckingIn] = useState(null);
-  const [checkingOut, setCheckingOut] = useState(null);
+  const [selectedArrival, setSelectedArrival] = useState(null);
+  const [selectedDeparture, setSelectedDeparture] = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
-      const [arrRes, depRes, roomRes] = await Promise.all([
+      const [arrivalsRes, departuresRes, roomsRes] = await Promise.all([
         api.get('/stays/arrivals/today'),
         api.get('/stays/departures/today'),
         api.get('/bookings/rooms/list'),
       ]);
-      setArrivals(arrRes.data);
-      setDepartures(depRes.data);
-      setRooms(roomRes.data);
+      setArrivals(arrivalsRes.data);
+      setDepartures(departuresRes.data);
+      setRooms(roomsRes.data);
     } catch {
       toast.error('Failed to load check-in data');
     } finally {
@@ -56,59 +64,88 @@ const CheckInOutPage = () => {
   return (
     <div className="min-h-screen bg-[#F9F7F2]">
       <header className="bg-white border-b shadow-sm sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-            <ArrowLeftIcon size={18} />
-          </Button>
+        <div className="max-w-4xl mx-auto px-4 py-3">
           <h1 className="text-lg font-serif font-bold text-primary">Check In / Out</h1>
+          <p className="text-xs text-muted-foreground">{new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-6">
-        <Tabs defaultValue="arrivals">
+        <Tabs defaultValue="checkin">
           <TabsList className="w-full mb-6">
-            <TabsTrigger value="arrivals" className="flex-1">
+            <TabsTrigger value="checkin" className="flex-1">
               Arrivals ({arrivals.length})
             </TabsTrigger>
-            <TabsTrigger value="departures" className="flex-1">
+            <TabsTrigger value="checkout" className="flex-1">
               Departures ({departures.length})
             </TabsTrigger>
           </TabsList>
 
-          {/* ARRIVALS TAB */}
-          <TabsContent value="arrivals">
+          <TabsContent value="checkin">
             {arrivals.length === 0 ? (
-              <Card><CardContent className="py-12 text-center text-muted-foreground">
-                No arrivals scheduled for today
+              <Card><CardContent className="py-12 text-center space-y-2">
+                <CheckCircleIcon size={32} className="mx-auto text-green-400" />
+                <p className="font-medium">No arrivals scheduled for today</p>
+                <p className="text-sm text-muted-foreground">All caught up!</p>
               </CardContent></Card>
             ) : (
               <div className="space-y-3">
-                {arrivals.map((arrival, idx) => (
-                  <ArrivalCard
-                    key={`${arrival.booking_id}-${arrival.dog_id}`}
-                    arrival={arrival}
-                    rooms={rooms}
-                    onCheckIn={() => setCheckingIn(arrival)}
-                  />
+                {arrivals.map(arrival => (
+                  <Card key={arrival.id}>
+                    <CardContent className="py-4 px-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <DogIcon size={18} className="text-muted-foreground" />
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">{arrival.dog_name}</p>
+                              {arrival.is_first_stay && <Badge className="text-xs bg-blue-100 text-blue-700">1st stay</Badge>}
+                              {arrival.has_alert && <AlertCircleIcon size={14} className="text-red-500" />}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {arrival.household_name} · Check-in: {new Date(arrival.check_in_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                        </div>
+                        <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => setSelectedArrival(arrival)}>
+                          Check In
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             )}
           </TabsContent>
 
-          {/* DEPARTURES TAB */}
-          <TabsContent value="departures">
+          <TabsContent value="checkout">
             {departures.length === 0 ? (
-              <Card><CardContent className="py-12 text-center text-muted-foreground">
-                No departures scheduled for today
+              <Card><CardContent className="py-12 text-center space-y-2">
+                <CheckCircleIcon size={32} className="mx-auto text-green-400" />
+                <p className="font-medium">No departures scheduled for today</p>
+                <p className="text-sm text-muted-foreground">All caught up!</p>
               </CardContent></Card>
             ) : (
               <div className="space-y-3">
                 {departures.map(dep => (
-                  <DepartureCard
-                    key={dep.id}
-                    departure={dep}
-                    onCheckOut={() => setCheckingOut(dep)}
-                  />
+                  <Card key={dep.id}>
+                    <CardContent className="py-4 px-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <DogIcon size={18} className="text-muted-foreground" />
+                          <div>
+                            <p className="font-medium">{dep.dog_name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {dep.household_name} · Check-out: {new Date(dep.check_out_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                            {dep.room_name && <p className="text-xs text-muted-foreground">Room: {dep.room_name}</p>}
+                          </div>
+                        </div>
+                        <Button size="sm" onClick={() => setSelectedDeparture(dep)}>Check Out</Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             )}
@@ -116,99 +153,24 @@ const CheckInOutPage = () => {
         </Tabs>
       </main>
 
-      {/* Check-in modal */}
-      {checkingIn && (
+      {selectedArrival && (
         <CheckInModal
-          arrival={checkingIn}
+          arrival={selectedArrival}
           rooms={rooms}
-          onClose={() => setCheckingIn(null)}
-          onSuccess={() => { setCheckingIn(null); fetchData(); toast.success('Dog checked in'); }}
+          onClose={() => setSelectedArrival(null)}
+          onSuccess={() => { setSelectedArrival(null); fetchData(); toast.success(`${selectedArrival.dog_name} checked in!`); }}
         />
       )}
-
-      {/* Check-out modal */}
-      {checkingOut && (
+      {selectedDeparture && (
         <CheckOutModal
-          departure={checkingOut}
-          onClose={() => setCheckingOut(null)}
-          onSuccess={() => { setCheckingOut(null); fetchData(); toast.success('Dog checked out'); }}
+          departure={selectedDeparture}
+          onClose={() => setSelectedDeparture(null)}
+          onSuccess={() => { setSelectedDeparture(null); fetchData(); toast.success(`${selectedDeparture.dog_name} checked out!`); }}
         />
       )}
     </div>
   );
 };
-
-const ArrivalCard = ({ arrival, rooms, onCheckIn }) => (
-  <Card className={arrival.already_checked_in ? 'opacity-60' : ''}>
-    <CardContent className="py-4">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="bg-green-100 p-2 rounded-full">
-            <DogIcon size={18} className="text-green-700" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <p className="font-semibold">{arrival.dog_name}</p>
-              {arrival.is_first_stay && (
-                <Badge variant="secondary" className="text-xs">First Stay</Badge>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              In: {new Date(arrival.check_in_date).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})} &nbsp;·&nbsp;
-              Out: {new Date(arrival.check_out_date).toLocaleDateString()}
-            </p>
-          </div>
-        </div>
-        {arrival.already_checked_in ? (
-          <Badge className="bg-green-100 text-green-700 border-green-200">Checked In</Badge>
-        ) : (
-          <Button size="sm" onClick={onCheckIn} className="bg-green-600 hover:bg-green-700 text-white">
-            Check In
-          </Button>
-        )}
-      </div>
-    </CardContent>
-  </Card>
-);
-
-const DepartureCard = ({ departure, onCheckOut }) => (
-  <Card>
-    <CardContent className="py-4">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="bg-orange-100 p-2 rounded-full">
-            <DogIcon size={18} className="text-orange-700" />
-          </div>
-          <div>
-            <p className="font-semibold">{departure.dog_name}</p>
-            <p className="text-xs text-muted-foreground">
-              Expected out: {new Date(departure.check_out_date).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}
-            </p>
-            {departure.active_alerts?.length > 0 && (
-              <div className="flex items-center gap-1 mt-1">
-                <AlertCircleIcon size={12} className="text-amber-500" />
-                <span className="text-xs text-amber-600">{departure.active_alerts.length} active alert{departure.active_alerts.length !== 1 ? 's' : ''}</span>
-              </div>
-            )}
-          </div>
-        </div>
-        <Button size="sm" onClick={onCheckOut} variant="outline">
-          Check Out
-        </Button>
-      </div>
-    </CardContent>
-  </Card>
-);
-
-const BELONGINGS_OPTIONS = [
-  { key: 'leash', label: '🦮 Leash' },
-  { key: 'collar', label: '🔔 Collar' },
-  { key: 'bed_blanket', label: '🛏️ Bed/Blanket' },
-  { key: 'food', label: '🍖 Food (owner-supplied)' },
-  { key: 'medication', label: '💊 Medication' },
-  { key: 'toys', label: '🎾 Toys' },
-  { key: 'crate', label: '📦 Crate' },
-];
 
 const CheckInModal = ({ arrival, rooms, onClose, onSuccess }) => {
   const [form, setForm] = useState({
@@ -275,21 +237,14 @@ const CheckInModal = ({ arrival, rooms, onClose, onSuccess }) => {
           <div className="flex justify-between items-start">
             <div>
               <h2 className="text-lg font-bold">Check In — {arrival.dog_name}</h2>
-              {arrival.is_first_stay && (
-                <Badge className="mt-1 bg-blue-100 text-blue-700">⭐ First Stay — allow extra time</Badge>
-              )}
+              {arrival.is_first_stay && <Badge className="mt-1 bg-blue-100 text-blue-700">⭐ First Stay</Badge>}
             </div>
-            <button onClick={onClose} className="text-muted-foreground text-xl">×</button>
+            <button onClick={onClose} className="text-muted-foreground text-xl leading-none">×</button>
           </div>
 
-          {/* M&G and vaccination status */}
-          {dogInfo && (
-            <div className="space-y-1">
-              {dogInfo.meet_and_greet_status !== 'completed' && (
-                <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
-                  <AlertCircleIcon size={12} /> Meet & greet not completed — owner override required
-                </div>
-              )}
+          {dogInfo?.meet_and_greet_status !== 'completed' && (
+            <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+              <AlertCircleIcon size={12} /> Meet & greet not completed
             </div>
           )}
 
@@ -299,33 +254,29 @@ const CheckInModal = ({ arrival, rooms, onClose, onSuccess }) => {
               {rooms_only.map(room => (
                 <button key={room.id} type="button"
                   onClick={() => setForm(f => ({...f, room_id: room.id}))}
+                  disabled={room.is_out_of_service}
                   className={`p-2 rounded-lg border text-xs font-medium transition-colors ${
                     form.room_id === room.id ? 'bg-primary text-primary-foreground border-primary' :
                     room.is_out_of_service ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
                     'border-border hover:bg-muted'
-                  }`}
-                  disabled={room.is_out_of_service}
-                >{room.name}</button>
+                  }`}>{room.name}</button>
               ))}
             </div>
-            {crates.length > 0 && (
-              <div>
-                <p className="text-xs text-muted-foreground mt-3 mb-1">Crates</p>
-                <div className="grid grid-cols-4 gap-2">
-                  {crates.map(crate => (
-                    <button key={crate.id} type="button"
-                      onClick={() => setForm(f => ({...f, room_id: crate.id}))}
-                      className={`p-2 rounded-lg border text-xs font-medium transition-colors ${
-                        form.room_id === crate.id ? 'bg-primary text-primary-foreground border-primary' :
-                        crate.is_out_of_service ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
-                        'border-border hover:bg-muted'
-                      }`}
-                      disabled={crate.is_out_of_service}
-                    >{crate.name}</button>
-                  ))}
-                </div>
+            {crates.length > 0 && <>
+              <p className="text-xs text-muted-foreground mt-3 mb-1">Crates</p>
+              <div className="grid grid-cols-4 gap-2">
+                {crates.map(crate => (
+                  <button key={crate.id} type="button"
+                    onClick={() => setForm(f => ({...f, room_id: crate.id}))}
+                    disabled={crate.is_out_of_service}
+                    className={`p-2 rounded-lg border text-xs font-medium transition-colors ${
+                      form.room_id === crate.id ? 'bg-primary text-primary-foreground border-primary' :
+                      crate.is_out_of_service ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
+                      'border-border hover:bg-muted'
+                    }`}>{crate.name}</button>
+                ))}
               </div>
-            )}
+            </>}
           </div>
 
           <div>
@@ -346,23 +297,17 @@ const CheckInModal = ({ arrival, rooms, onClose, onSuccess }) => {
 
           <div>
             <Label>Intake Condition Note</Label>
-            <Textarea placeholder="Any observations at drop-off..."
-              value={form.intake_condition_note}
-              onChange={e => setForm(f => ({...f, intake_condition_note: e.target.value}))}
-              className="mt-1" rows={2} />
+            <Textarea placeholder="Any observations at drop-off..." value={form.intake_condition_note}
+              onChange={e => setForm(f => ({...f, intake_condition_note: e.target.value}))} className="mt-1" rows={2} />
           </div>
 
           <div>
-            <Label>Feeding Override (if owner gave instructions)</Label>
-            <Input placeholder="e.g. Only 1 cup per meal this stay"
-              value={form.feeding_override_detail}
-              onChange={e => setForm(f => ({...f, feeding_override_detail: e.target.value}))}
-              className="mt-1" />
+            <Label>Feeding Override</Label>
+            <Input placeholder="e.g. Only 1 cup per meal this stay" value={form.feeding_override_detail}
+              onChange={e => setForm(f => ({...f, feeding_override_detail: e.target.value}))} className="mt-1" />
             {form.feeding_override_detail && (
-              <Input placeholder="Reason (e.g. recent vet visit)"
-                value={form.feeding_override_reason}
-                onChange={e => setForm(f => ({...f, feeding_override_reason: e.target.value}))}
-                className="mt-2" />
+              <Input placeholder="Reason..." value={form.feeding_override_reason}
+                onChange={e => setForm(f => ({...f, feeding_override_reason: e.target.value}))} className="mt-2" />
             )}
           </div>
 
@@ -385,7 +330,6 @@ const CheckOutModal = ({ departure, onClose, onSuccess }) => {
     is_authorized_pickup: false,
     id_verified: false,
     id_type: '',
-    checkout_summary: '',
     appetite_rating: '',
     dogs_played_well_with: '',
     medication_compliance: '',
@@ -412,7 +356,7 @@ const CheckOutModal = ({ departure, onClose, onSuccess }) => {
         is_authorized_pickup: form.is_authorized_pickup,
         id_verified: form.id_verified,
         id_type: form.id_type,
-        checkout_summary: summary || form.overall_notes,
+        checkout_summary: summary || undefined,
       });
       onSuccess();
     } catch (err) {
@@ -428,41 +372,37 @@ const CheckOutModal = ({ departure, onClose, onSuccess }) => {
         <div className="p-6 space-y-4">
           <div className="flex justify-between items-start">
             <h2 className="text-lg font-bold">Check Out — {departure.dog_name}</h2>
-            <button onClick={onClose} className="text-muted-foreground text-xl">×</button>
+            <button onClick={onClose} className="text-muted-foreground text-xl leading-none">×</button>
           </div>
 
-          <div className="border-b pb-4 space-y-3">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pickup Info</p>
+          <div className="space-y-3 border-b pb-4">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pickup</p>
             <div>
-              <Label>Pickup Person Name *</Label>
+              <Label>Pickup Person *</Label>
               <Input placeholder="Full name" value={form.pickup_person_name}
                 onChange={e => setForm(f => ({...f, pickup_person_name: e.target.value}))} className="mt-1" />
             </div>
             <div>
-              <Label>Relationship to Household</Label>
+              <Label>Relationship</Label>
               <Input placeholder="e.g. Owner, spouse, dog walker" value={form.relationship_to_household}
                 onChange={e => setForm(f => ({...f, relationship_to_household: e.target.value}))} className="mt-1" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="flex items-center gap-2 cursor-pointer text-sm">
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
                 <input type="checkbox" checked={form.is_authorized_pickup}
                   onChange={e => setForm(f => ({...f, is_authorized_pickup: e.target.checked}))} className="w-4 h-4" />
                 Authorized pickup
               </label>
-              <label className="flex items-center gap-2 cursor-pointer text-sm">
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
                 <input type="checkbox" checked={form.id_verified}
                   onChange={e => setForm(f => ({...f, id_verified: e.target.checked}))} className="w-4 h-4" />
                 ID verified
               </label>
             </div>
-            {form.id_verified && (
-              <Input placeholder="ID type (e.g. Driver's license)" value={form.id_type}
-                onChange={e => setForm(f => ({...f, id_type: e.target.value}))} />
-            )}
             {!form.is_authorized_pickup && form.pickup_person_name && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center gap-2">
-                <AlertCircleIcon size={16} className="text-amber-600" />
-                <span className="text-sm text-amber-800">Not an authorized pickup — owner acknowledgment required</span>
+              <div className="bg-amber-50 border border-amber-200 rounded p-2 flex items-center gap-2">
+                <AlertCircleIcon size={14} className="text-amber-600" />
+                <span className="text-xs text-amber-800">Not an authorized pickup — owner acknowledgment required</span>
               </div>
             )}
           </div>
@@ -474,39 +414,37 @@ const CheckOutModal = ({ departure, onClose, onSuccess }) => {
               <select className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
                 value={form.appetite_rating} onChange={e => setForm(f => ({...f, appetite_rating: e.target.value}))}>
                 <option value="">Not recorded</option>
-                <option value="Excellent - ate everything">Excellent</option>
-                <option value="Good - ate most meals">Good</option>
-                <option value="Fair - ate some meals">Fair</option>
-                <option value="Poor - barely ate">Poor</option>
+                <option value="Excellent">Excellent — ate everything</option>
+                <option value="Good">Good — ate most meals</option>
+                <option value="Fair">Fair — ate some meals</option>
+                <option value="Poor">Poor — barely ate</option>
                 <option value="Refused food">Refused food</option>
               </select>
             </div>
             <div>
-              <Label>Dogs Played Well With</Label>
-              <Input placeholder="Names of compatible dogs, or 'all'" value={form.dogs_played_well_with}
+              <Label>Played Well With</Label>
+              <Input placeholder="Dog names or 'all'" value={form.dogs_played_well_with}
                 onChange={e => setForm(f => ({...f, dogs_played_well_with: e.target.value}))} className="mt-1" />
             </div>
             <div>
               <Label>Medication Compliance</Label>
               <select className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
                 value={form.medication_compliance} onChange={e => setForm(f => ({...f, medication_compliance: e.target.value}))}>
-                <option value="">N/A - no medications</option>
-                <option value="All medications given as scheduled">All given as scheduled</option>
-                <option value="Most medications given, some refusals">Some refusals</option>
-                <option value="Difficulty administering medications">Difficulty administering</option>
+                <option value="">N/A</option>
+                <option value="All given as scheduled">All given as scheduled</option>
+                <option value="Some refusals">Some refusals</option>
+                <option value="Difficulty administering">Difficulty administering</option>
               </select>
             </div>
             <div>
               <Label>Concerns or Incidents</Label>
-              <Textarea placeholder="Any health concerns, behavioral issues, or incidents during the stay..."
-                value={form.concerns} onChange={e => setForm(f => ({...f, concerns: e.target.value}))}
-                className="mt-1" rows={2} />
+              <Textarea placeholder="Any health concerns, behavioral issues, or incidents..."
+                value={form.concerns} onChange={e => setForm(f => ({...f, concerns: e.target.value}))} className="mt-1" rows={2} />
             </div>
             <div>
-              <Label>Overall Notes for Owner</Label>
-              <Textarea placeholder="General summary for the customer..."
-                value={form.overall_notes} onChange={e => setForm(f => ({...f, overall_notes: e.target.value}))}
-                className="mt-1" rows={2} />
+              <Label>Notes for Owner</Label>
+              <Textarea placeholder="General summary..." value={form.overall_notes}
+                onChange={e => setForm(f => ({...f, overall_notes: e.target.value}))} className="mt-1" rows={2} />
             </div>
           </div>
 

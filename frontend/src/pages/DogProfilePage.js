@@ -429,9 +429,12 @@ const NoteCard = ({ note, onDelete, canDelete }) => (
           {note.image_urls?.filter(Boolean).length > 0 && (
             <div className="flex gap-2 mt-2 flex-wrap">
               {note.image_urls.filter(Boolean).map((url, i) => (
-                <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                  <img src={url} alt="Note attachment" className="h-16 w-16 object-cover rounded border" />
-                </a>
+                <button key={i} type="button"
+                  onClick={e => { e.stopPropagation(); window.open(url, '_blank', 'noopener,noreferrer'); }}>
+                  <img src={url} alt="Note attachment"
+                    className="h-16 w-16 object-cover rounded border hover:opacity-80 transition-opacity"
+                    onError={e => { e.target.style.display='none'; }} />
+                </button>
               ))}
             </div>
           )}
