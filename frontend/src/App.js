@@ -36,6 +36,8 @@ import StaffBookingsPage from './pages/StaffBookingsPage';
 // Components
 import NavBar from './components/NavBar';
 import BookingProfilePage from './pages/BookingProfilePage';
+import AdminStaffPage from './pages/AdminStaffPage';
+import StaffProfilePage from './pages/StaffProfilePage';
 import MeetAndGreetPage from './pages/MeetAndGreetPage';
 // Pages - Customer
 import CustomerDashboard from "./pages/CustomerDashboard";
@@ -260,6 +262,22 @@ function App() {
             }
           />
 
+          <Route
+            path="/admin/staff"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminStaffPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/staff/:staffId"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'staff']}>
+                <StaffProfilePage />
+              </ProtectedRoute>
+            }
+          />
           {/* Fallback */}
           <Route path="/minio/*" element={null} />
           <Route
