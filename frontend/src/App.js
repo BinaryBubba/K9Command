@@ -36,7 +36,6 @@ import StaffBookingsPage from './pages/StaffBookingsPage';
 // Components
 import NavBar from './components/NavBar';
 import BookingProfilePage from './pages/BookingProfilePage';
-import AdminStaffPage from './pages/AdminStaffPage';
 import StaffProfilePage from './pages/StaffProfilePage';
 import MeetAndGreetPage from './pages/MeetAndGreetPage';
 // Pages - Customer
