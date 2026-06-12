@@ -176,7 +176,8 @@ const IncidentList = ({ incidents, onAcknowledge, onResolve, isAdmin }) => {
   return (
     <div className="space-y-3">
       {incidents.map(inc => (
-        <Card key={inc.id} className={inc.severity === 'critical' ? 'border-red-300' : ''}>
+        <Card key={inc.id} className={`cursor-pointer hover:shadow-md transition-shadow ${inc.severity === 'critical' ? 'border-red-300' : ''}`}
+          onClick={() => navigate(`/admin/incidents/${inc.id}`)}>
           <CardContent className="py-4 px-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1">

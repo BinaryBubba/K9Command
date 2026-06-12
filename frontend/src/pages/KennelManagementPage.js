@@ -11,19 +11,19 @@ import { toast } from 'sonner';
 const KennelManagementPage = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
-  const [occupancy, setOccupancy] = useState([]);
-  const [allRooms, setAllRooms] = useState([]);
+  const [rooms, setRooms] = useState([]);
+  const [stays, setStays] = useState([]);
   const [loading, setLoading] = useState(true);
   const [transferStay, setTransferStay] = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
-      const [res, roomsRes] = await Promise.all([
-        api.get('/dashboard/kennel-status'),
-        api.get('/facility/rooms').catch(() => ({ data: [] })),
+      const [roomsRes, staysRes] = await Promise.all([
+        api.get('/facility/rooms'),
+        api.get('/stays/on-site'),
       ]);
-      setOccupancy(res.data || []);
-      setAllRooms(roomsRes.data || []);
+      setRooms(roomsRes.data || []);
+      setStays(staysRes.data || []);
     } catch {
       toast.error('Failed to load kennel status');
     } finally {
@@ -42,9 +42,17 @@ const KennelManagementPage = () => {
     </div>
   );
 
-  const occupied = occupancy.filter(r => r.stays?.length > 0);
-  const empty = occupancy.filter(r => !r.stays?.length);
-  const totalDogs = occupancy.reduce((sum, r) => sum + (r.stays?.length || 0), 0);
+  // Group stays by room_id
+  const staysByRoom = stays.reduce((acc, stay) => {
+    const key = stay.room_id || 'unassigned';
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(stay);
+    return acc;
+  }, {});
+
+  const totalDogs = stays.length;
+  const occupiedRooms = rooms.filter(r => staysByRoom[r.id]?.length > 0);
+  const emptyRooms = rooms.filter(r => !staysByRoom[r.id]?.length);
 
   return (
     <div className="min-h-screen bg-[#F9F7F2]">
@@ -52,7 +60,9 @@ const KennelManagementPage = () => {
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <div>
             <h1 className="text-lg font-serif font-bold text-primary">Kennels</h1>
-            <p className="text-xs text-muted-foreground">{totalDogs} dogs on site · {empty.length} spaces available</p>
+            <p className="text-xs text-muted-foreground">
+              {totalDogs} dog{totalDogs !== 1 ? 's' : ''} on site · {emptyRooms.length} space{emptyRooms.length !== 1 ? 's' : ''} available
+            </p>
           </div>
           <Button variant="ghost" size="sm" onClick={fetchData}>
             <RefreshCwIcon size={16} />
@@ -61,49 +71,70 @@ const KennelManagementPage = () => {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-3">
-        {occupancy.map(room => (
-          <Card key={room.room_id} className={room.is_out_of_service ? 'opacity-50' : ''}>
+        {/* Occupied rooms first */}
+        {rooms.map(room => {
+          const roomStays = staysByRoom[room.id] || [];
+          return (
+            <Card key={room.id} className={room.is_out_of_service ? 'opacity-50' : ''}>
+              <CardHeader className="pb-1 pt-3 px-4">
+                <CardTitle className="text-sm flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    {room.name}
+                    {room.room_type && room.room_type !== 'room' && (
+                      <Badge variant="secondary" className="text-xs">{room.room_type.replace('crate_', 'Crate ')}</Badge>
+                    )}
+                    {room.is_out_of_service && (
+                      <Badge variant="outline" className="text-xs text-red-500 border-red-200">OOS</Badge>
+                    )}
+                  </span>
+                  <span className={`text-xs font-normal ${roomStays.length >= room.max_dogs ? 'text-red-500' : 'text-muted-foreground'}`}>
+                    {roomStays.length}/{room.max_dogs}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-3">
+                {roomStays.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">Empty</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {roomStays.map(stay => (
+                      <DogCard
+                        key={stay.id}
+                        stay={{...stay, room_name: room.name}}
+                        onNavigate={() => navigate(`/admin/dogs/${stay.dog_id}`)}
+                        onTransfer={() => setTransferStay({...stay, room_name: room.name})}
+                      />
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+
+        {/* Unassigned stays */}
+        {staysByRoom['unassigned']?.length > 0 && (
+          <Card className="border-amber-200">
             <CardHeader className="pb-1 pt-3 px-4">
-              <CardTitle className="text-sm flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  {room.room_name}
-                  {room.is_out_of_service && <Badge variant="outline" className="text-xs text-red-500 border-red-200">OOS</Badge>}
-                </span>
-                <span className="text-xs font-normal text-muted-foreground">
-                  {room.stays?.length || 0}/{room.max_dogs} dogs
-                </span>
-              </CardTitle>
+              <CardTitle className="text-sm text-amber-700">⚠️ No Room Assigned</CardTitle>
             </CardHeader>
-            <CardContent className="px-4 pb-3">
-              {!room.stays?.length ? (
-                <p className="text-xs text-muted-foreground italic">Empty</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {room.stays.map(stay => (
-                    <DogCard
-                      key={stay.dog_id}
-                      stay={{...stay, room_name: room.room_name}}
-                      onNavigate={() => navigate(`/admin/dogs/${stay.dog_id}`)}
-                      onTransfer={() => setTransferStay({...stay, room_name: room.room_name})}
-                    />
-                  ))}
-                </div>
-              )}
+            <CardContent className="px-4 pb-3 space-y-1.5">
+              {staysByRoom['unassigned'].map(stay => (
+                <DogCard key={stay.id} stay={stay}
+                  onNavigate={() => navigate(`/admin/dogs/${stay.dog_id}`)}
+                  onTransfer={() => setTransferStay(stay)} />
+              ))}
             </CardContent>
           </Card>
-        ))}
+        )}
       </main>
 
       {transferStay && (
         <TransferModal
           stay={transferStay}
-          rooms={allRooms}
+          rooms={rooms}
           onClose={() => setTransferStay(null)}
-          onSuccess={() => {
-            setTransferStay(null);
-            fetchData();
-            toast.success('Dog moved successfully');
-          }}
+          onSuccess={() => { setTransferStay(null); fetchData(); toast.success('Dog moved successfully'); }}
         />
       )}
     </div>
@@ -112,23 +143,16 @@ const KennelManagementPage = () => {
 
 const DogCard = ({ stay, onNavigate, onTransfer }) => (
   <div className={`flex items-center justify-between p-2 rounded-lg border ${
-    stay.has_warning ? 'bg-red-50 border-red-200' : 'bg-muted/50 border-border'
+    stay.has_medical_alert || stay.medical_alert ? 'bg-red-50 border-red-200' : 'bg-muted/50 border-border'
   }`}>
     <div className="flex items-center gap-2 flex-1 cursor-pointer hover:opacity-80" onClick={onNavigate}>
-      <DogIcon size={14} className={stay.has_warning ? 'text-red-600' : 'text-muted-foreground'} />
+      <DogIcon size={14} className="text-muted-foreground" />
       <div>
         <p className="text-sm font-medium">{stay.dog_name}</p>
-        {stay.active_alerts?.length > 0 && (
-          <p className="text-xs text-amber-600">{stay.active_alerts[0]?.alert_message}</p>
-        )}
+        {stay.dog_breed && <p className="text-xs text-muted-foreground">{stay.dog_breed}</p>}
       </div>
     </div>
     <div className="flex items-center gap-1.5">
-      {stay.alert_count > 0 && (
-        <Badge variant="outline" className="text-xs px-1">
-          <AlertCircleIcon size={10} className="mr-1" />{stay.alert_count}
-        </Badge>
-      )}
       {stay.is_first_stay && <Badge variant="secondary" className="text-xs px-1">1st</Badge>}
       <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-primary"
         title="Move to different room" onClick={e => { e.stopPropagation(); onTransfer(); }}>
@@ -171,10 +195,10 @@ const TransferModal = ({ stay, rooms, onClose, onSuccess }) => {
             <div className="grid grid-cols-4 gap-2">
               {rooms_only.map(r => (
                 <button key={r.id} type="button" onClick={() => setRoomId(r.id)}
-                  disabled={r.is_out_of_service}
+                  disabled={r.is_out_of_service || r.id === stay.room_id}
                   className={`p-2 rounded-lg border text-xs font-medium transition-colors ${
                     roomId === r.id ? 'bg-primary text-primary-foreground border-primary' :
-                    r.is_out_of_service ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
+                    r.is_out_of_service || r.id === stay.room_id ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
                     'border-border hover:bg-muted'
                   }`}>{r.name}</button>
               ))}
@@ -184,10 +208,10 @@ const TransferModal = ({ stay, rooms, onClose, onSuccess }) => {
               <div className="grid grid-cols-4 gap-2">
                 {crates.map(r => (
                   <button key={r.id} type="button" onClick={() => setRoomId(r.id)}
-                    disabled={r.is_out_of_service}
+                    disabled={r.is_out_of_service || r.id === stay.room_id}
                     className={`p-2 rounded-lg border text-xs font-medium transition-colors ${
                       roomId === r.id ? 'bg-primary text-primary-foreground border-primary' :
-                      r.is_out_of_service ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
+                      r.is_out_of_service || r.id === stay.room_id ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
                       'border-border hover:bg-muted'
                     }`}>{r.name}</button>
                 ))}

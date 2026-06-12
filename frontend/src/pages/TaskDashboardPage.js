@@ -34,6 +34,7 @@ const TaskDashboardPage = () => {
   const [myTasks, setMyTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [editTask, setEditTask] = useState(null);
   const [staff, setStaff] = useState([]);
   const [completed, setCompleted] = useState([]);
 
@@ -104,10 +105,10 @@ const TaskDashboardPage = () => {
           </TabsList>
 
           <TabsContent value="mine">
-            <TaskList tasks={myTasks} onComplete={completeTask} onRefresh={fetchTasks} />
+            <TaskList tasks={myTasks} onComplete={completeTask} onRefresh={fetchTasks} onEdit={setEditTask} />
           </TabsContent>
           <TabsContent value="all">
-            <TaskList tasks={tasks} onComplete={completeTask} onRefresh={fetchTasks} showAssignee />
+            <TaskList tasks={tasks} onComplete={completeTask} onRefresh={fetchTasks} onEdit={setEditTask} showAssignee />
           </TabsContent>
           <TabsContent value="completed">
             <CompletedTaskList tasks={completed} />
@@ -115,6 +116,14 @@ const TaskDashboardPage = () => {
         </Tabs>
       </main>
 
+      {editTask && (
+        <EditTaskModal
+          task={editTask}
+          staff={staff}
+          onClose={() => setEditTask(null)}
+          onSuccess={() => { setEditTask(null); fetchTasks(); }}
+        />
+      )}
       {showCreate && (
         <CreateTaskModal
           staff={staff}
@@ -169,12 +178,18 @@ const TaskList = ({ tasks, onComplete, onRefresh, showAssignee }) => {
                   </p>
                 )}
               </div>
-              {task.status !== 'completed' && task.status !== 'cancelled' && (
-                <Button size="sm" variant="outline" className="shrink-0 text-green-600 border-green-200 hover:bg-green-50"
-                  onClick={() => onComplete(task.id)}>
-                  <CheckCircleIcon size={14} className="mr-1" /> Done
-                </Button>
-              )}
+              <div className="flex gap-1 shrink-0">
+                {task.status !== 'completed' && task.status !== 'cancelled' && onEdit && (
+                  <Button size="sm" variant="ghost" className="text-muted-foreground h-7 px-2"
+                    onClick={() => onEdit(task)}>✏️</Button>
+                )}
+                {task.status !== 'completed' && task.status !== 'cancelled' && (
+                  <Button size="sm" variant="outline" className="text-green-600 border-green-200 hover:bg-green-50"
+                    onClick={() => onComplete(task.id)}>
+                    <CheckCircleIcon size={14} className="mr-1" /> Done
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -309,6 +324,98 @@ const CompletedTaskList = ({ tasks }) => {
           </CardContent>
         </Card>
       ))}
+    </div>
+  );
+};
+
+const EditTaskModal = ({ task, staff, onClose, onSuccess }) => {
+  const [form, setForm] = useState({
+    title: task.title || '',
+    description: task.description || '',
+    priority: task.priority?.toLowerCase() || 'medium',
+    assigned_to: task.assigned_to || '',
+    due_date: task.due_date ? new Date(task.due_date).toISOString().slice(0,16) : '',
+    recurrence: task.recurrence || '',
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSave = async () => {
+    if (!form.title.trim()) { toast.error('Title required'); return; }
+    setSubmitting(true);
+    try {
+      await api.patch(`/tasks/${task.id}`, {
+        ...form,
+        priority: form.priority.toUpperCase(),
+        assigned_to: form.assigned_to || undefined,
+        due_date: form.due_date ? new Date(form.due_date).toISOString() : undefined,
+      });
+      toast.success('Task updated');
+      onSuccess();
+    } catch (err) { toast.error(err.response?.data?.detail || 'Failed'); }
+    finally { setSubmitting(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-4">
+      <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="p-6 space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-bold">Edit Task</h2>
+            <button onClick={onClose} className="text-muted-foreground text-xl">×</button>
+          </div>
+          <div>
+            <Label>Title *</Label>
+            <Input value={form.title} onChange={e => setForm(f=>({...f,title:e.target.value}))} className="mt-1" />
+          </div>
+          <div>
+            <Label>Description</Label>
+            <Textarea value={form.description} onChange={e => setForm(f=>({...f,description:e.target.value}))} className="mt-1" rows={2} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Priority</Label>
+              <select className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
+                value={form.priority} onChange={e => setForm(f=>({...f,priority:e.target.value}))}>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+            <div>
+              <Label>Due Date</Label>
+              <Input type="datetime-local" value={form.due_date}
+                onChange={e => setForm(f=>({...f,due_date:e.target.value}))} className="mt-1" />
+            </div>
+          </div>
+          <div>
+            <Label>Assign To</Label>
+            <select className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
+              value={form.assigned_to} onChange={e => setForm(f=>({...f,assigned_to:e.target.value}))}>
+              <option value="">Unassigned</option>
+              {staff.map(s => <option key={s.id} value={s.id}>{s.full_name}</option>)}
+            </select>
+          </div>
+          <div>
+            <Label>Recurrence</Label>
+            <select className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
+              value={form.recurrence} onChange={e => setForm(f=>({...f,recurrence:e.target.value}))}>
+              <option value="">One-time</option>
+              <option value="daily">Daily</option>
+              <option value="weekdays">Weekdays only</option>
+              <option value="weekly">Weekly</option>
+              <option value="biweekly">Every 2 weeks</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+            <Button className="flex-1" onClick={handleSave} disabled={submitting}>
+              {submitting ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

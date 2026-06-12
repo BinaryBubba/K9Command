@@ -42,7 +42,7 @@ const StaffProfilePage = () => {
     try {
       const [userRes, tasksRes, openRes, activityRes] = await Promise.all([
         api.get(`/users/${staffId}`),
-        api.get('/tasks', { params: { assigned_to: staffId, status: 'all' } }).catch(() => ({ data: [] })),
+        api.get('/tasks', { params: { assigned_to: staffId } }).catch(() => ({ data: [] })),
         api.get('/tasks', { params: { limit: 50 } }).catch(() => ({ data: [] })),
         api.get(`/users/${staffId}/activity`).catch(() => ({ data: [] })),
       ]);
@@ -65,7 +65,7 @@ const StaffProfilePage = () => {
       const res = await api.post(`/users/${staffId}/reset-password`);
       setTempPassword(res.data.temp_password);
       setShowResetPw(true);
-    } catch (err) { toast.error(err.response?.data?.detail || 'Failed'); }
+    } catch (err) { toast.error(err.response?.data?.detail || err.message || 'Failed to save'); console.error('Save error:', err); }
   };
 
   const handleToggleActive = async () => {
@@ -304,7 +304,7 @@ const EditForm = ({ staff, isAdmin, onSave, onCancel }) => {
       await api.patch(`/users/${staff.id}`, payload);
       toast.success('Profile updated');
       onSave();
-    } catch (err) { toast.error(err.response?.data?.detail || 'Failed'); }
+    } catch (err) { toast.error(err.response?.data?.detail || err.message || 'Failed to save'); console.error('Save error:', err); }
     finally { setSubmitting(false); }
   };
 
@@ -432,7 +432,7 @@ const CreateTaskModal = ({ assignedTo, assignedName, onClose, onSuccess }) => {
     try {
       await api.post('/tasks', { ...form, priority: form.priority.toUpperCase(), assigned_to: assignedTo, due_date: form.due_date ? new Date(form.due_date).toISOString() : undefined });
       onSuccess();
-    } catch (err) { toast.error(err.response?.data?.detail || 'Failed'); }
+    } catch (err) { toast.error(err.response?.data?.detail || err.message || 'Failed to save'); console.error('Save error:', err); }
     finally { setSubmitting(false); }
   };
 
