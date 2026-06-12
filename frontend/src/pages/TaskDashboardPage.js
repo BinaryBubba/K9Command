@@ -35,17 +35,20 @@ const TaskDashboardPage = () => {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [staff, setStaff] = useState([]);
+  const [completed, setCompleted] = useState([]);
 
   const fetchTasks = useCallback(async () => {
     try {
-      const [allRes, myRes, staffRes] = await Promise.all([
+      const [allRes, myRes, staffRes, completedRes] = await Promise.all([
         api.get('/tasks'),
         api.get('/tasks/my'),
         api.get('/users', { params: { limit: 50 } }).catch(() => ({ data: [] })),
+        api.get('/tasks/completed', { params: { limit: 50 } }).catch(() => ({ data: [] })),
       ]);
       setTasks(allRes.data);
       setMyTasks(myRes.data);
       setStaff(staffRes.data);
+      setCompleted(completedRes.data);
     } catch {
       toast.error('Failed to load tasks');
     } finally {
@@ -97,6 +100,7 @@ const TaskDashboardPage = () => {
             {user?.role === 'admin' && (
               <TabsTrigger value="all" className="flex-1">All Tasks ({tasks.length})</TabsTrigger>
             )}
+            <TabsTrigger value="completed" className="flex-1">Completed</TabsTrigger>
           </TabsList>
 
           <TabsContent value="mine">
@@ -104,6 +108,9 @@ const TaskDashboardPage = () => {
           </TabsContent>
           <TabsContent value="all">
             <TaskList tasks={tasks} onComplete={completeTask} onRefresh={fetchTasks} showAssignee />
+          </TabsContent>
+          <TabsContent value="completed">
+            <CompletedTaskList tasks={completed} />
           </TabsContent>
         </Tabs>
       </main>
@@ -252,6 +259,44 @@ const CreateTaskModal = ({ staff, onClose, onSuccess }) => {
           </div>
         </div>
       </div>
+    </div>
+  );
+};
+
+const CompletedTaskList = ({ tasks }) => {
+  if (tasks.length === 0) return (
+    <Card><CardContent className="py-12 text-center text-muted-foreground">No completed tasks</CardContent></Card>
+  );
+  return (
+    <div className="space-y-2">
+      {tasks.map(task => (
+        <Card key={task.id} className="opacity-80">
+          <CardContent className="py-3 px-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <CheckCircleIcon size={14} className="text-green-500" />
+                  <p className="font-medium text-sm">{task.title}</p>
+                  <Badge className={`text-xs ${PRIORITY_COLORS[task.priority?.toLowerCase()] || PRIORITY_COLORS.medium}`}>
+                    {task.priority?.toLowerCase()}
+                  </Badge>
+                </div>
+                {task.description && <p className="text-xs text-muted-foreground mt-1">{task.description}</p>}
+                <div className="flex gap-3 mt-1">
+                  {task.completed_at && (
+                    <span className="text-xs text-green-600">
+                      ✓ Completed {new Date(task.completed_at).toLocaleString()}
+                    </span>
+                  )}
+                  {task.completed_by_name && (
+                    <span className="text-xs text-muted-foreground">by {task.completed_by_name}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 };

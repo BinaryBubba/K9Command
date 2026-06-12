@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import api from '../utils/api';
 import { Button } from '../components/ui/button';
@@ -29,10 +29,13 @@ const MAG_STATUS_COLORS = {
 const MeetAndGreetPage = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const preselectedHouseholdId = params.get('household_id');
   const [dogs, setDogs] = useState([]);
   const [mags, setMags] = useState({});
   const [loading, setLoading] = useState(true);
-  const [showSchedule, setShowSchedule] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(!!new URLSearchParams(window.location.search).get('household_id'));
   const [selectedDog, setSelectedDog] = useState(null);
 
   const fetchData = useCallback(async () => {

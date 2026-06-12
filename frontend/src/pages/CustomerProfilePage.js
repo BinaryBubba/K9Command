@@ -78,10 +78,16 @@ const CustomerProfilePage = () => {
             </Button>
             <h1 className="text-lg font-serif font-bold text-primary">{household.display_name}</h1>
           </div>
-          <Button size="sm" variant="outline"
-            onClick={() => navigate(`/admin/dogs/add?household_id=${householdId}`)}>
-            <PlusIcon size={14} className="mr-1" /> Add Dog
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline"
+              onClick={() => navigate(`/admin/meet-and-greet?household_id=${householdId}`)}>
+              🐾 Schedule M&G
+            </Button>
+            <Button size="sm" variant="outline"
+              onClick={() => navigate(`/admin/dogs/add?household_id=${householdId}`)}>
+              <PlusIcon size={14} className="mr-1" /> Add Dog
+            </Button>
+          </div>
         </div>
       </header>
 

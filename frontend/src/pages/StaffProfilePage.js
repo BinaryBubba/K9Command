@@ -215,7 +215,13 @@ const ProfileView = ({ staff, isAdmin, onToggleActive }) => (
     <CardContent className="py-4 px-4 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="bg-primary/10 p-3 rounded-full"><UserIcon size={20} className="text-primary" /></div>
+          <div className="shrink-0">
+            {staff.avatar_url ? (
+              <img src={staff.avatar_url} alt={staff.full_name} className="w-14 h-14 rounded-full object-cover border-2 border-primary/20" />
+            ) : (
+              <div className="bg-primary/10 p-3 rounded-full"><UserIcon size={20} className="text-primary" /></div>
+            )}
+          </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <Badge className={`text-xs ${ROLE_COLORS[staff.role] || ROLE_COLORS.staff}`}>{staff.role}</Badge>
@@ -239,6 +245,8 @@ const ProfileView = ({ staff, isAdmin, onToggleActive }) => (
       <div className="grid grid-cols-2 gap-3 pt-2 border-t">
         <InfoRow label="Phone" value={staff.phone} />
         <InfoRow label="Email" value={staff.email} />
+        <InfoRow label="Address" value={staff.address} />
+        <InfoRow label="Birthday" value={staff.birthday ? new Date(staff.birthday).toLocaleDateString() : null} />
         <InfoRow label="Emergency Contact" value={staff.emergency_contact_name} />
         <InfoRow label="Emergency Phone" value={staff.emergency_contact_phone} />
       </div>
@@ -255,13 +263,36 @@ const ProfileView = ({ staff, isAdmin, onToggleActive }) => (
 const EditForm = ({ staff, isAdmin, onSave, onCancel }) => {
   const [form, setForm] = useState({
     full_name: staff.full_name || '',
+    first_name: staff.first_name || '',
+    last_name: staff.last_name || '',
     phone: staff.phone || '',
+    address: staff.address || '',
+    birthday: staff.birthday || '',
     emergency_contact_name: staff.emergency_contact_name || '',
     emergency_contact_phone: staff.emergency_contact_phone || '',
     role: staff.role || 'staff',
     hire_date: staff.hire_date || '',
     notes: staff.notes || '',
+    avatar_key: staff.avatar_key || '',
   });
+  const [avatarPreview, setAvatarPreview] = useState(staff.avatar_url || '');
+  const [uploading, setUploading] = useState(false);
+  const fileRef = React.useRef();
+
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setAvatarPreview(URL.createObjectURL(file));
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await api.post('/uploads/avatar', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setForm(f => ({...f, avatar_key: res.data.key}));
+      toast.success('Photo uploaded');
+    } catch { toast.error('Upload failed'); setAvatarPreview(staff.avatar_url || ''); }
+    finally { setUploading(false); }
+  };
   const [submitting, setSubmitting] = useState(false);
 
   const handleSave = async () => {
@@ -277,7 +308,32 @@ const EditForm = ({ staff, isAdmin, onSave, onCancel }) => {
   return (
     <Card className="border-primary/30">
       <CardContent className="py-4 px-4 space-y-3">
+        <div className="flex items-center gap-4 mb-2">
+          <div className="relative">
+            {avatarPreview ? (
+              <img src={avatarPreview} alt="Avatar" className="w-16 h-16 rounded-full object-cover border-2 border-primary/20" />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center border-2 border-dashed border-muted-foreground/30">
+                <UserIcon size={24} className="text-muted-foreground" />
+              </div>
+            )}
+          </div>
+          <div>
+            <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
+              {uploading ? 'Uploading...' : 'Change Photo'}
+            </Button>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+          </div>
+        </div>
         <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label>First Name</Label>
+            <Input value={form.first_name} onChange={e => setForm(f=>({...f,first_name:e.target.value}))} className="mt-1" />
+          </div>
+          <div>
+            <Label>Last Name</Label>
+            <Input value={form.last_name} onChange={e => setForm(f=>({...f,last_name:e.target.value}))} className="mt-1" />
+          </div>
           <div className="col-span-2">
             <Label>Full Name</Label>
             <Input value={form.full_name} onChange={e => setForm(f=>({...f,full_name:e.target.value}))} className="mt-1" />
@@ -285,6 +341,14 @@ const EditForm = ({ staff, isAdmin, onSave, onCancel }) => {
           <div>
             <Label>Phone</Label>
             <Input value={form.phone} onChange={e => setForm(f=>({...f,phone:e.target.value}))} className="mt-1" />
+          </div>
+          <div>
+            <Label>Birthday</Label>
+            <Input type="date" value={form.birthday} onChange={e => setForm(f=>({...f,birthday:e.target.value}))} className="mt-1" />
+          </div>
+          <div className="col-span-2">
+            <Label>Address</Label>
+            <Input value={form.address} onChange={e => setForm(f=>({...f,address:e.target.value}))} className="mt-1" />
           </div>
           {isAdmin && (
             <>
