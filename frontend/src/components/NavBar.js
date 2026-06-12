@@ -32,6 +32,7 @@ const NavBar = () => {
     { label: 'Meet & Greet', icon: <DogIcon size={18} />, path: '/admin/meet-and-greet' },
     { label: 'Tasks', icon: <ClipboardListIcon size={18} />, path: '/admin/tasks' },
     { label: 'Incidents', icon: <AlertCircleIcon size={18} />, path: '/admin/incidents' },
+    { label: 'Staff', icon: <UsersIcon size={18} />, path: '/admin/staff' },
     { label: 'Settings', icon: <ShieldIcon size={18} />, path: '/admin/settings' },
   ];
 
