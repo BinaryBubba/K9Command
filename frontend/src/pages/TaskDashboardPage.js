@@ -187,7 +187,7 @@ const CreateTaskModal = ({ staff, onClose, onSuccess }) => {
   const { user } = useAuthStore();
   const [form, setForm] = useState({
     title: '', description: '', priority: 'medium',
-    assigned_to: '', due_date: '',
+    assigned_to: '', due_date: '', recurrence: '',
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -247,8 +247,20 @@ const CreateTaskModal = ({ staff, onClose, onSuccess }) => {
             <Label>Assign To</Label>
             <select className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
               value={form.assigned_to} onChange={e => setForm(f=>({...f,assigned_to:e.target.value}))}>
-              <option value="">Unassigned</option>
+              <option value="">Unassigned (anyone can claim)</option>
               {staff.map(s => <option key={s.id} value={s.id}>{s.full_name}</option>)}
+            </select>
+          </div>
+          <div>
+            <Label>Recurrence</Label>
+            <select className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
+              value={form.recurrence} onChange={e => setForm(f=>({...f,recurrence:e.target.value}))}>
+              <option value="">One-time</option>
+              <option value="daily">Daily</option>
+              <option value="weekdays">Weekdays only</option>
+              <option value="weekly">Weekly</option>
+              <option value="biweekly">Every 2 weeks</option>
+              <option value="monthly">Monthly</option>
             </select>
           </div>
           <div className="flex gap-3 pt-2">

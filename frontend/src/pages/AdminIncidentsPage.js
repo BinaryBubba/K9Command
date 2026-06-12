@@ -9,7 +9,8 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { ArrowLeftIcon, PlusIcon, AlertCircleIcon, CheckCircleIcon, ShieldAlertIcon } from 'lucide-react';
+import { ArrowLeftIcon, PlusIcon, AlertCircleIcon, CheckCircleIcon, ShieldAlertIcon, UploadIcon } from 'lucide-react';
+import { useRef } from 'react';
 import { toast } from 'sonner';
 
 const SEVERITY_COLORS = {
@@ -231,6 +232,25 @@ const CreateIncidentModal = ({ onClose, onSuccess }) => {
     follow_up_required: false,
   });
   const [submitting, setSubmitting] = useState(false);
+  const [photoKeys, setPhotoKeys] = useState([]);
+  const [photoPreviews, setPhotoPreviews] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef();
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setPhotoPreviews(prev => [...prev, URL.createObjectURL(file)]);
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await api.post('/uploads/incident', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setPhotoKeys(prev => [...prev, res.data.key]);
+      toast.success('Photo uploaded');
+    } catch { toast.error('Upload failed'); setPhotoPreviews(prev => prev.slice(0,-1)); }
+    finally { setUploading(false); }
+  };
 
   const handleSubmit = async () => {
     if (!form.title.trim()) { toast.error('Title is required'); return; }
@@ -286,6 +306,22 @@ const CreateIncidentModal = ({ onClose, onSuccess }) => {
               onChange={e => setForm(f=>({...f,follow_up_required:e.target.checked}))} className="w-4 h-4" />
             Follow-up required
           </label>
+          <div>
+            <Label>Photos (optional)</Label>
+            <div className="mt-1 space-y-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading}>
+                <UploadIcon size={14} className="mr-1" /> {uploading ? 'Uploading...' : 'Add Photo'}
+              </Button>
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+              {photoPreviews.length > 0 && (
+                <div className="flex gap-2 flex-wrap">
+                  {photoPreviews.map((url, i) => (
+                    <img key={i} src={url} alt="preview" className="h-16 w-16 object-cover rounded border" />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
           {(form.severity === 'warning' || form.severity === 'critical') && (
             <div className="bg-amber-50 border border-amber-200 rounded p-3 text-xs text-amber-800">
               ⚠️ This incident will require owner acknowledgment before it can be closed.

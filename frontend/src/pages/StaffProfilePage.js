@@ -262,7 +262,6 @@ const ProfileView = ({ staff, isAdmin, onToggleActive }) => (
 
 const EditForm = ({ staff, isAdmin, onSave, onCancel }) => {
   const [form, setForm] = useState({
-    full_name: staff.full_name || '',
     first_name: staff.first_name || '',
     last_name: staff.last_name || '',
     phone: staff.phone || '',
@@ -298,7 +297,11 @@ const EditForm = ({ staff, isAdmin, onSave, onCancel }) => {
   const handleSave = async () => {
     setSubmitting(true);
     try {
-      await api.patch(`/users/${staff.id}`, form);
+      const payload = {
+        ...form,
+        full_name: [form.first_name, form.last_name].filter(Boolean).join(' ') || form.first_name,
+      };
+      await api.patch(`/users/${staff.id}`, payload);
       toast.success('Profile updated');
       onSave();
     } catch (err) { toast.error(err.response?.data?.detail || 'Failed'); }
@@ -333,10 +336,6 @@ const EditForm = ({ staff, isAdmin, onSave, onCancel }) => {
           <div>
             <Label>Last Name</Label>
             <Input value={form.last_name} onChange={e => setForm(f=>({...f,last_name:e.target.value}))} className="mt-1" />
-          </div>
-          <div className="col-span-2">
-            <Label>Full Name</Label>
-            <Input value={form.full_name} onChange={e => setForm(f=>({...f,full_name:e.target.value}))} className="mt-1" />
           </div>
           <div>
             <Label>Phone</Label>

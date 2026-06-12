@@ -153,6 +153,7 @@ const MeetAndGreetPage = () => {
       {showSchedule && (
         <ScheduleMAGModal
           preselectedDog={selectedDog}
+          preselectedHouseholdId={preselectedHouseholdId}
           onClose={() => { setShowSchedule(false); setSelectedDog(null); }}
           onSuccess={() => { setShowSchedule(false); setSelectedDog(null); fetchData(); }}
         />

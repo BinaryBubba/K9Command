@@ -3,28 +3,29 @@ import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import api from '../utils/api';
 import { Button } from '../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { ArrowLeftIcon, AlertCircleIcon, DogIcon, RefreshCwIcon } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { DogIcon, AlertCircleIcon, RefreshCwIcon, ArrowLeftRightIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 const KennelManagementPage = () => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
-  const [onSite, setOnSite] = useState([]);
-  const [rooms, setRooms] = useState([]);
+  const [occupancy, setOccupancy] = useState([]);
+  const [allRooms, setAllRooms] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [transferStay, setTransferStay] = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
-      const [onSiteRes, roomsRes] = await Promise.all([
-        api.get('/stays/on-site'),
-        api.get('/bookings/rooms/list'),
+      const [res, roomsRes] = await Promise.all([
+        api.get('/dashboard/kennel-status'),
+        api.get('/facility/rooms').catch(() => ({ data: [] })),
       ]);
-      setOnSite(onSiteRes.data);
-      setRooms(roomsRes.data);
+      setOccupancy(res.data || []);
+      setAllRooms(roomsRes.data || []);
     } catch {
-      toast.error('Failed to load occupancy data');
+      toast.error('Failed to load kennel status');
     } finally {
       setLoading(false);
     }
@@ -33,21 +34,7 @@ const KennelManagementPage = () => {
   useEffect(() => {
     if (!user) { navigate('/auth'); return; }
     fetchData();
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
   }, [user, navigate, fetchData]);
-
-  // Group stays by room
-  const staysByRoom = {};
-  onSite.forEach(stay => {
-    const roomId = stay.room_id || 'unassigned';
-    if (!staysByRoom[roomId]) staysByRoom[roomId] = [];
-    staysByRoom[roomId].push(stay);
-  });
-
-  const unassigned = staysByRoom['unassigned'] || [];
-  const totalCapacity = rooms.reduce((sum, r) => sum + r.max_dogs, 0);
-  const occupancyPct = totalCapacity > 0 ? Math.round((onSite.length / totalCapacity) * 100) : 0;
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
@@ -55,20 +42,17 @@ const KennelManagementPage = () => {
     </div>
   );
 
+  const occupied = occupancy.filter(r => r.stays?.length > 0);
+  const empty = occupancy.filter(r => !r.stays?.length);
+  const totalDogs = occupancy.reduce((sum, r) => sum + (r.stays?.length || 0), 0);
+
   return (
     <div className="min-h-screen bg-[#F9F7F2]">
       <header className="bg-white border-b shadow-sm sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-              <ArrowLeftIcon size={18} />
-            </Button>
-            <div>
-              <h1 className="text-lg font-serif font-bold text-primary">Occupancy Board</h1>
-              <p className="text-xs text-muted-foreground">
-                {onSite.length} dogs on site · {occupancyPct}% capacity
-              </p>
-            </div>
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-serif font-bold text-primary">Kennels</h1>
+            <p className="text-xs text-muted-foreground">{totalDogs} dogs on site · {empty.length} spaces available</p>
           </div>
           <Button variant="ghost" size="sm" onClick={fetchData}>
             <RefreshCwIcon size={16} />
@@ -76,119 +60,149 @@ const KennelManagementPage = () => {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-6 space-y-4">
-
-        {/* Unassigned dogs warning */}
-        {unassigned.length > 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center gap-2">
-            <AlertCircleIcon size={16} className="text-amber-600" />
-            <span className="text-sm text-amber-800">
-              {unassigned.length} dog{unassigned.length !== 1 ? 's' : ''} on site without a room assignment
-            </span>
-          </div>
-        )}
-
-        {/* Room grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {rooms.map(room => {
-            const occupants = staysByRoom[room.id] || [];
-            const isFull = occupants.length >= room.max_dogs;
-            const isEmpty = occupants.length === 0;
-            const hasWarning = occupants.some(s => s.has_warning);
-
-            return (
-              <Card key={room.id} className={`${room.is_out_of_service ? 'opacity-50' : ''}`}>
-                <CardHeader className="pb-2 pt-4">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{room.name}</CardTitle>
-                    <div className="flex items-center gap-2">
-                      {hasWarning && <AlertCircleIcon size={16} className="text-red-500" />}
-                      <span className={`text-sm font-bold ${isFull ? 'text-red-600' : isEmpty ? 'text-green-600' : 'text-blue-600'}`}>
-                        {occupants.length}/{room.max_dogs}
-                      </span>
-                      <div className={`w-3 h-3 rounded-full ${
-                        room.is_out_of_service ? 'bg-gray-400' :
-                        isFull ? 'bg-red-500' :
-                        isEmpty ? 'bg-green-500' : 'bg-blue-500'
-                      }`} />
-                    </div>
-                  </div>
-                  {room.is_out_of_service && (
-                    <Badge variant="outline" className="text-xs w-fit">Out of Service</Badge>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  {occupants.length === 0 ? (
-                    <p className="text-sm text-muted-foreground italic">Available</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {occupants.map(stay => (
-                        <DogCard key={stay.id} stay={stay} />
-                      ))}
-                    </div>
-                  )}
-                  {/* Empty slots */}
-                  {occupants.length < room.max_dogs && occupants.length > 0 && !room.is_out_of_service && (
-                    <div className="mt-2 flex gap-1">
-                      {Array.from({length: room.max_dogs - occupants.length}).map((_, i) => (
-                        <div key={i} className="flex-1 h-1 bg-green-200 rounded-full" />
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-
-        {/* Unassigned */}
-        {unassigned.length > 0 && (
-          <Card className="border-amber-200">
-            <CardHeader className="pb-2 pt-4">
-              <CardTitle className="text-base text-amber-700">Unassigned</CardTitle>
+      <main className="max-w-4xl mx-auto px-4 py-6 space-y-3">
+        {occupancy.map(room => (
+          <Card key={room.room_id} className={room.is_out_of_service ? 'opacity-50' : ''}>
+            <CardHeader className="pb-1 pt-3 px-4">
+              <CardTitle className="text-sm flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  {room.room_name}
+                  {room.is_out_of_service && <Badge variant="outline" className="text-xs text-red-500 border-red-200">OOS</Badge>}
+                </span>
+                <span className="text-xs font-normal text-muted-foreground">
+                  {room.stays?.length || 0}/{room.max_dogs} dogs
+                </span>
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {unassigned.map(stay => <DogCard key={stay.id} stay={stay} />)}
+            <CardContent className="px-4 pb-3">
+              {!room.stays?.length ? (
+                <p className="text-xs text-muted-foreground italic">Empty</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {room.stays.map(stay => (
+                    <DogCard
+                      key={stay.dog_id}
+                      stay={{...stay, room_name: room.room_name}}
+                      onNavigate={() => navigate(`/admin/dogs/${stay.dog_id}`)}
+                      onTransfer={() => setTransferStay({...stay, room_name: room.room_name})}
+                    />
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
-        )}
-
+        ))}
       </main>
+
+      {transferStay && (
+        <TransferModal
+          stay={transferStay}
+          rooms={allRooms}
+          onClose={() => setTransferStay(null)}
+          onSuccess={() => {
+            setTransferStay(null);
+            fetchData();
+            toast.success('Dog moved successfully');
+          }}
+        />
+      )}
     </div>
   );
 };
 
-const DogCard = ({ stay }) => {
-  const navigate = useNavigate();
-  return (
-  <div
-    className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer hover:shadow-sm transition-shadow ${
-      stay.has_warning ? 'bg-red-50 border-red-200' : 'bg-muted/50 border-border'
-    }`}
-    onClick={() => navigate(`/admin/dogs/${stay.dog_id}`)}
-  >
-    <div className="flex items-center gap-2">
+const DogCard = ({ stay, onNavigate, onTransfer }) => (
+  <div className={`flex items-center justify-between p-2 rounded-lg border ${
+    stay.has_warning ? 'bg-red-50 border-red-200' : 'bg-muted/50 border-border'
+  }`}>
+    <div className="flex items-center gap-2 flex-1 cursor-pointer hover:opacity-80" onClick={onNavigate}>
       <DogIcon size={14} className={stay.has_warning ? 'text-red-600' : 'text-muted-foreground'} />
       <div>
         <p className="text-sm font-medium">{stay.dog_name}</p>
         {stay.active_alerts?.length > 0 && (
-          <p className="text-xs text-amber-600">
-            {stay.active_alerts[0]?.alert_message}
-          </p>
+          <p className="text-xs text-amber-600">{stay.active_alerts[0]?.alert_message}</p>
         )}
       </div>
     </div>
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1.5">
       {stay.alert_count > 0 && (
         <Badge variant="outline" className="text-xs px-1">
           <AlertCircleIcon size={10} className="mr-1" />{stay.alert_count}
         </Badge>
       )}
-      {stay.is_first_stay && (
-        <Badge variant="secondary" className="text-xs px-1">1st</Badge>
-      )}
+      {stay.is_first_stay && <Badge variant="secondary" className="text-xs px-1">1st</Badge>}
+      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-primary"
+        title="Move to different room" onClick={e => { e.stopPropagation(); onTransfer(); }}>
+        <ArrowLeftRightIcon size={12} />
+      </Button>
     </div>
   </div>
+);
+
+const TransferModal = ({ stay, rooms, onClose, onSuccess }) => {
+  const [roomId, setRoomId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const rooms_only = rooms.filter(r => !r.room_type || r.room_type === 'room');
+  const crates = rooms.filter(r => r.room_type && r.room_type !== 'room');
+
+  const handleTransfer = async () => {
+    if (!roomId) { toast.error('Select a room'); return; }
+    setSubmitting(true);
+    try {
+      await api.patch(`/stays/${stay.id}/room`, { room_id: roomId });
+      onSuccess();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Transfer failed');
+    } finally { setSubmitting(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-4">
+      <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-md">
+        <div className="p-6 space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-lg font-bold">Move {stay.dog_name}</h2>
+              <p className="text-sm text-muted-foreground">Currently in {stay.room_name || '—'}</p>
+            </div>
+            <button onClick={onClose} className="text-muted-foreground text-xl leading-none">×</button>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-2">Rooms</p>
+            <div className="grid grid-cols-4 gap-2">
+              {rooms_only.map(r => (
+                <button key={r.id} type="button" onClick={() => setRoomId(r.id)}
+                  disabled={r.is_out_of_service}
+                  className={`p-2 rounded-lg border text-xs font-medium transition-colors ${
+                    roomId === r.id ? 'bg-primary text-primary-foreground border-primary' :
+                    r.is_out_of_service ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
+                    'border-border hover:bg-muted'
+                  }`}>{r.name}</button>
+              ))}
+            </div>
+            {crates.length > 0 && <>
+              <p className="text-xs text-muted-foreground mt-3 mb-1">Crates</p>
+              <div className="grid grid-cols-4 gap-2">
+                {crates.map(r => (
+                  <button key={r.id} type="button" onClick={() => setRoomId(r.id)}
+                    disabled={r.is_out_of_service}
+                    className={`p-2 rounded-lg border text-xs font-medium transition-colors ${
+                      roomId === r.id ? 'bg-primary text-primary-foreground border-primary' :
+                      r.is_out_of_service ? 'bg-gray-100 text-gray-400 cursor-not-allowed' :
+                      'border-border hover:bg-muted'
+                    }`}>{r.name}</button>
+                ))}
+              </div>
+            </>}
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+            <Button className="flex-1" onClick={handleTransfer} disabled={submitting || !roomId}>
+              {submitting ? 'Moving...' : 'Confirm Move'}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
