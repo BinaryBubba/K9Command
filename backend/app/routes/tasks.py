@@ -27,22 +27,35 @@ async def list_tasks(
     db: AsyncSession = Depends(get_db),
 ):
     org_id = current_user.organization_id
-    q = select(Task).where(Task.organization_id == org_id)
+    from sqlalchemy import text
+    conditions = ["organization_id = :org_id"]
+    params = {"org_id": org_id, "skip": skip, "limit": limit}
 
     if status:
-        q = q.where(Task.status == status.upper())
+        conditions.append("status::text = :status")
+        params["status"] = status.upper()
     else:
-        q = q.where(Task.status.notin_(['COMPLETED', 'CANCELLED', 'completed', 'cancelled']))
+        conditions.append("status::text NOT IN ('COMPLETED','CANCELLED')")
     if assigned_to:
-        q = q.where(Task.assigned_to == assigned_to)
+        conditions.append("assigned_to = :assigned_to")
+        params["assigned_to"] = assigned_to
     if priority:
-        q = q.where(Task.priority == priority.upper())
+        conditions.append("priority::text = :priority")
+        params["priority"] = priority.upper()
     if dog_id:
-        q = q.where(Task.dog_id == dog_id)
+        conditions.append("dog_id = :dog_id")
+        params["dog_id"] = dog_id
 
-    q = q.order_by(Task.due_date.asc().nullsfirst(), Task.priority.desc()).offset(skip).limit(limit)
-    result = await db.execute(q)
-    return [_task_dict(t) for t in result.scalars().all()]
+    where = " AND ".join(conditions)
+    result = await db.execute(
+        text(f"SELECT id FROM tasks WHERE {where} ORDER BY due_date ASC NULLS FIRST OFFSET :skip LIMIT :limit"),
+        params
+    )
+    ids = [r[0] for r in result.fetchall()]
+    if not ids:
+        return []
+    result2 = await db.execute(select(Task).where(Task.id.in_(ids)).order_by(Task.due_date.asc().nullsfirst()))
+    return [_task_dict(t) for t in result2.scalars().all()]
 
 
 @router.post("")
@@ -83,14 +96,20 @@ async def get_my_tasks(
     current_user: UserORM = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    from sqlalchemy import text
     result = await db.execute(
-        select(Task).where(
-            Task.organization_id == current_user.organization_id,
-            Task.assigned_to == current_user.id,
-            Task.status.notin_(['COMPLETED', 'CANCELLED', 'completed', 'cancelled']),
-        ).order_by(Task.due_date.asc().nullsfirst(), Task.priority.desc())
+        text("""SELECT id FROM tasks
+                WHERE organization_id = :org_id
+                AND assigned_to = :user_id
+                AND status::text NOT IN ('COMPLETED','CANCELLED')
+                ORDER BY due_date ASC NULLS FIRST"""),
+        {"org_id": current_user.organization_id, "user_id": current_user.id}
     )
-    return [_task_dict(t) for t in result.scalars().all()]
+    ids = [r[0] for r in result.fetchall()]
+    if not ids:
+        return []
+    result2 = await db.execute(select(Task).where(Task.id.in_(ids)).order_by(Task.due_date.asc().nullsfirst()))
+    return [_task_dict(t) for t in result2.scalars().all()]
 
 
 @router.get("/{task_id}")

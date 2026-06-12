@@ -19,6 +19,7 @@ def generate_uuid():
 class UserRole(str, enum.Enum):
     CUSTOMER = "customer"
     STAFF = "staff"
+    MANAGER = "manager"
     ADMIN = "admin"
 
 
@@ -86,6 +87,10 @@ class User(Base):
     location_id = Column(String, ForeignKey("locations.id"), nullable=True)
     is_active = Column(Boolean, default=True)
     is_owner = Column(Boolean, nullable=False, server_default=text("false"), default=False)
+    emergency_contact_name = Column(String, nullable=True)
+    emergency_contact_phone = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
+    hire_date = Column(String, nullable=True)
     household_id = Column(String, nullable=True, index=True, unique=True)
     reset_token = Column(String, nullable=True)
     reset_token_expiry = Column(DateTime(timezone=True), nullable=True)
