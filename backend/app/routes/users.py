@@ -14,6 +14,15 @@ import uuid, secrets, string
 router = APIRouter(prefix="/api/users", tags=["users"])
 
 
+def _get_avatar_url(key):
+    if not key:
+        return None
+    try:
+        from app.storage import get_public_url, BUCKET_DOGS
+        return get_public_url(BUCKET_DOGS, key)
+    except Exception:
+        return None
+
 def _user_dict(u: UserORM) -> dict:
     return {
         "id": u.id,
@@ -28,6 +37,12 @@ def _user_dict(u: UserORM) -> dict:
         "emergency_contact_phone": u.emergency_contact_phone,
         "notes": u.notes,
         "hire_date": u.hire_date,
+        "address": u.address,
+        "birthday": u.birthday,
+        "avatar_key": u.avatar_key,
+        "avatar_url": _get_avatar_url(u.avatar_key),
+        "first_name": u.first_name,
+        "last_name": u.last_name,
         "created_at": u.created_at.isoformat() if u.created_at else None,
     }
 
@@ -80,10 +95,10 @@ async def update_user(
         raise HTTPException(status_code=403, detail="Not authorized")
 
     # Fields anyone can update on themselves
-    self_fields = ["full_name", "phone", "emergency_contact_name",
-                   "emergency_contact_phone"]
+    self_fields = ["full_name", "first_name", "last_name", "phone", "address", "birthday",
+                   "emergency_contact_name", "emergency_contact_phone", "avatar_key"]
     # Admin-only fields
-    admin_fields = ["role", "is_active", "notes", "hire_date"]
+    admin_fields = ["role", "is_active", "notes", "hire_date", "address", "birthday"]
 
     for field in self_fields:
         if field in data:
@@ -209,6 +224,10 @@ async def create_user(
         is_owner=False,
         hire_date=data.get("hire_date"),
         notes=data.get("notes"),
+        first_name=data.get("first_name"),
+        last_name=data.get("last_name"),
+        address=data.get("address"),
+        birthday=data.get("birthday"),
         emergency_contact_name=data.get("emergency_contact_name"),
         emergency_contact_phone=data.get("emergency_contact_phone"),
     )

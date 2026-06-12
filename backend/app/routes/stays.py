@@ -524,3 +524,47 @@ def _feeding_override_dict(f: StayFeedingOverride) -> dict:
         "is_active": f.is_active,
         "created_at": f.created_at.isoformat() if f.created_at else None,
     }
+
+@router.patch("/{stay_id}/room")
+async def transfer_room(
+    stay_id: str,
+    data: dict,
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Move a dog to a different room during their stay."""
+    from db_models import Stay, Room
+    result = await db.execute(
+        select(Stay).where(
+            Stay.id == stay_id,
+            Stay.organization_id == current_user.organization_id
+        )
+    )
+    stay = result.scalar_one_or_none()
+    if not stay:
+        raise HTTPException(status_code=404, detail="Stay not found")
+    if stay.status not in ["checked_in", "CHECKED_IN"]:
+        raise HTTPException(status_code=400, detail="Dog must be checked in to transfer rooms")
+
+    new_room_id = data.get("room_id")
+    if not new_room_id:
+        raise HTTPException(status_code=400, detail="room_id is required")
+
+    room_result = await db.execute(
+        select(Room).where(
+            Room.id == new_room_id,
+            Room.organization_id == current_user.organization_id
+        )
+    )
+    room = room_result.scalar_one_or_none()
+    if not room:
+        raise HTTPException(status_code=404, detail="Room not found")
+    if room.is_out_of_service:
+        raise HTTPException(status_code=400, detail="Room is out of service")
+
+    old_room = stay.room_id
+    stay.room_id = new_room_id
+    await db.commit()
+    await db.refresh(stay)
+
+    return {"stay_id": stay_id, "old_room_id": old_room, "new_room_id": new_room_id, "dog_id": stay.dog_id}

@@ -1,18 +1,14 @@
 """
-Incidents API
-4-tier severity system with owner acknowledgment for severity 3+.
+Incidents API - 4-tier severity with owner acknowledgment for warning/critical.
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, text
 from typing import Optional
 from datetime import datetime, timezone
 from database import get_db
 from auth import get_current_user, require_role
-from db_models import (
-    Incident, IncidentSeverity, IncidentStatus,
-    User as UserORM, UserRole
-)
+from db_models import Incident, IncidentSeverity, IncidentStatus, User as UserORM, UserRole
 import uuid
 
 router = APIRouter(prefix="/api/incidents", tags=["incidents"])
@@ -29,20 +25,54 @@ async def list_incidents(
     db: AsyncSession = Depends(get_db),
 ):
     org_id = current_user.organization_id
-    q = select(Incident).where(Incident.organization_id == org_id)
+    conditions = ["organization_id = :org_id"]
+    params = {"org_id": org_id, "skip": skip, "limit": limit}
 
     if status:
-        q = q.where(Incident.status == status.upper())
+        conditions.append("status::text = :status")
+        params["status"] = status.upper()
     else:
-        q = q.where(Incident.status.notin_(['CLOSED']))
+        conditions.append("status::text NOT IN ('CLOSED')")
     if severity:
-        q = q.where(Incident.severity == severity.upper())
+        conditions.append("severity::text = :severity")
+        params["severity"] = severity.upper()
     if dog_id:
-        q = q.where(Incident.dog_id == dog_id)
+        conditions.append("dog_id = :dog_id")
+        params["dog_id"] = dog_id
 
-    q = q.order_by(Incident.occurred_at.desc()).offset(skip).limit(limit)
-    result = await db.execute(q)
-    return [_incident_dict(i) for i in result.scalars().all()]
+    where = " AND ".join(conditions)
+    result = await db.execute(
+        text(f"SELECT id FROM incidents WHERE {where} ORDER BY occurred_at DESC NULLS LAST OFFSET :skip LIMIT :limit"),
+        params
+    )
+    ids = [r[0] for r in result.fetchall()]
+    if not ids:
+        return []
+    result2 = await db.execute(
+        select(Incident).where(Incident.id.in_(ids)).order_by(Incident.occurred_at.desc())
+    )
+    return [_incident_dict(i) for i in result2.scalars().all()]
+
+
+@router.get("/unacknowledged")
+async def get_unacknowledged(
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        text("""SELECT id FROM incidents
+                WHERE organization_id = :org_id
+                AND severity::text IN ('WARNING','CRITICAL')
+                AND acknowledged_at IS NULL
+                AND status::text != 'CLOSED'
+                ORDER BY occurred_at DESC"""),
+        {"org_id": current_user.organization_id}
+    )
+    ids = [r[0] for r in result.fetchall()]
+    if not ids:
+        return []
+    result2 = await db.execute(select(Incident).where(Incident.id.in_(ids)))
+    return [_incident_dict(i) for i in result2.scalars().all()]
 
 
 @router.post("")
@@ -63,10 +93,7 @@ async def create_incident(
     try:
         severity = IncidentSeverity[severity_str]
     except KeyError:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid severity. Must be: info, caution, warning, critical"
-        )
+        raise HTTPException(status_code=400, detail="Invalid severity. Must be: info, caution, warning, critical")
 
     occurred_at = _parse_date(data.get("occurred_at")) or datetime.now(timezone.utc)
 
@@ -76,7 +103,7 @@ async def create_incident(
         title=title,
         description=description,
         severity=severity,
-        status=IncidentStatus.OPEN,
+        status="OPEN",
         dog_id=data.get("dog_id"),
         stay_id=data.get("stay_id"),
         reported_by=current_user.id,
@@ -92,23 +119,6 @@ async def create_incident(
     await db.commit()
     await db.refresh(incident)
     return _incident_dict(incident)
-
-
-@router.get("/unacknowledged")
-async def get_unacknowledged(
-    current_user: UserORM = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Get warning/critical incidents that need owner acknowledgment."""
-    result = await db.execute(
-        select(Incident).where(
-            Incident.organization_id == current_user.organization_id,
-            Incident.severity.in_(['WARNING', 'CRITICAL', 'warning', 'critical']),
-            Incident.acknowledged_at.is_(None),
-            Incident.status.notin_(['CLOSED', 'closed']),
-        ).order_by(Incident.occurred_at.desc())
-    )
-    return [_incident_dict(i) for i in result.scalars().all()]
 
 
 @router.get("/{incident_id}")
@@ -129,14 +139,11 @@ async def update_incident(
     db: AsyncSession = Depends(get_db),
 ):
     incident = await _get_incident_or_404(incident_id, current_user.organization_id, db)
-
     allowed = ["title", "description", "assigned_to", "follow_up_required",
-               "follow_up_notes", "immediate_action_taken", "witness_names",
-               "location_description"]
+               "follow_up_notes", "immediate_action_taken", "witness_names", "location_description"]
     for field in allowed:
         if field in data:
             setattr(incident, field, data[field])
-
     await db.commit()
     await db.refresh(incident)
     return _incident_dict(incident)
@@ -148,18 +155,12 @@ async def acknowledge_incident(
     current_user: UserORM = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
-    """Owner acknowledgment required for warning/critical incidents."""
     incident = await _get_incident_or_404(incident_id, current_user.organization_id, db)
-
     if incident.acknowledged_at:
         raise HTTPException(status_code=400, detail="Already acknowledged")
-    if incident.severity not in [IncidentSeverity.WARNING, IncidentSeverity.CRITICAL]:
-        raise HTTPException(status_code=400, detail="Only warning/critical incidents require acknowledgment")
-
     incident.acknowledged_by = current_user.id
     incident.acknowledged_at = datetime.now(timezone.utc)
-    incident.status = IncidentStatus.ACKNOWLEDGED
-
+    incident.status = "ACKNOWLEDGED"
     await db.commit()
     await db.refresh(incident)
     return _incident_dict(incident)
@@ -173,15 +174,12 @@ async def resolve_incident(
     db: AsyncSession = Depends(get_db),
 ):
     incident = await _get_incident_or_404(incident_id, current_user.organization_id, db)
-
-    if incident.status == IncidentStatus.CLOSED:
+    if incident.status == "CLOSED":
         raise HTTPException(status_code=400, detail="Incident is already closed")
-
-    incident.status = IncidentStatus.RESOLVED
+    incident.status = "RESOLVED"
     incident.resolved_by = current_user.id
     incident.resolved_at = datetime.now(timezone.utc)
     incident.resolution_notes = data.get("resolution_notes")
-
     await db.commit()
     await db.refresh(incident)
     return _incident_dict(incident)
@@ -194,7 +192,7 @@ async def close_incident(
     db: AsyncSession = Depends(get_db),
 ):
     incident = await _get_incident_or_404(incident_id, current_user.organization_id, db)
-    incident.status = IncidentStatus.CLOSED
+    incident.status = "CLOSED"
     await db.commit()
     await db.refresh(incident)
     return _incident_dict(incident)
@@ -202,15 +200,13 @@ async def close_incident(
 
 async def _get_incident_or_404(incident_id: str, org_id: str, db: AsyncSession) -> Incident:
     result = await db.execute(
-        select(Incident).where(
-            Incident.id == incident_id,
-            Incident.organization_id == org_id
-        )
+        select(Incident).where(Incident.id == incident_id, Incident.organization_id == org_id)
     )
     i = result.scalar_one_or_none()
     if not i:
         raise HTTPException(status_code=404, detail="Incident not found")
     return i
+
 
 def _parse_date(value):
     if not value:
@@ -220,13 +216,16 @@ def _parse_date(value):
     except Exception:
         return None
 
+
 def _incident_dict(i: Incident) -> dict:
+    sev = i.severity.value if hasattr(i.severity, 'value') else str(i.severity)
+    status = i.status.value if hasattr(i.status, 'value') else str(i.status)
     return {
         "id": i.id,
         "title": i.title,
         "description": i.description,
-        "severity": i.severity.value if hasattr(i.severity, 'value') else i.severity,
-        "status": i.status.value if hasattr(i.status, 'value') else i.status,
+        "severity": sev.lower(),
+        "status": status.lower(),
         "dog_id": i.dog_id,
         "stay_id": i.stay_id,
         "reported_by": i.reported_by,
@@ -243,5 +242,5 @@ def _incident_dict(i: Incident) -> dict:
         "resolved_at": i.resolved_at.isoformat() if i.resolved_at else None,
         "resolution_notes": i.resolution_notes,
         "created_at": i.created_at.isoformat() if i.created_at else None,
-        "requires_acknowledgment": i.severity in [IncidentSeverity.WARNING, IncidentSeverity.CRITICAL] and not i.acknowledged_at,
+        "requires_acknowledgment": sev.upper() in ['WARNING', 'CRITICAL'] and not i.acknowledged_at,
     }

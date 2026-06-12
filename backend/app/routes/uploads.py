@@ -85,3 +85,17 @@ async def get_file_url(
     if not url:
         raise HTTPException(status_code=404, detail="File not found")
     return {"url": url}
+
+@router.post("/avatar")
+async def upload_avatar(
+    file: UploadFile = File(...),
+    current_user: UserORM = Depends(get_current_user),
+):
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=400, detail="Only image files allowed")
+    data = await file.read()
+    if len(data) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File too large (max 10MB)")
+    key = upload_file(BUCKET_DOGS, data, file.filename or "avatar", file.content_type)
+    url = get_presigned_url(BUCKET_DOGS, key, expires_in=86400)
+    return {"key": key, "url": url}

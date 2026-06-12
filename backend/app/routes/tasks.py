@@ -112,6 +112,41 @@ async def get_my_tasks(
     return [_task_dict(t) for t in result2.scalars().all()]
 
 
+@router.get("/completed")
+async def list_completed_tasks(
+    assigned_to: Optional[str] = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import text
+    conditions = ["organization_id = :org_id", "status::text = 'COMPLETED'"]
+    params = {"org_id": current_user.organization_id, "skip": skip, "limit": limit}
+    if assigned_to:
+        conditions.append("assigned_to = :assigned_to")
+        params["assigned_to"] = assigned_to
+    where = " AND ".join(conditions)
+    result = await db.execute(
+        text(f"SELECT id FROM tasks WHERE {where} ORDER BY completed_at DESC NULLS LAST OFFSET :skip LIMIT :limit"),
+        params
+    )
+    ids = [r[0] for r in result.fetchall()]
+    if not ids:
+        return []
+    result2 = await db.execute(select(Task).where(Task.id.in_(ids)).order_by(Task.completed_at.desc()))
+    tasks = result2.scalars().all()
+    # Enrich with completer names
+    from db_models import User as UserORM2
+    out = []
+    for t in tasks:
+        d = _task_dict(t)
+        if t.completed_by:
+            user_res = await db.execute(select(UserORM2).where(UserORM2.id == t.completed_by))
+            u = user_res.scalar_one_or_none()
+            d["completed_by_name"] = u.full_name if u else None
+        out.append(d)
+    return out
 @router.get("/{task_id}")
 async def get_task(
     task_id: str,
@@ -226,3 +261,4 @@ def _task_dict(t: Task) -> dict:
         "created_at": t.created_at.isoformat() if t.created_at else None,
         "updated_at": t.updated_at.isoformat() if t.updated_at else None,
     }
+
