@@ -232,13 +232,18 @@ const CreateIncidentModal = ({ onClose, onSuccess }) => {
   const [form, setForm] = useState({
     title: '', description: '', severity: 'caution',
     immediate_action_taken: '', location_description: '',
-    follow_up_required: false,
+    follow_up_required: false, dog_id: '',
   });
   const [submitting, setSubmitting] = useState(false);
   const [photoKeys, setPhotoKeys] = useState([]);
   const [photoPreviews, setPhotoPreviews] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [onsiteDogs, setOnsiteDogs] = useState([]);
   const fileRef = useRef();
+
+  useEffect(() => {
+    api.get('/stays/on-site').then(r => setOnsiteDogs(r.data || [])).catch(() => {});
+  }, []);
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
@@ -290,6 +295,16 @@ const CreateIncidentModal = ({ onClose, onSuccess }) => {
               <option value="caution">⚠️ Caution — monitor</option>
               <option value="warning">🚨 Warning — owner acknowledgment required</option>
               <option value="critical">🔴 Critical — immediate action required</option>
+            </select>
+          </div>
+          <div>
+            <Label>Dogs Involved</Label>
+            <select className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
+              value={form.dog_id} onChange={e => setForm(f=>({...f,dog_id:e.target.value}))}>
+              <option value="">None / Unknown</option>
+              {onsiteDogs.map(s => (
+                <option key={s.dog_id} value={s.dog_id}>{s.dog_name} ({s.dog_breed || 'Unknown breed'})</option>
+              ))}
             </select>
           </div>
           <div>
