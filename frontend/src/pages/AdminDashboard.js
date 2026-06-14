@@ -203,6 +203,36 @@ const AdminDashboard = () => {
           <QuickAction label="Kennels" icon={<HomeIcon size={18} />} onClick={() => navigate('/admin/kennels')} />
         </div>
 
+
+        {/* Today's Playgroups */}
+        <div className="bg-white rounded-xl border shadow-sm p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-serif font-semibold text-primary">Today's Groups</h2>
+            <button className="text-xs text-primary hover:underline" onClick={() => navigate('/admin/playgroups')}>
+              Manage →
+            </button>
+          </div>
+          {groups.length === 0 ? (
+            <div className="text-center py-3">
+              <p className="text-sm text-muted-foreground">No groups set today</p>
+              <Button size="sm" className="mt-2" onClick={() => navigate('/admin/playgroups')}>Set Up Groups</Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {groups.map((group, i) => (
+                <div key={group.id} className={`p-2 rounded-lg border text-xs ${
+                  group.is_individual ? 'bg-gray-50 border-gray-200' : 'bg-blue-50 border-blue-200'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{group.is_individual ? '👤' : `Group ${group.group_number}`} {group.label}</span>
+                    <span className="text-muted-foreground">{group.dogs.length} dog{group.dogs.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  <p className="text-muted-foreground mt-0.5">{group.dogs.map(d => d.dog_name).join(', ')}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );

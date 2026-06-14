@@ -95,9 +95,14 @@ const NavBar = () => {
         <button onClick={() => navigate(dashboardPath)}>
           <h1 className="text-base font-serif font-bold text-primary">K9 Command</h1>
         </button>
-        <button onClick={() => setMobileOpen(!mobileOpen)} className="p-2 rounded-lg hover:bg-muted">
-          {mobileOpen ? <XIcon size={20} /> : <MenuIcon size={20} />}
-        </button>
+        <div className="flex items-center gap-1">
+          <button onClick={() => { logout(); navigate('/'); }} className="p-2 rounded-lg hover:bg-muted text-muted-foreground">
+            <LogOutIcon size={18} />
+          </button>
+          <button onClick={() => setMobileOpen(!mobileOpen)} className="p-2 rounded-lg hover:bg-muted">
+            {mobileOpen ? <XIcon size={20} /> : <MenuIcon size={20} />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile drawer */}
