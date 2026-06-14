@@ -102,8 +102,10 @@ const CheckInOutPage = () => {
                               {arrival.is_first_stay && <Badge className="text-xs bg-blue-100 text-blue-700">1st stay</Badge>}
                               {arrival.has_alert && <AlertCircleIcon size={14} className="text-red-500" />}
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                              {arrival.household_name} · Check-in: {new Date(arrival.check_in_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            <p className="text-xs text-muted-foreground">{arrival.household_name}</p>
+                            <p className="text-xs font-medium text-blue-600">
+                              🕐 Scheduled: {new Date(arrival.check_in_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              {' · '}{new Date(arrival.check_in_date).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                             </p>
                           </div>
                         </div>
@@ -136,8 +138,10 @@ const CheckInOutPage = () => {
                           <DogIcon size={18} className="text-muted-foreground" />
                           <div>
                             <p className="font-medium">{dep.dog_name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {dep.household_name} · Check-out: {new Date(dep.check_out_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            <p className="text-xs text-muted-foreground">{dep.household_name}</p>
+                            <p className="text-xs font-medium text-orange-600">
+                              🕐 Scheduled: {new Date(dep.check_out_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              {' · '}{new Date(dep.check_out_date).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                             </p>
                             {dep.room_name && <p className="text-xs text-muted-foreground">Room: {dep.room_name}</p>}
                           </div>
