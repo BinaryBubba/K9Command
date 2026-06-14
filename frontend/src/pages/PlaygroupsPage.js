@@ -85,6 +85,34 @@ const PlaygroupsPage = () => {
     finally { setSaving(false); }
   };
 
+  const handleMoveToNew = async (dog, fromGroupId, reason) => {
+    // Create a new group and move the dog into it
+    const newGroupNum = Math.max(...groups.map(g => g.group_number), 0) + 1;
+    try {
+      // Save all current groups plus the new one
+      const currentGroups = groups.map(g => ({
+        group_number: g.group_number,
+        is_individual: g.dogs.length === 1,
+        label: g.label,
+        notes: g.notes,
+        dogs: g.dogs.filter(d => d.dog_id !== dog.dog_id).map(d => ({
+          stay_id: d.stay_id, dog_id: d.dog_id
+        })),
+      })).filter(g => g.dogs.length > 0);
+      currentGroups.push({
+        group_number: newGroupNum,
+        is_individual: true,
+        label: `Group ${newGroupNum}`,
+        notes: reason || 'Moved to new group',
+        dogs: [{ stay_id: dog.stay_id, dog_id: dog.dog_id }],
+      });
+      await api.post('/playgroups/assign', { groups: currentGroups });
+      toast.success(`${dog.dog_name} moved to new Group ${newGroupNum}`);
+      setMoveModal(null);
+      fetchGroups();
+    } catch { toast.error('Failed to create new group'); }
+  };
+
   const handleMove = async (dogId, stayId, fromGroupId, toGroupId, reason) => {
     try {
       await api.patch(`/playgroups/${fromGroupId}/move`, {
@@ -229,6 +257,7 @@ const PlaygroupsPage = () => {
           fromGroupNum={moveModal.fromGroupNum}
           allGroups={groups}
           onMove={handleMove}
+          onMoveToNew={handleMoveToNew}
           onClose={() => setMoveModal(null)}
         />
       )}
@@ -324,7 +353,7 @@ const EditGroupCard = ({ group, groupIdx, colorClass, allGroups, onMove, onUpdat
   );
 };
 
-const MoveModal = ({ dog, fromGroupId, fromGroupNum, allGroups, onMove, onClose }) => {
+const MoveModal = ({ dog, fromGroupId, fromGroupNum, allGroups, onMove, onClose, onMoveToNew }) => {
   const [toGroupId, setToGroupId] = useState('');
   const [reason, setReason] = useState('');
   const otherGroups = allGroups.filter(g => g.id !== fromGroupId);
@@ -353,6 +382,13 @@ const MoveModal = ({ dog, fromGroupId, fromGroupNum, allGroups, onMove, onClose 
                   <span className="text-muted-foreground ml-2 text-xs">({g.dogs.length} dogs)</span>
                 </button>
               ))}
+              <button type="button" onClick={() => setToGroupId('__new__')}
+                className={`w-full text-left p-3 rounded-lg border text-sm transition-colors border-dashed ${
+                  toGroupId === '__new__' ? 'bg-primary/10 border-primary' : 'border-border hover:bg-muted'
+                }`}>
+                <span className="font-medium">➕ Create New Group</span>
+                <span className="text-muted-foreground ml-2 text-xs">Move to a new group by itself</span>
+              </button>
             </div>
           </div>
           <div>
@@ -363,7 +399,13 @@ const MoveModal = ({ dog, fromGroupId, fromGroupNum, allGroups, onMove, onClose 
           <div className="flex gap-3">
             <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
             <Button className="flex-1" disabled={!toGroupId}
-              onClick={() => onMove(dog.dog_id, dog.stay_id, fromGroupId, toGroupId, reason)}>
+              onClick={() => {
+                if (toGroupId === '__new__') {
+                  onMoveToNew(dog, fromGroupId, reason);
+                } else {
+                  onMove(dog.dog_id, dog.stay_id, fromGroupId, toGroupId, reason);
+                }
+              }}>
               Confirm Move
             </Button>
           </div>
