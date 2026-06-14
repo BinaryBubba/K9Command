@@ -204,7 +204,7 @@ async def _get_open_incidents(org_id: str, db) -> list:
         text("""SELECT id, title, severity::text, status::text, acknowledged_at
                 FROM incidents
                 WHERE organization_id = :org_id
-                AND status::text NOT IN ('CLOSED', 'RESOLVED')
+                AND status::text NOT IN ('CLOSED', 'RESOLVED', 'closed', 'resolved')
                 ORDER BY occurred_at DESC LIMIT 5"""),
         {"org_id": org_id}
     )

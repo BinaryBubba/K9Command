@@ -40,9 +40,9 @@ def weight_compatible(w1, w2):
     return 100
 
 
-async def get_onsite_dogs_with_profile(org_id: str, db: AsyncSession, target_date: str = None) -> list:
+async def get_onsite_dogs_with_profile(org_id: str, db: AsyncSession, target_date=None) -> list:
     """Get all dogs currently on site with full profile for grouping algorithm."""
-    date_filter = target_date or date.today().isoformat()
+    date_filter = target_date if target_date else date.today()
     result = await db.execute(text("""
         SELECT
             s.id as stay_id,
@@ -227,7 +227,7 @@ async def get_today_groups(
     db: AsyncSession = Depends(get_db),
 ):
     org_id = current_user.organization_id
-    today = target_date or date.today().isoformat()
+    today = date.fromisoformat(target_date) if target_date else date.today()
 
     result = await db.execute(text("""
         SELECT pg.id, pg.group_number, pg.label, pg.is_individual, pg.notes,
@@ -281,7 +281,8 @@ async def suggest_groups_endpoint(
     db: AsyncSession = Depends(get_db),
 ):
     org_id = current_user.organization_id
-    target_date = data.get("date") or date.today().isoformat()
+    raw_date2 = data.get("date") or date.today().isoformat()
+    target_date = date.fromisoformat(raw_date2) if isinstance(raw_date2, str) else raw_date2
 
     dogs = await get_onsite_dogs_with_profile(org_id, db, target_date)
     if not dogs:
@@ -304,7 +305,7 @@ async def suggest_groups_endpoint(
     history = [{"dog1": r.dog1.lower(), "dog2": r.dog2.lower()} for r in history_result.fetchall()]
 
     suggested = suggest_groups(dogs, history)
-    return {"groups": suggested, "date": target_date, "total_dogs": len(dogs)}
+    return {"groups": suggested, "date": str(target_date), "total_dogs": len(dogs)}
 
 
 @router.post("/assign")
@@ -315,7 +316,8 @@ async def assign_groups(
 ):
     """Save suggested or manually arranged groups for today."""
     org_id = current_user.organization_id
-    target_date = data.get("date") or date.today().isoformat()
+    raw_date = data.get("date") or date.today().isoformat()
+    target_date = date.fromisoformat(raw_date) if isinstance(raw_date, str) else raw_date
     groups = data.get("groups", [])
 
     # Delete existing groups for today
@@ -327,7 +329,6 @@ async def assign_groups(
     await db.execute(text("""
         DELETE FROM playgroups WHERE organization_id = :org_id AND group_date = :date
     """), {"org_id": org_id, "date": target_date})
-    await db.execute(text("SELECT 1"))  # flush
 
     created_groups = []
     for g in groups:
@@ -362,7 +363,7 @@ async def assign_groups(
         created_groups.append(pg_id)
 
     await db.commit()
-    return {"saved": len(created_groups), "date": target_date}
+    return {"saved": len(created_groups), "date": str(target_date)}
 
 
 @router.patch("/{playgroup_id}/move")
@@ -462,7 +463,7 @@ async def get_unassigned_dogs(
 ):
     """Get dogs on site that haven't been assigned to a group today."""
     org_id = current_user.organization_id
-    today = date.today().isoformat()
+    today = date.today()
 
     result = await db.execute(text("""
         SELECT s.id as stay_id, s.dog_id, d.name as dog_name, d.weight, d.breed, r.name as room_name
