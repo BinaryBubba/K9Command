@@ -171,6 +171,7 @@ services:
       mc anonymous set download local/dog-files &&
       mc anonymous set download local/vaccination-records &&
       mc anonymous set download local/mag-photos &&
+      mc anonymous set download local/incident-photos &&
       echo done"
     restart: "no"
 
