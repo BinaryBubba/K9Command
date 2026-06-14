@@ -30,6 +30,7 @@ const NavBar = () => {
     { label: 'Bookings', icon: <CalendarIcon size={18} />, path: '/admin/bookings' },
     { label: 'Customers', icon: <UsersIcon size={18} />, path: '/admin/customers' },
     { label: 'Meet & Greet', icon: <DogIcon size={18} />, path: '/admin/meet-and-greet' },
+    { label: 'Playgroups', icon: <UsersIcon size={18} />, path: '/admin/playgroups' },
     { label: 'Tasks', icon: <ClipboardListIcon size={18} />, path: '/admin/tasks' },
     { label: 'Incidents', icon: <AlertCircleIcon size={18} />, path: '/admin/incidents' },
     { label: 'Staff', icon: <UsersIcon size={18} />, path: '/admin/staff' },
@@ -43,6 +44,7 @@ const NavBar = () => {
     { label: 'Bookings', icon: <CalendarIcon size={18} />, path: '/staff/bookings' },
     { label: 'Tasks', icon: <ClipboardListIcon size={18} />, path: '/staff/tasks' },
     { label: 'Daily Ops', icon: <ClipboardListIcon size={18} />, path: '/staff/daily-ops' },
+    { label: 'Playgroups', icon: <UsersIcon size={18} />, path: '/admin/playgroups' },
   ];
 
   const customerLinks = [

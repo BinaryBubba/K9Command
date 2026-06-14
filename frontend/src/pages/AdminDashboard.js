@@ -15,12 +15,17 @@ const AdminDashboard = () => {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
+  const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchDashboard = useCallback(async () => {
     try {
-      const res = await api.get('/dashboard');
+      const [res, groupsRes] = await Promise.all([
+        api.get('/dashboard'),
+        api.get('/playgroups/today').catch(() => ({ data: [] })),
+      ]);
       setData(res.data);
+      setGroups(groupsRes.data || []);
     } catch {
       toast.error('Failed to load dashboard');
     } finally {

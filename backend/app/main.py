@@ -27,6 +27,7 @@ from app.routes.tasks import router as tasks_router
 from app.routes.incidents import router as incidents_router
 from app.routes.uploads import router as uploads_router
 from app.routes.users import router as users_router
+from app.routes.playgroups import router as playgroups_router
 from app.routes.facility import router as facility_router
 from app.routes.stays import router as stays_router
 from app.routes.dashboard import router as k9_dashboard_router
@@ -35,6 +36,7 @@ from app.routes.tasks import router as tasks_router
 from app.routes.incidents import router as incidents_router
 from app.routes.uploads import router as uploads_router
 from app.routes.users import router as users_router
+from app.routes.playgroups import router as playgroups_router
 from app.routes.dogs import router as dogs_router
 from app.routes.vaccinations import router as vaccinations_router
 from app.routes.meet_and_greets import router as meet_and_greets_router
@@ -47,6 +49,7 @@ from app.routes.tasks import router as tasks_router
 from app.routes.incidents import router as incidents_router
 from app.routes.uploads import router as uploads_router
 from app.routes.users import router as users_router
+from app.routes.playgroups import router as playgroups_router
 from app.routes.facility import router as facility_router
 from app.routes.stays import router as stays_router
 from app.routes.dashboard import router as k9_dashboard_router
@@ -55,6 +58,7 @@ from app.routes.tasks import router as tasks_router
 from app.routes.incidents import router as incidents_router
 from app.routes.uploads import router as uploads_router
 from app.routes.users import router as users_router
+from app.routes.playgroups import router as playgroups_router
 from app.routes.households import router as households_router
 from app.routes.dogs import router as dogs_router
 from app.routes.vaccinations import router as vaccinations_router
@@ -68,6 +72,7 @@ from app.routes.tasks import router as tasks_router
 from app.routes.incidents import router as incidents_router
 from app.routes.uploads import router as uploads_router
 from app.routes.users import router as users_router
+from app.routes.playgroups import router as playgroups_router
 from app.routes.facility import router as facility_router
 from app.routes.stays import router as stays_router
 from app.routes.dashboard import router as k9_dashboard_router
@@ -76,6 +81,7 @@ from app.routes.tasks import router as tasks_router
 from app.routes.incidents import router as incidents_router
 from app.routes.uploads import router as uploads_router
 from app.routes.users import router as users_router
+from app.routes.playgroups import router as playgroups_router
 from app.routes.dogs import router as dogs_router
 from app.routes.vaccinations import router as vaccinations_router
 from app.routes.meet_and_greets import router as meet_and_greets_router
@@ -88,6 +94,7 @@ from app.routes.tasks import router as tasks_router
 from app.routes.incidents import router as incidents_router
 from app.routes.uploads import router as uploads_router
 from app.routes.users import router as users_router
+from app.routes.playgroups import router as playgroups_router
 from app.routes.facility import router as facility_router
 from app.routes.stays import router as stays_router
 from app.routes.dashboard import router as k9_dashboard_router
@@ -96,6 +103,7 @@ from app.routes.tasks import router as tasks_router
 from app.routes.incidents import router as incidents_router
 from app.routes.uploads import router as uploads_router
 from app.routes.users import router as users_router
+from app.routes.playgroups import router as playgroups_router
 
 
 # TEMP: in-memory form store (to be replaced with DB)
@@ -116,6 +124,7 @@ app.include_router(tasks_router)
 app.include_router(incidents_router)
 app.include_router(uploads_router)
 app.include_router(users_router)
+app.include_router(playgroups_router)
 app.include_router(facility_router)
 app.include_router(stays_router)
 app.include_router(k9_dashboard_router)
@@ -124,6 +133,7 @@ app.include_router(tasks_router)
 app.include_router(incidents_router)
 app.include_router(uploads_router)
 app.include_router(users_router)
+app.include_router(playgroups_router)
 app.include_router(dogs_router)
 app.include_router(vaccinations_router)
 app.include_router(meet_and_greets_router)
@@ -136,6 +146,7 @@ app.include_router(tasks_router)
 app.include_router(incidents_router)
 app.include_router(uploads_router)
 app.include_router(users_router)
+app.include_router(playgroups_router)
 app.include_router(facility_router)
 app.include_router(stays_router)
 app.include_router(k9_dashboard_router)
@@ -144,6 +155,7 @@ app.include_router(tasks_router)
 app.include_router(incidents_router)
 app.include_router(uploads_router)
 app.include_router(users_router)
+app.include_router(playgroups_router)
 app.include_router(households_router)
 app.include_router(dogs_router)
 app.include_router(vaccinations_router)
@@ -157,6 +169,7 @@ app.include_router(tasks_router)
 app.include_router(incidents_router)
 app.include_router(uploads_router)
 app.include_router(users_router)
+app.include_router(playgroups_router)
 app.include_router(facility_router)
 app.include_router(stays_router)
 app.include_router(k9_dashboard_router)
@@ -165,6 +178,7 @@ app.include_router(tasks_router)
 app.include_router(incidents_router)
 app.include_router(uploads_router)
 app.include_router(users_router)
+app.include_router(playgroups_router)
 app.include_router(dogs_router)
 app.include_router(vaccinations_router)
 app.include_router(meet_and_greets_router)
@@ -177,6 +191,7 @@ app.include_router(tasks_router)
 app.include_router(incidents_router)
 app.include_router(uploads_router)
 app.include_router(users_router)
+app.include_router(playgroups_router)
 app.include_router(facility_router)
 app.include_router(stays_router)
 app.include_router(k9_dashboard_router)
@@ -185,6 +200,7 @@ app.include_router(tasks_router)
 app.include_router(incidents_router)
 app.include_router(uploads_router)
 app.include_router(users_router)
+app.include_router(playgroups_router)
 
 
 
