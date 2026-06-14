@@ -500,6 +500,152 @@ const NoteCard = ({ note, onDelete, canDelete }) => (
   </Card>
 );
 
+const BehaviorTab = ({ dog, dogId, onRefresh, isStaff }) => {
+  const [editing, setEditing] = useState(false);
+  const bp = dog.behavior_profile || {};
+  const [form, setForm] = useState({
+    bite_history: bp.bite_history || false,
+    food_guarding: bp.food_guarding || false,
+    toy_guarding: bp.toy_guarding || false,
+    barrier_reactivity: bp.barrier_reactivity || false,
+    muzzle_required: bp.muzzle_required || false,
+    active_safety_alert: bp.active_safety_alert || false,
+    safety_alert_detail: bp.safety_alert_detail || '',
+    is_humper: bp.is_humper || false,
+    is_wrestler: bp.is_wrestler || false,
+    energy_level: bp.energy_level || 3,
+    anxiety_level: bp.anxiety_level || 1,
+    play_style: bp.play_style || '',
+    handling_restrictions: bp.handling_restrictions || '',
+    known_triggers: bp.known_triggers || '',
+    dog_compatibility: bp.dog_compatibility || '',
+    approved_playgroups: bp.approved_playgroups || '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await api.patch(`/dogs/${dogId}/behavior`, form);
+      toast.success('Behavior profile updated');
+      setEditing(false);
+      onRefresh();
+    } catch (err) { toast.error(err.response?.data?.detail || 'Failed'); }
+    finally { setSaving(false); }
+  };
+
+  const flags = [
+    { key: 'bite_history', label: '🦷 Bite history' },
+    { key: 'food_guarding', label: '🍖 Food guarding' },
+    { key: 'toy_guarding', label: '🎾 Toy guarding' },
+    { key: 'barrier_reactivity', label: '🚧 Barrier reactivity' },
+    { key: 'muzzle_required', label: '😷 Muzzle required' },
+    { key: 'is_humper', label: '🐾 Humper' },
+    { key: 'is_wrestler', label: '💪 Wrestler' },
+    { key: 'active_safety_alert', label: '🚨 Active safety alert' },
+  ];
+
+  const activeFlags = flags.filter(f => bp[f.key] || (f.key === 'escape_risk' && dog.escape_risk));
+
+  return (
+    <Card>
+      <CardHeader className="pb-2 pt-4">
+        <CardTitle className="text-sm flex items-center justify-between">
+          <span className="flex items-center gap-2"><ShieldIcon size={14} /> Behavior Profile</span>
+          {isStaff && (
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditing(!editing)}>
+              {editing ? 'Cancel' : '✏️ Edit'}
+            </Button>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {!editing ? (
+          <div className="space-y-3">
+            {activeFlags.length === 0 && !dog.escape_risk && !dog.medical_alert ? (
+              <p className="text-sm text-green-600">✓ No behavioral concerns on file</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {activeFlags.map(f => (
+                  <div key={f.key} className="p-2 rounded border bg-red-50 border-red-200 text-xs font-medium text-red-700">{f.label}</div>
+                ))}
+                {dog.escape_risk && <div className="p-2 rounded border bg-red-50 border-red-200 text-xs font-medium text-red-700">🏃 Escape risk</div>}
+                {dog.medical_alert && <div className="p-2 rounded border bg-red-50 border-red-200 text-xs font-medium text-red-700">🏥 Medical alert</div>}
+              </div>
+            )}
+            {bp.active_safety_alert && bp.safety_alert_detail && (
+              <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded p-2">🚨 {bp.safety_alert_detail}</p>
+            )}
+            <div className="grid grid-cols-2 gap-3 pt-2 border-t">
+              {bp.energy_level && <div><p className="text-xs text-muted-foreground">Energy level</p><p className="text-sm">{'⚡'.repeat(bp.energy_level)} ({bp.energy_level}/5)</p></div>}
+              {bp.anxiety_level && <div><p className="text-xs text-muted-foreground">Anxiety level</p><p className="text-sm">{'😰'.repeat(bp.anxiety_level)} ({bp.anxiety_level}/5)</p></div>}
+              {bp.play_style && <div><p className="text-xs text-muted-foreground">Play style</p><p className="text-sm capitalize">{bp.play_style}</p></div>}
+              {bp.dog_compatibility && <div><p className="text-xs text-muted-foreground">Dog compatibility</p><p className="text-sm">{bp.dog_compatibility}</p></div>}
+            </div>
+            {bp.handling_restrictions && <div className="pt-2 border-t"><p className="text-xs text-muted-foreground">Handling restrictions</p><p className="text-sm mt-1">{bp.handling_restrictions}</p></div>}
+            {bp.known_triggers && <div><p className="text-xs text-muted-foreground">Known triggers</p><p className="text-sm mt-1">{bp.known_triggers}</p></div>}
+            {bp.approved_playgroups && <div><p className="text-xs text-muted-foreground">Approved playgroups</p><p className="text-sm mt-1">{bp.approved_playgroups}</p></div>}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-2">Behavior Flags</p>
+              <div className="grid grid-cols-2 gap-2">
+                {flags.map(f => (
+                  <label key={f.key} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer text-sm transition-colors ${
+                    form[f.key] ? 'bg-red-50 border-red-200 text-red-700' : 'border-border hover:bg-muted'
+                  }`}>
+                    <input type="checkbox" checked={!!form[f.key]} onChange={e => setForm(fv=>({...fv,[f.key]:e.target.checked}))} className="w-4 h-4" />
+                    {f.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+            {form.active_safety_alert && (
+              <div><Label>Safety Alert Detail</Label>
+                <Input value={form.safety_alert_detail} onChange={e => setForm(f=>({...f,safety_alert_detail:e.target.value}))} className="mt-1" placeholder="Describe the safety concern..." /></div>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Energy Level (1-5)</Label>
+                <input type="range" min="1" max="5" value={form.energy_level}
+                  onChange={e => setForm(f=>({...f,energy_level:parseInt(e.target.value)}))} className="w-full mt-1" />
+                <p className="text-xs text-muted-foreground text-center">{'⚡'.repeat(form.energy_level)} {form.energy_level}/5</p>
+              </div>
+              <div><Label>Anxiety Level (1-5)</Label>
+                <input type="range" min="1" max="5" value={form.anxiety_level}
+                  onChange={e => setForm(f=>({...f,anxiety_level:parseInt(e.target.value)}))} className="w-full mt-1" />
+                <p className="text-xs text-muted-foreground text-center">{'😰'.repeat(form.anxiety_level)} {form.anxiety_level}/5</p>
+              </div>
+            </div>
+            <div><Label>Play Style</Label>
+              <select className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
+                value={form.play_style} onChange={e => setForm(f=>({...f,play_style:e.target.value}))}>
+                <option value="">Not assessed</option>
+                <option value="gentle">Gentle</option>
+                <option value="moderate">Moderate</option>
+                <option value="rough">Rough</option>
+                <option value="varies">Varies</option>
+              </select>
+            </div>
+            <div><Label>Dog Compatibility Notes</Label>
+              <Textarea value={form.dog_compatibility} onChange={e => setForm(f=>({...f,dog_compatibility:e.target.value}))} className="mt-1" rows={2} placeholder="How does this dog do with others?" /></div>
+            <div><Label>Handling Restrictions</Label>
+              <Textarea value={form.handling_restrictions} onChange={e => setForm(f=>({...f,handling_restrictions:e.target.value}))} className="mt-1" rows={2} /></div>
+            <div><Label>Known Triggers</Label>
+              <Input value={form.known_triggers} onChange={e => setForm(f=>({...f,known_triggers:e.target.value}))} className="mt-1" placeholder="e.g. skateboards, umbrellas" /></div>
+            <div><Label>Approved Playgroup Notes</Label>
+              <Input value={form.approved_playgroups} onChange={e => setForm(f=>({...f,approved_playgroups:e.target.value}))} className="mt-1" placeholder="e.g. plays well with Group A regulars" /></div>
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" className="flex-1" onClick={() => setEditing(false)}>Cancel</Button>
+              <Button className="flex-1" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
 const InfoRow = ({ label, value }) => !value ? null : (
   <div><p className="text-xs text-muted-foreground">{label}</p><p className="text-sm font-medium capitalize">{value}</p></div>
 );

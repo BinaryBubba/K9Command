@@ -208,6 +208,8 @@ async def update_behavior(
         "bite_history", "bite_history_detail", "muzzle_required",
         "handlers_required", "approved_playgroups", "prohibited_pairings",
         "active_safety_alert", "safety_alert_detail",
+        "energy_level", "anxiety_level", "play_style",
+        "is_humper", "is_wrestler", "intact_female",
     ]
     for field in allowed:
         if field in data:
