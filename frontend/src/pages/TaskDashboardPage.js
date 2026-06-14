@@ -135,7 +135,7 @@ const TaskDashboardPage = () => {
   );
 };
 
-const TaskList = ({ tasks, onComplete, onRefresh, showAssignee }) => {
+const TaskList = ({ tasks, onComplete, onRefresh, showAssignee, onEdit }) => {
   if (tasks.length === 0) return (
     <Card><CardContent className="py-12 text-center text-muted-foreground">
       No active tasks

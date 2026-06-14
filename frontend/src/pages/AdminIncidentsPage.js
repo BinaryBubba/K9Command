@@ -144,6 +144,7 @@ const AdminIncidentsPage = () => {
 
           <TabsContent value="open">
             <IncidentList
+              onNavigate={id => navigate(`/admin/incidents/${id}`)}
               incidents={incidents.filter(i => i.status === 'open' || i.status === 'acknowledged')}
               onAcknowledge={acknowledge}
               onResolve={resolve}
@@ -152,6 +153,7 @@ const AdminIncidentsPage = () => {
           </TabsContent>
           <TabsContent value="resolved">
             <IncidentList
+              onNavigate={id => navigate(`/admin/incidents/${id}`)}
               incidents={incidents.filter(i => i.status === 'resolved' || i.status === 'closed')}
               isAdmin={user?.role === 'admin'}
             />
@@ -169,7 +171,7 @@ const AdminIncidentsPage = () => {
   );
 };
 
-const IncidentList = ({ incidents, onAcknowledge, onResolve, isAdmin }) => {
+const IncidentList = ({ incidents, onAcknowledge, onResolve, isAdmin, onNavigate }) => {
   if (incidents.length === 0) return (
     <Card><CardContent className="py-10 text-center text-muted-foreground">No incidents</CardContent></Card>
   );
@@ -177,7 +179,7 @@ const IncidentList = ({ incidents, onAcknowledge, onResolve, isAdmin }) => {
     <div className="space-y-3">
       {incidents.map(inc => (
         <Card key={inc.id} className={`cursor-pointer hover:shadow-md transition-shadow ${inc.severity === 'critical' ? 'border-red-300' : ''}`}
-          onClick={() => navigate(`/admin/incidents/${inc.id}`)}>
+          onClick={() => onNavigate && onNavigate(inc.id)}>
           <CardContent className="py-4 px-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1">

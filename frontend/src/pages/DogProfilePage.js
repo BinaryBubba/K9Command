@@ -152,14 +152,46 @@ const DogProfilePage = () => {
               <CardHeader className="pb-2 pt-4"><CardTitle className="text-sm flex items-center gap-2"><ShieldIcon size={14} /> Behavior Profile</CardTitle></CardHeader>
               <CardContent>
                 {dog.behavior_profile ? (
-                  <div className="grid grid-cols-2 gap-3">
-                    <FlagRow label="Bite history" value={dog.behavior_profile.bite_history} />
-                    <FlagRow label="Food guarding" value={dog.behavior_profile.food_guarding} />
-                    <FlagRow label="Toy guarding" value={dog.behavior_profile.toy_guarding} />
-                    <FlagRow label="Barrier reactivity" value={dog.behavior_profile.barrier_reactivity} />
-                    <FlagRow label="Muzzle required" value={dog.behavior_profile.muzzle_required} />
-                    <FlagRow label="Escape risk" value={dog.escape_risk} />
-                    {dog.behavior_profile.handling_restrictions && <div className="col-span-2"><p className="text-xs font-medium text-muted-foreground">Handling restrictions:</p><p className="text-sm mt-1">{dog.behavior_profile.handling_restrictions}</p></div>}
+                  <div className="space-y-2">
+                    {[
+                      { label: '🦷 Bite history', value: dog.behavior_profile.bite_history },
+                      { label: '🍖 Food guarding', value: dog.behavior_profile.food_guarding },
+                      { label: '🎾 Toy guarding', value: dog.behavior_profile.toy_guarding },
+                      { label: '🚧 Barrier reactivity', value: dog.behavior_profile.barrier_reactivity },
+                      { label: '😷 Muzzle required', value: dog.behavior_profile.muzzle_required },
+                      { label: '🏃 Escape risk', value: dog.escape_risk },
+                      { label: '🏥 Medical alert', value: dog.medical_alert },
+                    ].filter(f => f.value).length === 0 ? (
+                      <p className="text-sm text-green-600">✓ No behavioral concerns on file</p>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { label: '🦷 Bite history', value: dog.behavior_profile.bite_history },
+                          { label: '🍖 Food guarding', value: dog.behavior_profile.food_guarding },
+                          { label: '🎾 Toy guarding', value: dog.behavior_profile.toy_guarding },
+                          { label: '🚧 Barrier reactivity', value: dog.behavior_profile.barrier_reactivity },
+                          { label: '😷 Muzzle required', value: dog.behavior_profile.muzzle_required },
+                          { label: '🏃 Escape risk', value: dog.escape_risk },
+                          { label: '🏥 Medical alert', value: dog.medical_alert },
+                        ].filter(f => f.value).map(f => (
+                          <div key={f.label} className="p-2 rounded border bg-red-50 border-red-200 text-xs font-medium text-red-700">
+                            {f.label}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {dog.behavior_profile.handling_restrictions && (
+                      <div className="pt-2 border-t">
+                        <p className="text-xs font-medium text-muted-foreground">Handling restrictions:</p>
+                        <p className="text-sm mt-1">{dog.behavior_profile.handling_restrictions}</p>
+                      </div>
+                    )}
+                    {dog.behavioral_notes && (
+                      <div className="pt-2 border-t">
+                        <p className="text-xs font-medium text-muted-foreground">Notes:</p>
+                        <p className="text-sm mt-1">{dog.behavioral_notes}</p>
+                      </div>
+                    )}
                   </div>
                 ) : <p className="text-sm text-muted-foreground">No behavior profile on file</p>}
               </CardContent>
