@@ -44,11 +44,12 @@ const IncidentProfilePage = () => {
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await api.get(`/incidents/${incidentId}`);
+      const [res, notesRes] = await Promise.all([
+        api.get(`/incidents/${incidentId}`),
+        api.get(`/incidents/${incidentId}/notes`).catch(() => ({ data: [] })),
+      ]);
       setIncident(res.data);
-      // Load notes from localStorage (since we don't have a DB table for incident notes yet)
-      const savedNotes = JSON.parse(localStorage.getItem(`incident_notes_${incidentId}`) || '[]');
-      setNotes(savedNotes);
+      setNotes(notesRes.data);
       if (res.data.dog_id) {
         api.get(`/dogs/${res.data.dog_id}`).then(r => setDog(r.data)).catch(() => {});
       }
@@ -76,21 +77,17 @@ const IncidentProfilePage = () => {
     finally { setUploading(false); }
   };
 
-  const handleAddNote = () => {
+  const handleAddNote = async () => {
     if (!noteText.trim()) { toast.error('Note text required'); return; }
-    const newNote = {
-      id: Date.now(),
-      text: noteText,
-      photo_keys: photoKeys,
-      photo_previews: photoPreviews,
-      created_by: user.full_name,
-      created_at: new Date().toISOString(),
-    };
-    const updated = [newNote, ...notes];
-    localStorage.setItem(`incident_notes_${incidentId}`, JSON.stringify(updated));
-    setNotes(updated);
-    setNoteText(''); setPhotoKeys([]); setPhotoPreviews([]); setShowAddNote(false);
-    toast.success('Note added');
+    try {
+      await api.post(`/incidents/${incidentId}/notes`, {
+        note_text: noteText,
+        photo_keys: photoKeys,
+      });
+      toast.success('Note added');
+      setNoteText(''); setPhotoKeys([]); setPhotoPreviews([]); setShowAddNote(false);
+      fetchData();
+    } catch (err) { toast.error(err.response?.data?.detail || 'Failed to add note'); }
   };
 
   const handleAcknowledge = async () => {
@@ -251,10 +248,10 @@ const IncidentProfilePage = () => {
           ) : notes.map(note => (
             <Card key={note.id} className="mb-2">
               <CardContent className="py-3 px-4">
-                <p className="text-sm">{note.text}</p>
-                {note.photo_previews?.length > 0 && (
+                <p className="text-sm">{note.note_text}</p>
+                {note.photo_urls?.filter(Boolean).length > 0 && (
                   <div className="flex gap-2 mt-2 flex-wrap">
-                    {note.photo_previews.map((url, i) => (
+                    {note.photo_urls.filter(Boolean).map((url, i) => (
                       <button key={i} onClick={() => window.open(url, '_blank')}>
                         <img src={url} alt="note" className="h-16 w-16 object-cover rounded border hover:opacity-80" />
                       </button>
@@ -262,7 +259,7 @@ const IncidentProfilePage = () => {
                   </div>
                 )}
                 <p className="text-xs text-muted-foreground mt-1">
-                  {note.created_by} · {new Date(note.created_at).toLocaleString()}
+                  {note.created_by_name} · {new Date(note.created_at).toLocaleString()}
                 </p>
               </CardContent>
             </Card>

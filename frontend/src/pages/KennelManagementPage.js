@@ -15,15 +15,23 @@ const KennelManagementPage = () => {
   const [stays, setStays] = useState([]);
   const [loading, setLoading] = useState(true);
   const [transferStay, setTransferStay] = useState(null);
+  const [groupMap, setGroupMap] = useState({});
 
   const fetchData = useCallback(async () => {
     try {
-      const [roomsRes, staysRes] = await Promise.all([
+      const [roomsRes, staysRes, groupsRes] = await Promise.all([
         api.get('/facility/rooms'),
         api.get('/stays/on-site'),
+        api.get('/playgroups/today').catch(() => ({ data: [] })),
       ]);
       setRooms(roomsRes.data || []);
       setStays(staysRes.data || []);
+      // Build stay->group lookup
+      const lookup = {};
+      (groupsRes.data || []).forEach(g => {
+        g.dogs.forEach(d => { lookup[d.stay_id] = { num: g.group_number, label: g.label, individual: g.is_individual }; });
+      });
+      setGroupMap(lookup);
     } catch {
       toast.error('Failed to load kennel status');
     } finally {
@@ -101,6 +109,7 @@ const KennelManagementPage = () => {
                       <DogCard
                         key={stay.id}
                         stay={{...stay, room_name: room.name}}
+                        group={groupMap[stay.id]}
                         onNavigate={() => navigate(`/admin/dogs/${stay.dog_id}`)}
                         onTransfer={() => setTransferStay({...stay, room_name: room.name})}
                       />
@@ -141,7 +150,9 @@ const KennelManagementPage = () => {
   );
 };
 
-const DogCard = ({ stay, onNavigate, onTransfer }) => (
+const GROUP_BADGE_COLORS = ['bg-blue-100 text-blue-700','bg-green-100 text-green-700','bg-purple-100 text-purple-700','bg-orange-100 text-orange-700','bg-pink-100 text-pink-700','bg-teal-100 text-teal-700'];
+
+const DogCard = ({ stay, group, onNavigate, onTransfer }) => (
   <div className={`flex items-center justify-between p-2 rounded-lg border ${
     stay.has_medical_alert || stay.medical_alert ? 'bg-red-50 border-red-200' : 'bg-muted/50 border-border'
   }`}>
@@ -154,6 +165,11 @@ const DogCard = ({ stay, onNavigate, onTransfer }) => (
     </div>
     <div className="flex items-center gap-1.5">
       {stay.is_first_stay && <Badge variant="secondary" className="text-xs px-1">1st</Badge>}
+      {group && (
+        <Badge className={`text-xs px-1 ${group.individual ? 'bg-gray-100 text-gray-600' : GROUP_BADGE_COLORS[(group.num - 1) % GROUP_BADGE_COLORS.length]}`}>
+          {group.individual ? '👤' : `G${group.num}`}
+        </Badge>
+      )}
       <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground hover:text-primary"
         title="Move to different room" onClick={e => { e.stopPropagation(); onTransfer(); }}>
         <ArrowLeftRightIcon size={12} />

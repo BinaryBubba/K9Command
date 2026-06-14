@@ -244,3 +244,64 @@ def _incident_dict(i: Incident) -> dict:
         "created_at": i.created_at.isoformat() if i.created_at else None,
         "requires_acknowledgment": sev.upper() in ['WARNING', 'CRITICAL'] and not i.acknowledged_at,
     }
+
+
+@router.get("/{incident_id}/notes")
+async def get_incident_notes(
+    incident_id: str,
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import text
+    await _get_incident_or_404(incident_id, current_user.organization_id, db)
+    result = await db.execute(text("""
+        SELECT n.id, n.note_text, n.photo_keys, n.created_at,
+               u.full_name as created_by_name
+        FROM incident_notes n
+        LEFT JOIN users u ON n.created_by = u.id
+        WHERE n.incident_id = :incident_id
+        ORDER BY n.created_at DESC
+    """), {"incident_id": incident_id})
+    rows = result.fetchall()
+    from app.storage import get_public_url, BUCKET_INCIDENTS
+    notes = []
+    for r in rows:
+        keys = r.photo_keys or []
+        notes.append({
+            "id": r.id,
+            "note_text": r.note_text,
+            "photo_keys": keys,
+            "photo_urls": [get_public_url(BUCKET_INCIDENTS, k) for k in keys if k],
+            "created_by_name": r.created_by_name,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        })
+    return notes
+
+
+@router.post("/{incident_id}/notes")
+async def add_incident_note(
+    incident_id: str,
+    data: dict,
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    import uuid, json
+    from sqlalchemy import text
+    await _get_incident_or_404(incident_id, current_user.organization_id, db)
+    note_text = data.get("note_text", "").strip()
+    if not note_text:
+        raise HTTPException(status_code=400, detail="note_text required")
+    photo_keys = data.get("photo_keys", [])
+    await db.execute(text("""
+        INSERT INTO incident_notes (id, organization_id, incident_id, note_text, photo_keys, created_by)
+        VALUES (:id, :org_id, :incident_id, :note_text, :photo_keys, :created_by)
+    """), {
+        "id": str(uuid.uuid4()),
+        "org_id": current_user.organization_id,
+        "incident_id": incident_id,
+        "note_text": note_text,
+        "photo_keys": json.dumps(photo_keys),
+        "created_by": current_user.id,
+    })
+    await db.commit()
+    return {"created": True}
