@@ -38,6 +38,7 @@ const AdminSettingsPage = () => {
           <TabsContent value="closures"><ClosuresTab /></TabsContent>
           <TabsContent value="org"><OrgTab /></TabsContent>
         </Tabs>
+        <ExportsSection />
       </main>
     </div>
   );
@@ -356,5 +357,50 @@ const OrgTab = () => (
     <p className="text-xs text-muted-foreground flex items-center gap-1"><AlertCircleIcon size={12} /> Organization settings require server access.</p>
   </CardContent></Card>
 );
+
+const ExportsSection = () => {
+  const downloadCSV = async (endpoint, filename) => {
+    try {
+      const token = JSON.parse(localStorage.getItem('auth-storage') || '{}')?.state?.token;
+      const res = await fetch(`/api/dashboard/${endpoint}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+    } catch { alert('Export failed'); }
+  };
+
+  return (
+    <div className="bg-white rounded-xl border shadow-sm p-5 space-y-3">
+      <h2 className="font-serif font-semibold text-primary">Data Exports</h2>
+      <p className="text-xs text-muted-foreground">Download CSV exports for reporting and record-keeping.</p>
+      <div className="grid grid-cols-2 gap-3">
+        <button onClick={() => downloadCSV('export/bookings', 'bookings.csv')}
+          className="p-3 rounded-lg border hover:bg-muted text-left">
+          <p className="text-sm font-medium">📅 Bookings</p>
+          <p className="text-xs text-muted-foreground">All bookings with dates and dogs</p>
+        </button>
+        <button onClick={() => downloadCSV('export/customers', 'customers.csv')}
+          className="p-3 rounded-lg border hover:bg-muted text-left">
+          <p className="text-sm font-medium">👥 Customers</p>
+          <p className="text-xs text-muted-foreground">All households and contact info</p>
+        </button>
+        <button onClick={() => downloadCSV('export/dogs', 'dogs.csv')}
+          className="p-3 rounded-lg border hover:bg-muted text-left">
+          <p className="text-sm font-medium">🐾 Dogs</p>
+          <p className="text-xs text-muted-foreground">All dogs with behavior flags</p>
+        </button>
+        <button onClick={() => downloadCSV('export/incidents', 'incidents.csv')}
+          className="p-3 rounded-lg border hover:bg-muted text-left">
+          <p className="text-sm font-medium">⚠️ Incidents</p>
+          <p className="text-xs text-muted-foreground">All incident reports</p>
+        </button>
+      </div>
+    </div>
+  );
+};
 
 export default AdminSettingsPage;

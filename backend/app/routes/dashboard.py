@@ -264,3 +264,167 @@ async def _booking_summary(b: Booking, db) -> dict:
         "status": b.status.value,
         "dog_ids": dog_ids,
     }
+
+
+# ── CSV Exports ──────────────────────────────────────────────────────────────
+from fastapi.responses import StreamingResponse
+import csv, io
+from datetime import date as date_type
+
+@router.get("/export/bookings")
+async def export_bookings(
+    start_date: str = Query(None),
+    end_date: str = Query(None),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    org_id = current_user.organization_id
+    conditions = ["b.organization_id = :org_id"]
+    params = {"org_id": org_id}
+    if start_date:
+        conditions.append("b.check_in_date >= :start")
+        params["start"] = start_date
+    if end_date:
+        conditions.append("b.check_in_date <= :end")
+        params["end"] = end_date
+
+    where = " AND ".join(conditions)
+    result = await db.execute(text(f"""
+        SELECT b.id, b.status, b.check_in_date, b.check_out_date, b.created_at,
+               h.name as household_name,
+               STRING_AGG(d.name, ', ') as dogs,
+               st.name as service_type
+        FROM bookings b
+        JOIN households h ON b.household_id = h.id
+        LEFT JOIN booking_dogs_v2 bd ON bd.booking_id = b.id
+        LEFT JOIN dogs d ON bd.dog_id = d.id
+        LEFT JOIN service_types st ON b.service_type_id = st.id
+        WHERE {where}
+        GROUP BY b.id, b.status, b.check_in_date, b.check_out_date, b.created_at,
+                 h.name, st.name
+        ORDER BY b.check_in_date DESC
+    """), params)
+    rows = result.fetchall()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Booking ID", "Status", "Check-In", "Check-Out", "Household", "Dogs", "Service", "Created"])
+    for r in rows:
+        writer.writerow([r.id, r.status, r.check_in_date, r.check_out_date,
+                        r.household_name, r.dogs, r.service_type, r.created_at])
+
+    output.seek(0)
+    filename = f"bookings_{date_type.today()}.csv"
+    return StreamingResponse(iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"})
+
+
+@router.get("/export/customers")
+async def export_customers(
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(text("""
+        SELECT h.id, h.name, h.email, h.phone, h.address, h.created_at,
+               COUNT(DISTINCT d.id) as dog_count,
+               COUNT(DISTINCT b.id) as booking_count
+        FROM households h
+        LEFT JOIN dogs d ON d.household_id = h.id
+        LEFT JOIN bookings b ON b.household_id = h.id
+        WHERE h.organization_id = :org_id
+        GROUP BY h.id, h.name, h.email, h.phone, h.address, h.created_at
+        ORDER BY h.name
+    """), {"org_id": current_user.organization_id})
+    rows = result.fetchall()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["ID", "Name", "Email", "Phone", "Address", "Dogs", "Bookings", "Member Since"])
+    for r in rows:
+        writer.writerow([r.id, r.name, r.email, r.phone, r.address,
+                        r.dog_count, r.booking_count, r.created_at])
+
+    output.seek(0)
+    return StreamingResponse(iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=customers_{date_type.today()}.csv"})
+
+
+@router.get("/export/dogs")
+async def export_dogs(
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(text("""
+        SELECT d.id, d.name, d.breed, d.age, d.weight, d.gender, d.spay_neuter_status,
+               d.medical_alert, d.escape_risk, d.behavioral_notes,
+               h.name as household_name, h.email as household_email,
+               bp.bite_history, bp.muzzle_required, bp.active_safety_alert
+        FROM dogs d
+        LEFT JOIN households h ON d.household_id = h.id
+        LEFT JOIN behavior_profiles bp ON bp.dog_id = d.id
+        WHERE d.organization_id = :org_id
+        ORDER BY d.name
+    """), {"org_id": current_user.organization_id})
+    rows = result.fetchall()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["ID", "Name", "Breed", "Age", "Weight", "Gender", "Spay/Neuter",
+                    "Medical Alert", "Escape Risk", "Bite History", "Muzzle Required",
+                    "Safety Alert", "Household", "Email", "Behavioral Notes"])
+    for r in rows:
+        writer.writerow([r.id, r.name, r.breed, r.age, r.weight, r.gender,
+                        r.spay_neuter_status, r.medical_alert, r.escape_risk,
+                        r.bite_history, r.muzzle_required, r.active_safety_alert,
+                        r.household_name, r.household_email, r.behavioral_notes])
+
+    output.seek(0)
+    return StreamingResponse(iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=dogs_{date_type.today()}.csv"})
+
+
+@router.get("/export/incidents")
+async def export_incidents(
+    start_date: str = Query(None),
+    end_date: str = Query(None),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    conditions = ["i.organization_id = :org_id"]
+    params = {"org_id": current_user.organization_id}
+    if start_date:
+        conditions.append("i.occurred_at >= :start")
+        params["start"] = start_date
+    if end_date:
+        conditions.append("i.occurred_at <= :end")
+        params["end"] = end_date
+
+    where = " AND ".join(conditions)
+    result = await db.execute(text(f"""
+        SELECT i.id, i.title, i.severity, i.status, i.occurred_at,
+               i.description, i.immediate_action_taken, i.resolution_notes,
+               d.name as dog_name, u.full_name as reported_by_name
+        FROM incidents i
+        LEFT JOIN dogs d ON i.dog_id = d.id
+        LEFT JOIN users u ON i.reported_by = u.id
+        WHERE {where}
+        ORDER BY i.occurred_at DESC
+    """), params)
+    rows = result.fetchall()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["ID", "Title", "Severity", "Status", "Occurred At", "Dog",
+                    "Reported By", "Description", "Immediate Action", "Resolution"])
+    for r in rows:
+        writer.writerow([r.id, r.title, r.severity, r.status, r.occurred_at,
+                        r.dog_name, r.reported_by_name, r.description,
+                        r.immediate_action_taken, r.resolution_notes])
+
+    output.seek(0)
+    return StreamingResponse(iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=incidents_{date_type.today()}.csv"})
