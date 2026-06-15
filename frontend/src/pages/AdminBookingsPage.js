@@ -179,6 +179,28 @@ const CreateBookingModal = ({ onClose, onSuccess }) => {
     } catch {}
   };
 
+  const [vaccinationWarnings, setVaccinationWarnings] = useState([]);
+  const [showVaxWarning, setShowVaxWarning] = useState(false);
+
+  const checkVaccinations = async (dogIds) => {
+    const warnings = [];
+    const today = new Date();
+    const in30Days = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+    for (const dogId of dogIds) {
+      try {
+        const res = await api.get(`/vaccinations/dog/${dogId}`);
+        const vax = res.data || [];
+        const dog = dogs.find(d => d.id === dogId);
+        const dogName = dog?.name || 'Unknown';
+        const expired = vax.filter(v => v.expiry_date && new Date(v.expiry_date) < today);
+        const expiring = vax.filter(v => v.expiry_date && new Date(v.expiry_date) >= today && new Date(v.expiry_date) <= in30Days);
+        if (expired.length > 0) warnings.push({ dogName, type: 'expired', items: expired.map(v => v.vaccine_name) });
+        if (expiring.length > 0) warnings.push({ dogName, type: 'expiring', items: expiring.map(v => v.vaccine_name) });
+      } catch {}
+    }
+    return warnings;
+  };
+
   const handleSubmit = async () => {
     if (!form.household_id) { toast.error('Select a household'); return; }
     if (form.dog_ids.length === 0) { toast.error('Select at least one dog'); return; }
