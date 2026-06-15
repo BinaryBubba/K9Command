@@ -291,7 +291,7 @@ async def export_bookings(
     where = " AND ".join(conditions)
     result = await db.execute(text(f"""
         SELECT b.id, b.status, b.check_in_date, b.check_out_date, b.created_at,
-               h.name as household_name,
+               h.display_name as household_name,
                STRING_AGG(d.name, ', ') as dogs,
                st.name as service_type
         FROM bookings b
@@ -301,7 +301,7 @@ async def export_bookings(
         LEFT JOIN service_types st ON b.service_type_id = st.id
         WHERE {where}
         GROUP BY b.id, b.status, b.check_in_date, b.check_out_date, b.created_at,
-                 h.name, st.name
+                 h.display_name as name, st.name
         ORDER BY b.check_in_date DESC
     """), params)
     rows = result.fetchall()
@@ -326,23 +326,23 @@ async def export_customers(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(text("""
-        SELECT h.id, h.name, h.email, h.phone, h.address, h.created_at,
+        SELECT h.id, h.display_name as name, h.email, h.phone, h.address, h.created_at,
                COUNT(DISTINCT d.id) as dog_count,
                COUNT(DISTINCT b.id) as booking_count
         FROM households h
         LEFT JOIN dogs d ON d.household_id = h.id
         LEFT JOIN bookings b ON b.household_id = h.id
         WHERE h.organization_id = :org_id
-        GROUP BY h.id, h.name, h.email, h.phone, h.address, h.created_at
+        GROUP BY h.id, h.display_name as name, h.email, h.phone, h.address, h.created_at
         ORDER BY h.name
     """), {"org_id": current_user.organization_id})
     rows = result.fetchall()
 
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["ID", "Name", "Email", "Phone", "Address", "Dogs", "Bookings", "Member Since"])
+    writer.writerow(["ID", "Name", "Email", "Phone", "Dogs", "Bookings", "Member Since"])
     for r in rows:
-        writer.writerow([r.id, r.name, r.email, r.phone, r.address,
+        writer.writerow([r.id, r.name, r.email, r.phone,
                         r.dog_count, r.booking_count, r.created_at])
 
     output.seek(0)
@@ -359,12 +359,16 @@ async def export_dogs(
     result = await db.execute(text("""
         SELECT d.id, d.name, d.breed, d.age, d.weight, d.gender, d.spay_neuter_status,
                d.medical_alert, d.escape_risk, d.behavioral_notes,
-               h.name as household_name, h.email as household_email,
+               h.display_name as household_name, c.email as household_email,
                bp.bite_history, bp.muzzle_required, bp.active_safety_alert
         FROM dogs d
         LEFT JOIN households h ON d.household_id = h.id
+        LEFT JOIN contacts c ON c.household_id = h.id AND c.is_primary = TRUE
         LEFT JOIN behavior_profiles bp ON bp.dog_id = d.id
         WHERE d.organization_id = :org_id
+        GROUP BY d.id, d.name, d.breed, d.age, d.weight, d.gender, d.spay_neuter_status,
+                 d.medical_alert, d.escape_risk, d.behavioral_notes,
+                 h.display_name, bp.bite_history, bp.muzzle_required, bp.active_safety_alert
         ORDER BY d.name
     """), {"org_id": current_user.organization_id})
     rows = result.fetchall()
