@@ -326,15 +326,15 @@ async def export_customers(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(text("""
-        SELECT h.id, h.display_name as name, h.email, h.phone, h.address, h.created_at,
-               COUNT(DISTINCT d.id) as dog_count,
-               COUNT(DISTINCT b.id) as booking_count
+        SELECT h.id, h.display_name as name,
+               (SELECT email FROM contacts WHERE household_id = h.id AND is_primary = TRUE LIMIT 1) as email,
+               (SELECT phone FROM contacts WHERE household_id = h.id AND is_primary = TRUE LIMIT 1) as phone,
+               h.created_at,
+               (SELECT COUNT(*) FROM dogs WHERE household_id = h.id) as dog_count,
+               (SELECT COUNT(*) FROM bookings WHERE household_id = h.id) as booking_count
         FROM households h
-        LEFT JOIN dogs d ON d.household_id = h.id
-        LEFT JOIN bookings b ON b.household_id = h.id
         WHERE h.organization_id = :org_id
-        GROUP BY h.id, h.display_name as name, h.email, h.phone, h.address, h.created_at
-        ORDER BY h.name
+        ORDER BY h.display_name
     """), {"org_id": current_user.organization_id})
     rows = result.fetchall()
 
@@ -359,16 +359,12 @@ async def export_dogs(
     result = await db.execute(text("""
         SELECT d.id, d.name, d.breed, d.age, d.weight, d.gender, d.spay_neuter_status,
                d.medical_alert, d.escape_risk, d.behavioral_notes,
-               h.display_name as household_name, c.email as household_email,
+               h.display_name as household_name,
                bp.bite_history, bp.muzzle_required, bp.active_safety_alert
         FROM dogs d
         LEFT JOIN households h ON d.household_id = h.id
-        LEFT JOIN contacts c ON c.household_id = h.id AND c.is_primary = TRUE
         LEFT JOIN behavior_profiles bp ON bp.dog_id = d.id
         WHERE d.organization_id = :org_id
-        GROUP BY d.id, d.name, d.breed, d.age, d.weight, d.gender, d.spay_neuter_status,
-                 d.medical_alert, d.escape_risk, d.behavioral_notes,
-                 h.display_name, bp.bite_history, bp.muzzle_required, bp.active_safety_alert
         ORDER BY d.name
     """), {"org_id": current_user.organization_id})
     rows = result.fetchall()
