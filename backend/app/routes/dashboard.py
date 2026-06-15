@@ -291,27 +291,26 @@ async def export_bookings(
     where = " AND ".join(conditions)
     result = await db.execute(text(f"""
         SELECT b.id, b.status, b.check_in_date, b.check_out_date, b.created_at,
+               b.accommodation_type,
                h.display_name as household_name,
-               STRING_AGG(d.name, ', ') as dogs,
-               st.name as service_type
+               STRING_AGG(d.name, ', ') as dogs
         FROM bookings b
         JOIN households h ON b.household_id = h.id
         LEFT JOIN booking_dogs_v2 bd ON bd.booking_id = b.id
         LEFT JOIN dogs d ON bd.dog_id = d.id
-        LEFT JOIN service_types st ON b.service_type_id = st.id
         WHERE {where}
         GROUP BY b.id, b.status, b.check_in_date, b.check_out_date, b.created_at,
-                 h.display_name, st.name
+                 b.accommodation_type, h.display_name
         ORDER BY b.check_in_date DESC
     """), params)
     rows = result.fetchall()
 
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Booking ID", "Status", "Check-In", "Check-Out", "Household", "Dogs", "Service", "Created"])
+    writer.writerow(["Booking ID", "Status", "Check-In", "Check-Out", "Household", "Dogs", "Type", "Created"])
     for r in rows:
         writer.writerow([r.id, r.status, r.check_in_date, r.check_out_date,
-                        r.household_name, r.dogs, r.service_type, r.created_at])
+                        r.household_name, r.dogs, r.accommodation_type, r.created_at])
 
     output.seek(0)
     filename = f"bookings_{date_type.today()}.csv"
