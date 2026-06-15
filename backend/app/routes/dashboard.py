@@ -301,7 +301,7 @@ async def export_bookings(
         LEFT JOIN service_types st ON b.service_type_id = st.id
         WHERE {where}
         GROUP BY b.id, b.status, b.check_in_date, b.check_out_date, b.created_at,
-                 h.display_name as name, st.name
+                 h.display_name, st.name
         ORDER BY b.check_in_date DESC
     """), params)
     rows = result.fetchall()
