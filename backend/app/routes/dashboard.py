@@ -377,12 +377,12 @@ async def export_dogs(
     writer = csv.writer(output)
     writer.writerow(["ID", "Name", "Breed", "Age", "Weight", "Gender", "Spay/Neuter",
                     "Medical Alert", "Escape Risk", "Bite History", "Muzzle Required",
-                    "Safety Alert", "Household", "Email", "Behavioral Notes"])
+                    "Safety Alert", "Household", "Behavioral Notes"])
     for r in rows:
         writer.writerow([r.id, r.name, r.breed, r.age, r.weight, r.gender,
                         r.spay_neuter_status, r.medical_alert, r.escape_risk,
                         r.bite_history, r.muzzle_required, r.active_safety_alert,
-                        r.household_name, r.household_email, r.behavioral_notes])
+                        r.household_name, r.behavioral_notes])
 
     output.seek(0)
     return StreamingResponse(iter([output.getvalue()]),
