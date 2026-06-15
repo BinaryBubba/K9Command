@@ -3,13 +3,13 @@ Daily Command Dashboard API
 Returns prioritized operational data for the daily dashboard.
 Priority order per spec Section 7.5.
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, text
 from datetime import datetime, timezone, timedelta
 from database import get_db
-from auth import get_current_user
-from db_models import (
+from auth import get_current_user, require_role
+from db_models import (UserRole,
     Stay, StayStatus, StayAlert,
     Task, TaskStatus, Incident, IncidentStatus, IncidentSeverity, StayAlertSeverity,
     Booking, BookingStatus, BookingDog,
