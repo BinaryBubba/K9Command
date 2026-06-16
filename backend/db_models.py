@@ -91,6 +91,7 @@ class User(Base):
     emergency_contact_phone = Column(String, nullable=True)
     notes = Column(Text, nullable=True)
     hire_date = Column(String, nullable=True)
+    manager_pin = Column(String(4), nullable=True)
     address = Column(String, nullable=True)
     birthday = Column(String, nullable=True)
     avatar_key = Column(String, nullable=True)

@@ -99,7 +99,18 @@ async def get_dashboard(
             select(Booking).where(Booking.id == stay.booking_id)
         )).scalar_one_or_none()
         if booking and now <= booking.check_out_date <= two_hours:
-            departing_soon.append(stay)
+            dog = (await db.execute(select(DogORM).where(DogORM.id == stay.dog_id))).scalar_one_or_none()
+            room = (await db.execute(select(Room).where(Room.id == stay.room_id))).scalar_one_or_none() if stay.room_id else None
+            from db_models import Household
+            hh = (await db.execute(select(Household).where(Household.id == booking.household_id))).scalar_one_or_none()
+            departing_soon.append({
+                "stay_id": stay.id,
+                "dog_id": stay.dog_id,
+                "dog_name": dog.name if dog else None,
+                "room_name": room.name if room else None,
+                "household_name": hh.display_name if hh else None,
+                "check_out_date": booking.check_out_date.isoformat(),
+            })
 
     # ── Vaccination warnings for on-site dogs ─────────────────────────────────
     vax_warnings = []
@@ -172,7 +183,7 @@ async def get_dashboard(
         "arriving_soon": [await _booking_summary(b, db) for b in arriving_soon],
 
         # Priority 5: Departing soon (within 2 hours)
-        "departing_soon": [_stay_summary(s) for s in departing_soon],
+        "departing_soon": departing_soon,
 
         # Priority 8: All other active alerts
         "caution_alerts": [_alert_summary(a) for a in all_alerts
@@ -243,11 +254,15 @@ def _alert_summary(a: StayAlert) -> dict:
         "created_at": a.created_at.isoformat() if a.created_at else None,
     }
 
-def _stay_summary(s: Stay) -> dict:
+def _stay_summary(s: Stay, dog_name: str = None, room_name: str = None, household_name: str = None) -> dict:
     return {
         "stay_id": s.id,
         "dog_id": s.dog_id,
+        "dog_name": dog_name,
         "room_id": s.room_id,
+        "room_name": room_name,
+        "household_name": household_name,
+        "check_out_date": s.booking.check_out_date.isoformat() if hasattr(s, 'booking') and s.booking else None,
         "checked_in_at": s.checked_in_at.isoformat() if s.checked_in_at else None,
     }
 
@@ -256,13 +271,26 @@ async def _booking_summary(b: Booking, db) -> dict:
         select(BookingDog).where(BookingDog.booking_id == b.id)
     )
     dog_ids = [bd.dog_id for bd in bd_result.scalars().all()]
+    # Get dog names
+    dog_names = []
+    for dog_id in dog_ids:
+        dog_result = await db.execute(select(DogORM).where(DogORM.id == dog_id))
+        dog = dog_result.scalar_one_or_none()
+        if dog:
+            dog_names.append(dog.name)
+    # Get household name
+    from db_models import Household
+    hh_result = await db.execute(select(Household).where(Household.id == b.household_id))
+    hh = hh_result.scalar_one_or_none()
     return {
         "booking_id": b.id,
         "household_id": b.household_id,
+        "household_name": hh.display_name if hh else None,
         "check_in_date": b.check_in_date.isoformat(),
         "check_out_date": b.check_out_date.isoformat(),
         "status": b.status.value,
         "dog_ids": dog_ids,
+        "dog_names": dog_names,
     }
 
 

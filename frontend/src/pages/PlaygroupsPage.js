@@ -65,8 +65,8 @@ const PlaygroupsPage = () => {
       setSuggested(res.data);
       setEditGroups(res.data.groups.map((g, i) => ({
         ...g,
-        group_number: i + 1,
-        label: g.is_individual ? `Individual — ${g.dogs[0]?.dog_name}` : `Group ${i + 1}`,
+        group_number: g.group_number || i + 1,
+        label: g.is_individual ? `Individual — ${g.dogs[0]?.dog_name}` : `Group ${g.group_number || i + 1}`,
       })));
       setMode('suggest');
     } catch { toast.error('Failed to generate suggestions'); }

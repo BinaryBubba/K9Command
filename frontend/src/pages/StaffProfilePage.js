@@ -273,6 +273,7 @@ const EditForm = ({ staff, isAdmin, onSave, onCancel }) => {
     hire_date: staff.hire_date || '',
     notes: staff.notes || '',
     avatar_key: staff.avatar_key || '',
+    manager_pin: staff.manager_pin || '',
   });
   const [avatarPreview, setAvatarPreview] = useState(staff.avatar_url || '');
   const [uploading, setUploading] = useState(false);

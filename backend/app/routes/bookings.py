@@ -503,10 +503,11 @@ def _parse_date(value) -> Optional[datetime]:
     except Exception:
         return None
 
-def _booking_dict(b: Booking, booking_dogs: list) -> dict:
+def _booking_dict(b: Booking, booking_dogs: list, household_name: str = None, dog_names: list = None) -> dict:
     return {
         "id": b.id,
         "household_id": b.household_id,
+        "household_name": household_name,
         "check_in_date": b.check_in_date.isoformat() if b.check_in_date else None,
         "check_out_date": b.check_out_date.isoformat() if b.check_out_date else None,
         "status": b.status.value if b.status else None,
@@ -514,6 +515,7 @@ def _booking_dict(b: Booking, booking_dogs: list) -> dict:
         "notes": b.notes,
         "special_request": b.special_request,
         "dog_ids": [bd.dog_id for bd in booking_dogs],
+        "dog_names": dog_names or [],
         "created_at": b.created_at.isoformat() if b.created_at else None,
         "updated_at": b.updated_at.isoformat() if b.updated_at else None,
     }

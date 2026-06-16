@@ -128,8 +128,8 @@ const AdminDashboard = () => {
                   {data.arriving_soon.map(b => (
                     <div key={b.booking_id} className="flex items-center justify-between py-2 border-b last:border-0">
                       <div>
-                        <p className="text-sm font-medium">{b.dog_ids?.length} dog{b.dog_ids?.length !== 1 ? 's' : ''}</p>
-                        <p className="text-xs text-muted-foreground">{new Date(b.check_in_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                        <p className="text-sm font-medium">{b.dog_names?.join(', ') || `${b.dog_ids?.length} dog${b.dog_ids?.length !== 1 ? 's' : ''}`}</p>
+                        <p className="text-xs text-muted-foreground">{b.household_name} · {new Date(b.check_in_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                       </div>
                       <Button size="sm" variant="outline" onClick={() => navigate('/admin/check-in-out')}>Check In</Button>
                     </div>
@@ -154,7 +154,10 @@ const AdminDashboard = () => {
                 <div className="space-y-2">
                   {data.departing_soon.map(s => (
                     <div key={s.stay_id} className="flex items-center justify-between py-2 border-b last:border-0">
-                      <p className="text-sm font-medium">Dog in {s.room_id ? 'Room' : 'unassigned'}</p>
+                      <div>
+                        <p className="text-sm font-medium">{s.dog_name || 'Unknown dog'}</p>
+                        <p className="text-xs text-muted-foreground">{s.household_name}{s.room_name ? ` · ${s.room_name}` : ''} · {s.check_out_date ? new Date(s.check_out_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}</p>
+                      </div>
                       <Button size="sm" variant="outline" onClick={() => navigate('/admin/check-in-out')}>Check Out</Button>
                     </div>
                   ))}

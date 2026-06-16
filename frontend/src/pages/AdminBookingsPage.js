@@ -103,10 +103,13 @@ const AdminBookingsPage = () => {
                             {new Date(b.check_in_date).toLocaleDateString()} — {new Date(b.check_out_date).toLocaleDateString()}
                           </p>
                         </div>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="text-xs font-medium text-muted-foreground">{b.household_name || 'Unknown'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
                           <DogIcon size={12} className="text-muted-foreground" />
                           <span className="text-xs text-muted-foreground">
-                            {b.dog_ids?.length} dog{b.dog_ids?.length !== 1 ? 's' : ''}
+                            {b.dog_names?.length > 0 ? b.dog_names.join(', ') : `${b.dog_ids?.length || 0} dog${b.dog_ids?.length !== 1 ? 's' : ''}`}
                           </span>
                           <span className="text-xs text-muted-foreground">·</span>
                           <span className="text-xs text-muted-foreground">

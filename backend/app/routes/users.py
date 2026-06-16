@@ -43,6 +43,7 @@ def _user_dict(u: UserORM) -> dict:
         "avatar_url": _get_avatar_url(u.avatar_key),
         "first_name": u.first_name,
         "last_name": u.last_name,
+        "manager_pin": u.manager_pin,
         "created_at": u.created_at.isoformat() if u.created_at else None,
     }
 
@@ -96,7 +97,7 @@ async def update_user(
 
     # Fields anyone can update on themselves
     self_fields = ["full_name", "first_name", "last_name", "phone", "address", "birthday",
-                   "emergency_contact_name", "emergency_contact_phone", "avatar_key"]
+                   "emergency_contact_name", "emergency_contact_phone", "avatar_key", "manager_pin"]
     # Admin-only fields
     admin_fields = ["role", "is_active", "notes", "hire_date", "address", "birthday"]
 
@@ -251,3 +252,39 @@ async def _get_user_or_404(user_id: str, org_id: str, db: AsyncSession) -> UserO
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
+
+
+@router.post("/verify-pin")
+async def verify_manager_pin(
+    data: dict,
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Verify a manager/admin PIN for override actions."""
+    pin = data.get("pin", "").strip()
+    user_id = data.get("user_id")  # optional - verify specific user's pin
+    
+    if user_id:
+        result = await db.execute(
+            select(UserORM).where(
+                UserORM.id == user_id,
+                UserORM.organization_id == current_user.organization_id,
+            )
+        )
+        user = result.scalar_one_or_none()
+    else:
+        # Verify against any manager/admin in the org
+        result = await db.execute(
+            select(UserORM).where(
+                UserORM.organization_id == current_user.organization_id,
+                UserORM.manager_pin == pin,
+                UserORM.role.in_(['manager', 'admin', 'MANAGER', 'ADMIN']),
+                UserORM.is_active == True,
+            )
+        )
+        user = result.scalar_one_or_none()
+    
+    if not user or user.manager_pin != pin:
+        raise HTTPException(status_code=403, detail="Invalid PIN")
+    
+    return {"verified": True, "user_name": user.full_name, "role": user.role}
