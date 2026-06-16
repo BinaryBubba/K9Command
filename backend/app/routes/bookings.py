@@ -53,7 +53,12 @@ async def list_bookings(
     out = []
     for b in bookings:
         bd = await _get_booking_dogs(b.id, db)
-        out.append(_booking_dict(b, bd))
+        hh = (await db.execute(select(Household).where(Household.id == b.household_id))).scalar_one_or_none()
+        dog_names = []
+        for booking_dog in bd:
+            dog = (await db.execute(select(DogORM).where(DogORM.id == booking_dog.dog_id))).scalar_one_or_none()
+            if dog: dog_names.append(dog.name)
+        out.append(_booking_dict(b, bd, household_name=hh.display_name if hh else None, dog_names=dog_names))
     return out
 
 
