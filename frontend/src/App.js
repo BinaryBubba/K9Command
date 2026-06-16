@@ -39,6 +39,7 @@ import BookingProfilePage from './pages/BookingProfilePage';
 import StaffProfilePage from './pages/StaffProfilePage';
 import IncidentProfilePage from './pages/IncidentProfilePage';
 import PlaygroupsPage from './pages/PlaygroupsPage';
+import BookingProfilePage from './pages/BookingProfilePage';
 import MeetAndGreetPage from './pages/MeetAndGreetPage';
 // Pages - Customer
 import CustomerDashboard from "./pages/CustomerDashboard";
@@ -292,6 +293,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['admin', 'staff']}>
                 <PlaygroupsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/bookings/:bookingId"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'staff']}>
+                <BookingProfilePage />
               </ProtectedRoute>
             }
           />
