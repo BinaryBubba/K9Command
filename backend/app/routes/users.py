@@ -278,7 +278,7 @@ async def verify_manager_pin(
             text("""SELECT id FROM users 
                     WHERE organization_id = :org_id 
                     AND manager_pin = :pin 
-                    AND role::text IN ('manager', 'admin')
+                    AND LOWER(role::text) IN ('manager', 'admin')
                     AND is_active = TRUE
                     LIMIT 1"""),
             {"org_id": current_user.organization_id, "pin": pin}
