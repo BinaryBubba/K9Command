@@ -278,7 +278,7 @@ async def verify_manager_pin(
             select(UserORM).where(
                 UserORM.organization_id == current_user.organization_id,
                 UserORM.manager_pin == pin,
-                UserORM.role.in_(['manager', 'admin', 'MANAGER', 'ADMIN']),
+                UserORM.role.cast(text('varchar')).in_(['manager', 'admin']),
                 UserORM.is_active == True,
             )
         )
