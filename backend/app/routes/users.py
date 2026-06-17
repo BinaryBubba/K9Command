@@ -275,16 +275,21 @@ async def verify_manager_pin(
     else:
         # Verify against any manager/admin in the org
         result = await db.execute(
-            select(UserORM).where(
-                UserORM.organization_id == current_user.organization_id,
-                UserORM.manager_pin == pin,
-                UserORM.role.cast(text('varchar')).in_(['manager', 'admin']),
-                UserORM.is_active == True,
-            )
+            text("""SELECT id FROM users 
+                    WHERE organization_id = :org_id 
+                    AND manager_pin = :pin 
+                    AND role::text IN ('manager', 'admin')
+                    AND is_active = TRUE
+                    LIMIT 1"""),
+            {"org_id": current_user.organization_id, "pin": pin}
         )
-        user = result.scalar_one_or_none()
+        row = result.fetchone()
+        if not row:
+            raise HTTPException(status_code=403, detail="Invalid PIN")
+        user_result = await db.execute(select(UserORM).where(UserORM.id == row[0]))
+        user = user_result.scalar_one_or_none()
     
-    if not user or user.manager_pin != pin:
+    if not user:
         raise HTTPException(status_code=403, detail="Invalid PIN")
     
-    return {"verified": True, "user_name": user.full_name, "role": user.role}
+    return {"verified": True, "user_name": user.full_name, "role": str(user.role)}
