@@ -292,4 +292,5 @@ async def verify_manager_pin(
     if not user:
         raise HTTPException(status_code=403, detail="Invalid PIN")
     
-    return {"verified": True, "user_name": user.full_name, "role": str(user.role)}
+    role = user.role.value if hasattr(user.role, "value") else str(user.role)
+    return {"verified": True, "user_name": user.full_name, "role": role}
