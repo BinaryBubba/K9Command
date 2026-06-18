@@ -11,6 +11,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { AlertCircleIcon, CheckCircleIcon, ClockIcon, DogIcon, PlusIcon, UploadIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import PinModal from '../components/PinModal';
 import { useRef } from 'react';
 
 const BELONGINGS_OPTIONS = [
@@ -30,6 +31,7 @@ const CheckInOutPage = () => {
   const [departures, setDepartures] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [pinModal, setPinModal] = useState(null); // { type, data, onSuccess }
   const [selectedArrival, setSelectedArrival] = useState(null);
   const [selectedDeparture, setSelectedDeparture] = useState(null);
 
@@ -461,6 +463,14 @@ const CheckOutModal = ({ departure, onClose, onSuccess }) => {
         </div>
       </div>
     </div>
+    {pinModal && (
+      <PinModal
+        title="Manager Override Required"
+        message={pinModal.message || "Enter a manager PIN to continue"}
+        onVerified={(name) => { pinModal.onSuccess(name); setPinModal(null); }}
+        onCancel={() => setPinModal(null)}
+      />
+    )}
   );
 };
 
