@@ -189,6 +189,8 @@ const CheckInModal = ({ arrival, rooms, onClose, onSuccess }) => {
   });
   const [dogInfo, setDogInfo] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [magOverridden, setMagOverridden] = useState(false);
+  const [showPinForMag, setShowPinForMag] = useState(false);
 
   useEffect(() => {
     if (arrival.dog_id) {
@@ -208,6 +210,10 @@ const CheckInModal = ({ arrival, rooms, onClose, onSuccess }) => {
 
   const handleSubmit = async () => {
     if (!form.room_id) { toast.error('Please select a room'); return; }
+    if (dogInfo?.meet_and_greet_status !== 'completed' && !magOverridden) {
+      toast.error('M&G not completed — use Manager Override to proceed');
+      return;
+    }
     setSubmitting(true);
     try {
       const payload = {
@@ -248,10 +254,30 @@ const CheckInModal = ({ arrival, rooms, onClose, onSuccess }) => {
             <button onClick={onClose} className="text-muted-foreground text-xl leading-none">×</button>
           </div>
 
-          {dogInfo?.meet_and_greet_status !== 'completed' && (
-            <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
-              <AlertCircleIcon size={12} /> Meet & greet not completed
+          {dogInfo?.meet_and_greet_status !== 'completed' && !magOverridden && (
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded space-y-2">
+              <div className="flex items-center gap-2 text-xs text-amber-800">
+                <AlertCircleIcon size={12} /> Meet & greet not completed
+              </div>
+              <button type="button"
+                className="text-xs text-amber-700 underline hover:text-amber-900"
+                onClick={() => setShowPinForMag(true)}>
+                Manager override →
+              </button>
             </div>
+          )}
+          {magOverridden && (
+            <div className="p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">
+              ✓ M&G override approved by manager
+            </div>
+          )}
+          {showPinForMag && (
+            <PinModal
+              title="M&G Override"
+              message="Enter manager PIN to allow check-in without completed M&G"
+              onVerified={(name) => { setMagOverridden(true); setShowPinForMag(false); }}
+              onCancel={() => setShowPinForMag(false)}
+            />
           )}
 
           <div>

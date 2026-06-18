@@ -10,6 +10,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Badge } from '../components/ui/badge';
 import { ArrowLeftIcon, PlusIcon, SearchIcon, UsersIcon, DogIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import PinModal from '../components/PinModal';
 
 const AdminCustomersPage = () => {
   const { user } = useAuthStore();
@@ -18,6 +19,8 @@ const AdminCustomersPage = () => {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [newHousehold, setNewHousehold] = useState(null); // triggers M&G prompt
+  const [showMagPin, setShowMagPin] = useState(false);
 
   const fetchHouseholds = useCallback(async () => {
     try {
@@ -100,10 +103,20 @@ const AdminCustomersPage = () => {
         )}
       </main>
 
+      {newHousehold && (
+        <MagPromptModal
+          household={newHousehold}
+          showPin={showMagPin}
+          onSchedule={() => { navigate(`/admin/meet-and-greet?household_id=${newHousehold.id}`); setNewHousehold(null); }}
+          onPinOverride={() => setShowMagPin(true)}
+          onSkip={() => { setNewHousehold(null); setShowMagPin(false); toast.success('Customer created — M&G skipped'); }}
+          onPinCancel={() => setShowMagPin(false)}
+        />
+      )}
       {showCreate && (
         <CreateHouseholdModal
           onClose={() => setShowCreate(false)}
-          onSuccess={() => { setShowCreate(false); fetchHouseholds(); }}
+          onSuccess={(household) => { setShowCreate(false); fetchHouseholds(); setNewHousehold(household); }}
         />
       )}
     </div>
@@ -191,7 +204,7 @@ const CreateHouseholdModal = ({ onClose, onSuccess }) => {
         is_emergency_contact: true,
       });
       toast.success('Household created');
-      onSuccess();
+      onSuccess({ id: hhId, display_name: form.display_name });
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Failed to create household');
     } finally {
@@ -350,5 +363,37 @@ const CreateHouseholdModal = ({ onClose, onSuccess }) => {
     </div>
   );
 };
+
+
+const MagPromptModal = ({ household, onSchedule, onSkip, onPinOverride, showPin, onPinCancel }) => (
+  <>
+    {!showPin ? (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl w-full max-w-sm p-6 space-y-4">
+          <div className="text-center">
+            <div className="text-3xl mb-2">🐾</div>
+            <h2 className="text-lg font-bold">Schedule Meet & Greet?</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              {household?.display_name} has been created. Would you like to schedule a meet & greet?
+            </p>
+          </div>
+          <button className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-medium" onClick={onSchedule}>
+            Schedule M&G Now
+          </button>
+          <button className="w-full py-2 text-sm text-muted-foreground hover:text-foreground" onClick={onPinOverride}>
+            Skip (requires manager PIN)
+          </button>
+        </div>
+      </div>
+    ) : (
+      <PinModal
+        title="Skip M&G"
+        message="Enter manager PIN to skip M&G scheduling"
+        onVerified={onSkip}
+        onCancel={onPinCancel}
+      />
+    )}
+  </>
+);
 
 export default AdminCustomersPage;
