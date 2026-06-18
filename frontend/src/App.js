@@ -312,6 +312,14 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/admin/playgroups/history"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'staff']}>
+                <PlaygroupHistoryPage />
+              </ProtectedRoute>
+            }
+          />
           {/* Fallback */}
           <Route path="/minio/*" element={null} />
           <Route
