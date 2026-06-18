@@ -137,6 +137,7 @@ const MagStatusBadge = ({ status }) => {
 const CreateHouseholdModal = ({ onClose, onSuccess }) => {
   const [form, setForm] = useState({
     display_name: '',
+    dogs: [], // [{name, breed, age, weight}]
     referral_source: '',
     general_notes: '',
     contact_first_name: '',
@@ -203,6 +204,17 @@ const CreateHouseholdModal = ({ onClose, onSuccess }) => {
         is_authorized_pickup: false,
         is_emergency_contact: true,
       });
+      // Create dogs if any
+      for (const dog of (form.dogs || [])) {
+        if (!dog.name?.trim()) continue;
+        await api.post('/dogs', {
+          name: dog.name.trim(),
+          breed: dog.breed || undefined,
+          age: dog.age ? parseInt(dog.age) : undefined,
+          weight: dog.weight ? parseFloat(dog.weight) : undefined,
+          household_id: hhId,
+        }).catch(() => {});
+      }
       toast.success('Household created');
       onSuccess({ id: hhId, display_name: form.display_name });
     } catch (err) {

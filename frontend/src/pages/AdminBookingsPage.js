@@ -31,7 +31,10 @@ const AdminBookingsPage = () => {
     try {
       const now = new Date();
       const params = { limit: 100 };
-      if (filter === 'upcoming') params.start_date = now.toISOString();
+      if (filter === 'upcoming') { params.start_date = now.toISOString(); params.status = 'CONFIRMED'; }
+      else if (filter === 'past') { params.end_date = now.toISOString(); }
+      else if (filter === 'cancelled') { params.status = 'CANCELLED'; }
+      else if (filter === 'completed') { params.status = 'CHECKED_OUT'; }
       else if (filter === 'today') {
         params.start_date = new Date(now.setHours(0,0,0,0)).toISOString();
         params.end_date = new Date(now.setHours(23,59,59,999)).toISOString();
@@ -69,7 +72,7 @@ const AdminBookingsPage = () => {
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
         {/* Filter tabs */}
         <div className="flex gap-2">
-          {['upcoming', 'today', 'all'].map(f => (
+          {['upcoming', 'today', 'all', 'past', 'completed', 'cancelled'].map(f => (
             <button key={f} onClick={() => setFilter(f)}
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 filter === f ? 'bg-primary text-primary-foreground' : 'bg-white border hover:bg-muted'
