@@ -31,7 +31,7 @@ const CheckInOutPage = () => {
   const [departures, setDepartures] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [pinModal, setPinModal] = useState(null); // { type, data, onSuccess }
+  const [pinModal, setPinModal] = useState(null);
   const [selectedArrival, setSelectedArrival] = useState(null);
   const [selectedDeparture, setSelectedDeparture] = useState(null);
 
@@ -64,7 +64,6 @@ const CheckInOutPage = () => {
   );
 
   return (
-    <>
     <div className="min-h-screen bg-[#F9F7F2]">
       <header className="bg-white border-b shadow-sm sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-3">
@@ -464,15 +463,6 @@ const CheckOutModal = ({ departure, onClose, onSuccess }) => {
         </div>
       </div>
     </div>
-    {pinModal && (
-      <PinModal
-        title="Manager Override Required"
-        message={pinModal.message || "Enter a manager PIN to continue"}
-        onVerified={(name) => { pinModal.onSuccess(name); setPinModal(null); }}
-        onCancel={() => setPinModal(null)}
-      />
-    )}
-    </>
   );
 };
 
