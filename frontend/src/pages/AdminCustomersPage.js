@@ -116,7 +116,7 @@ const AdminCustomersPage = () => {
       {showCreate && (
         <CreateHouseholdModal
           onClose={() => setShowCreate(false)}
-          onSuccess={(household) => { setShowCreate(false); fetchHouseholds(); setNewHousehold(household); }}
+          onSuccess={(household) => { console.log('New household:', household); setShowCreate(false); fetchHouseholds(); if (household?.id) setNewHousehold(household); else toast.success('Customer created'); }}
         />
       )}
     </div>
