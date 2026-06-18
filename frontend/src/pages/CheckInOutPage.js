@@ -64,6 +64,7 @@ const CheckInOutPage = () => {
   );
 
   return (
+    <>
     <div className="min-h-screen bg-[#F9F7F2]">
       <header className="bg-white border-b shadow-sm sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-3">
@@ -471,6 +472,7 @@ const CheckOutModal = ({ departure, onClose, onSuccess }) => {
         onCancel={() => setPinModal(null)}
       />
     )}
+    </>
   );
 };
 
