@@ -155,6 +155,9 @@ const PlaygroupsPage = () => {
           <div className="flex gap-2">
             {mode === 'view' && (
               <>
+                <Button variant="outline" size="sm" onClick={() => navigate('/admin/playgroups/history')}>
+                  History
+                </Button>
                 <Button variant="outline" size="sm" onClick={fetchGroups}>
                   <RefreshCwIcon size={14} />
                 </Button>
