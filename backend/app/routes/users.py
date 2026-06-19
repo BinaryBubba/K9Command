@@ -44,6 +44,7 @@ def _user_dict(u: UserORM) -> dict:
         "first_name": u.first_name,
         "last_name": u.last_name,
         "manager_pin": u.manager_pin,
+        "connecteam_user_id": u.connecteam_user_id,
         "created_at": u.created_at.isoformat() if u.created_at else None,
     }
 
@@ -99,7 +100,7 @@ async def update_user(
     self_fields = ["full_name", "first_name", "last_name", "phone", "address", "birthday",
                    "emergency_contact_name", "emergency_contact_phone", "avatar_key", "manager_pin"]
     # Admin-only fields
-    admin_fields = ["role", "is_active", "notes", "hire_date", "address", "birthday"]
+    admin_fields = ["role", "is_active", "notes", "hire_date", "address", "birthday", "connecteam_user_id"]
 
     for field in self_fields:
         if field in data:

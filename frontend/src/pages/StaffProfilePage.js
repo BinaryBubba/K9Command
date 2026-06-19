@@ -274,6 +274,7 @@ const EditForm = ({ staff, isAdmin, onSave, onCancel }) => {
     notes: staff.notes || '',
     avatar_key: staff.avatar_key || '',
     manager_pin: staff.manager_pin || '',
+    connecteam_user_id: staff.connecteam_user_id || '',
   });
   const [avatarPreview, setAvatarPreview] = useState(staff.avatar_url || '');
   const [uploading, setUploading] = useState(false);
