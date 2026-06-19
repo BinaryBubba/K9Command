@@ -25,6 +25,8 @@ const AdminBookingsPage = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [viewMode, setViewMode] = useState('list'); // list | calendar
+  const [calendarDate, setCalendarDate] = useState(new Date());
   const [filter, setFilter] = useState('upcoming');
 
   const fetchBookings = useCallback(async () => {
@@ -63,9 +65,15 @@ const AdminBookingsPage = () => {
             </Button>
             <h1 className="text-lg font-serif font-bold text-primary">Bookings</h1>
           </div>
-          <Button size="sm" onClick={() => setShowCreate(true)}>
-            <PlusIcon size={16} className="mr-1" /> New
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant={viewMode === 'list' ? 'default' : 'outline'}
+              onClick={() => setViewMode('list')}>List</Button>
+            <Button size="sm" variant={viewMode === 'calendar' ? 'default' : 'outline'}
+              onClick={() => setViewMode('calendar')}>Calendar</Button>
+            <Button size="sm" onClick={() => setShowCreate(true)}>
+              <PlusIcon size={16} className="mr-1" /> New
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -82,11 +90,19 @@ const AdminBookingsPage = () => {
           ))}
         </div>
 
-        {loading ? (
+        {viewMode === 'calendar' && (
+          <BookingCalendar
+            bookings={bookings}
+            date={calendarDate}
+            onDateChange={setCalendarDate}
+            onBookingClick={b => navigate(`/admin/bookings/${b.id}`)}
+          />
+        )}
+        {viewMode === 'list' && loading ? (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
           </div>
-        ) : bookings.length === 0 ? (
+        ) : viewMode === 'list' && bookings.length === 0 ? (
           <Card><CardContent className="py-12 text-center text-muted-foreground">
             No bookings found
           </CardContent></Card>
@@ -332,5 +348,97 @@ const CreateBookingModal = ({ onClose, onSuccess }) => {
 };
 
 export default AdminBookingsPage;
+
+const BookingCalendar = ({ bookings, date, onDateChange, onBookingClick }) => {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date();
+
+  const monthNames = ['January','February','March','April','May','June',
+    'July','August','September','October','November','December'];
+
+  // Map bookings to days they overlap
+  const getDayBookings = (day) => {
+    const cellDate = new Date(year, month, day);
+    return bookings.filter(b => {
+      const checkIn = new Date(b.check_in_date);
+      const checkOut = new Date(b.check_out_date);
+      checkIn.setHours(0,0,0,0);
+      checkOut.setHours(23,59,59,999);
+      cellDate.setHours(12,0,0,0);
+      return cellDate >= checkIn && cellDate <= checkOut;
+    });
+  };
+
+  const STATUS_DOT = {
+    confirmed: 'bg-blue-400',
+    checked_in: 'bg-green-400',
+    checked_out: 'bg-gray-400',
+    cancelled: 'bg-red-400',
+    pending: 'bg-amber-400',
+  };
+
+  return (
+    <div className="bg-white rounded-xl border shadow-sm p-4">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <button onClick={() => onDateChange(new Date(year, month - 1, 1))}
+          className="p-1 rounded hover:bg-muted text-lg">‹</button>
+        <h2 className="font-semibold">{monthNames[month]} {year}</h2>
+        <button onClick={() => onDateChange(new Date(year, month + 1, 1))}
+          className="p-1 rounded hover:bg-muted text-lg">›</button>
+      </div>
+      {/* Day names */}
+      <div className="grid grid-cols-7 mb-1">
+        {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => (
+          <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">{d}</div>
+        ))}
+      </div>
+      {/* Days grid */}
+      <div className="grid grid-cols-7 gap-0.5">
+        {Array.from({length: firstDay}).map((_, i) => <div key={`empty-${i}`} />)}
+        {Array.from({length: daysInMonth}).map((_, i) => {
+          const day = i + 1;
+          const dayBookings = getDayBookings(day);
+          const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
+          return (
+            <div key={day} className={`min-h-14 p-1 rounded border text-xs ${
+              isToday ? 'border-primary bg-primary/5' : 'border-transparent hover:border-border'
+            }`}>
+              <p className={`font-medium mb-0.5 ${isToday ? 'text-primary' : ''}`}>{day}</p>
+              {dayBookings.slice(0,3).map(b => (
+                <button key={b.id} type="button"
+                  onClick={() => onBookingClick(b)}
+                  className={`w-full text-left text-xs px-1 py-0.5 rounded mb-0.5 truncate flex items-center gap-1 hover:opacity-80 ${
+                    b.status === 'checked_in' ? 'bg-green-100 text-green-800' :
+                    b.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
+                    b.status === 'cancelled' ? 'bg-red-100 text-red-700 line-through' :
+                    'bg-gray-100 text-gray-600'
+                  }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_DOT[b.status] || 'bg-gray-400'}`}></span>
+                  <span className="truncate">{b.dog_names?.[0] || b.household_name || '—'}</span>
+                </button>
+              ))}
+              {dayBookings.length > 3 && (
+                <p className="text-muted-foreground text-xs">+{dayBookings.length - 3} more</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {/* Legend */}
+      <div className="flex gap-4 mt-3 pt-3 border-t">
+        {[['confirmed','bg-blue-400','Confirmed'],['checked_in','bg-green-400','Checked In'],['checked_out','bg-gray-400','Checked Out'],['cancelled','bg-red-400','Cancelled']].map(([s,c,l]) => (
+          <div key={s} className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span className={`w-2 h-2 rounded-full ${c}`}></span>{l}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 export { CreateBookingModal };
