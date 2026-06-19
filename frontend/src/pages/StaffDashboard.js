@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge';
 import {
   DogIcon, CalendarIcon, AlertCircleIcon, LogOutIcon,
-  HomeIcon, ActivityIcon, ClipboardListIcon, RefreshCwIcon,, ClockIcon} from 'lucide-react';
+  HomeIcon, ActivityIcon, ClipboardListIcon, RefreshCwIcon, ClockIcon} from 'lucide-react';
 import { toast } from 'sonner';
 
 const StaffDashboard = () => {
