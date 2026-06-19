@@ -31,9 +31,11 @@ const NavBar = () => {
     { label: 'Customers', icon: <UsersIcon size={18} />, path: '/admin/customers' },
     { label: 'Meet & Greet', icon: <DogIcon size={18} />, path: '/admin/meet-and-greet' },
     { label: 'Playgroups', icon: <UsersIcon size={18} />, path: '/admin/playgroups' },
+    { label: 'Forms', icon: <ClipboardListIcon size={18} />, path: '/forms' },
     { label: 'Tasks', icon: <ClipboardListIcon size={18} />, path: '/admin/tasks' },
     { label: 'Incidents', icon: <AlertCircleIcon size={18} />, path: '/admin/incidents' },
     { label: 'Staff', icon: <UsersIcon size={18} />, path: '/admin/staff' },
+    { label: 'Forms', icon: <ClipboardListIcon size={18} />, path: '/forms' },
     { label: 'Settings', icon: <ShieldIcon size={18} />, path: '/admin/settings' },
   ];
 
@@ -45,6 +47,7 @@ const NavBar = () => {
     { label: 'Tasks', icon: <ClipboardListIcon size={18} />, path: '/staff/tasks' },
     { label: 'Daily Ops', icon: <ClipboardListIcon size={18} />, path: '/staff/daily-ops' },
     { label: 'Playgroups', icon: <UsersIcon size={18} />, path: '/admin/playgroups' },
+    { label: 'Forms', icon: <ClipboardListIcon size={18} />, path: '/forms' },
   ];
 
   const customerLinks = [
