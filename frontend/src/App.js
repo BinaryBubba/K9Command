@@ -41,6 +41,7 @@ import IncidentProfilePage from './pages/IncidentProfilePage';
 import PlaygroupsPage from './pages/PlaygroupsPage';
 import PlaygroupHistoryPage from './pages/PlaygroupHistoryPage';
 import FormsPage from './pages/FormsPage';
+import AdminFormsPage from './pages/AdminFormsPage';
 import MeetAndGreetPage from './pages/MeetAndGreetPage';
 // Pages - Customer
 import CustomerDashboard from "./pages/CustomerDashboard";
@@ -326,6 +327,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['admin', 'staff', 'customer']}>
                 <FormsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/forms"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminFormsPage />
               </ProtectedRoute>
             }
           />
