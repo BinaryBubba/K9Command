@@ -294,3 +294,58 @@ async def verify_manager_pin(
     
     role = user.role.value if hasattr(user.role, "value") else str(user.role)
     return {"verified": True, "user_name": user.full_name, "role": role}
+
+
+@router.post("/shift/clock-in")
+async def clock_in(
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Mark current user as on shift."""
+    from datetime import datetime, timezone
+    from sqlalchemy import text
+    await db.execute(text("""
+        UPDATE users SET is_on_shift = TRUE, shift_started_at = NOW()
+        WHERE id = :user_id
+    """), {"user_id": current_user.id})
+    await db.commit()
+    return {"on_shift": True, "started_at": datetime.now(timezone.utc).isoformat()}
+
+
+@router.post("/shift/clock-out")
+async def clock_out(
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Mark current user as off shift."""
+    from sqlalchemy import text
+    await db.execute(text("""
+        UPDATE users SET is_on_shift = FALSE, shift_started_at = NULL
+        WHERE id = :user_id
+    """), {"user_id": current_user.id})
+    await db.commit()
+    return {"on_shift": False}
+
+
+@router.get("/shift/active")
+async def get_active_staff(
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get all staff currently on shift."""
+    from sqlalchemy import text
+    result = await db.execute(text("""
+        SELECT id, full_name, role, shift_started_at, avatar_key
+        FROM users
+        WHERE organization_id = :org_id
+        AND is_on_shift = TRUE
+        AND is_active = TRUE
+        ORDER BY shift_started_at ASC
+    """), {"org_id": current_user.organization_id})
+    rows = result.fetchall()
+    return [{
+        "id": r.id,
+        "full_name": r.full_name,
+        "role": r.role,
+        "shift_started_at": r.shift_started_at.isoformat() if r.shift_started_at else None,
+    } for r in rows]

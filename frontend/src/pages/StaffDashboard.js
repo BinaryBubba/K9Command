@@ -13,7 +13,29 @@ import { toast } from 'sonner';
 const StaffDashboard = () => {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+
+  const handleClockIn = async () => {
+    setShiftLoading(true);
+    try {
+      await api.post('/users/shift/clock-in');
+      setOnShift(true);
+      toast.success('Clocked in — have a great shift!');
+    } catch { toast.error('Failed to clock in'); }
+    finally { setShiftLoading(false); }
+  };
+
+  const handleClockOut = async () => {
+    setShiftLoading(true);
+    try {
+      await api.post('/users/shift/clock-out');
+      setOnShift(false);
+      toast.success('Clocked out — great work today!');
+    } catch { toast.error('Failed to clock out'); }
+    finally { setShiftLoading(false); }
+  };
   const [data, setData] = useState(null);
+  const [onShift, setOnShift] = useState(false);
+  const [shiftLoading, setShiftLoading] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const fetchDashboard = useCallback(async () => {
@@ -58,6 +80,13 @@ const StaffDashboard = () => {
               <LogOutIcon size={16} />
             </Button>
           </div>
+          <Button size="sm"
+            variant={onShift ? 'outline' : 'default'}
+            className={onShift ? 'border-red-200 text-red-600 hover:bg-red-50' : 'bg-green-600 hover:bg-green-700 text-white'}
+            onClick={onShift ? handleClockOut : handleClockIn}
+            disabled={shiftLoading}>
+            {shiftLoading ? '...' : onShift ? 'Clock Out' : 'Clock In'}
+          </Button>
         </div>
       </header>
 

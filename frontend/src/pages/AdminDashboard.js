@@ -16,16 +16,19 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [groups, setGroups] = useState([]);
+  const [activeStaff, setActiveStaff] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchDashboard = useCallback(async () => {
     try {
-      const [res, groupsRes] = await Promise.all([
+      const [res, groupsRes, , shiftRes] = await Promise.all([
         api.get('/dashboard'),
         api.get('/playgroups/today').catch(() => ({ data: [] })),
+        api.get('/users/shift/active').catch(() => ({ data: [] })),
       ]);
       setData(res.data);
       setGroups(groupsRes.data || []);
+      setActiveStaff(shiftRes?.data || []);
     } catch {
       toast.error('Failed to load dashboard');
     } finally {
@@ -206,6 +209,31 @@ const AdminDashboard = () => {
           <QuickAction label="Kennels" icon={<HomeIcon size={18} />} onClick={() => navigate('/admin/kennels')} />
         </div>
 
+
+        {/* Who's On Shift */}
+        <div className="bg-white rounded-xl border shadow-sm p-4">
+          <h2 className="font-serif font-semibold text-primary mb-3">Who's On Shift</h2>
+          {activeStaff.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No staff currently clocked in</p>
+          ) : (
+            <div className="space-y-2">
+              {activeStaff.map(s => (
+                <div key={s.id} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                    <span className="text-sm font-medium">{s.full_name}</span>
+                    <span className="text-xs text-muted-foreground capitalize">{s.role}</span>
+                  </div>
+                  {s.shift_started_at && (
+                    <span className="text-xs text-muted-foreground">
+                      since {new Date(s.shift_started_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Today's Playgroups */}
         <div className="bg-white rounded-xl border shadow-sm p-4">
