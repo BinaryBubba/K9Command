@@ -367,8 +367,28 @@ const CheckOutModal = ({ departure, onClose, onSuccess }) => {
     medication_compliance: '',
     concerns: '',
     overall_notes: '',
+    write_in_pickup: false,
   });
   const [submitting, setSubmitting] = useState(false);
+  const [contacts, setContacts] = useState([]);
+
+  useEffect(() => {
+    if (departure.household_id) {
+      api.get(`/households/${departure.household_id}/contacts`).then(r => {
+        setContacts(r.data || []);
+      }).catch(() => {});
+    }
+  }, [departure.household_id]);
+
+  const selectContact = (contact) => {
+    setForm(f => ({
+      ...f,
+      pickup_person_name: `${contact.first_name} ${contact.last_name}`.trim(),
+      relationship_to_household: contact.relationship_to_household || '',
+      is_authorized_pickup: contact.is_authorized_pickup || false,
+      write_in_pickup: false,
+    }));
+  };
 
   const handleSubmit = async () => {
     if (!form.pickup_person_name.trim()) { toast.error('Pickup person name is required'); return; }
@@ -409,11 +429,46 @@ const CheckOutModal = ({ departure, onClose, onSuccess }) => {
 
           <div className="space-y-3 border-b pb-4">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pickup</p>
-            <div>
-              <Label>Pickup Person *</Label>
-              <Input placeholder="Full name" value={form.pickup_person_name}
-                onChange={e => setForm(f => ({...f, pickup_person_name: e.target.value}))} className="mt-1" />
-            </div>
+            {contacts.length > 0 && (
+              <div>
+                <Label>Select Pickup Person</Label>
+                <div className="mt-1 space-y-1">
+                  {contacts.map((c, i) => (
+                    <button key={i} type="button"
+                      onClick={() => selectContact(c)}
+                      className={`w-full text-left p-2 rounded-lg border text-sm transition-colors ${
+                        form.pickup_person_name === `${c.first_name} ${c.last_name}`.trim() && !form.write_in_pickup
+                          ? 'bg-primary/10 border-primary'
+                          : 'border-border hover:bg-muted'
+                      }`}>
+                      <span className="font-medium">{c.first_name} {c.last_name}</span>
+                      {c.is_authorized_pickup && <span className="ml-2 text-xs text-green-600">✓ Authorized</span>}
+                      {c.relationship_to_household && <span className="ml-2 text-xs text-muted-foreground">· {c.relationship_to_household}</span>}
+                    </button>
+                  ))}
+                  <button type="button"
+                    onClick={() => { setForm(f => ({...f, pickup_person_name: '', relationship_to_household: '', is_authorized_pickup: false, write_in_pickup: true})); }}
+                    className={`w-full text-left p-2 rounded-lg border text-sm transition-colors ${
+                      form.write_in_pickup ? 'bg-primary/10 border-primary' : 'border-border hover:bg-muted'
+                    }`}>
+                    ✏️ Someone else (write in)
+                  </button>
+                </div>
+              </div>
+            )}
+            {(form.write_in_pickup || contacts.length === 0) && (
+              <div>
+                <Label>Pickup Person *</Label>
+                <Input placeholder="Full name" value={form.pickup_person_name}
+                  onChange={e => setForm(f => ({...f, pickup_person_name: e.target.value}))} className="mt-1" />
+                <p className="text-xs text-amber-600 mt-1">⚠️ Not on authorized contact list — ID verification required</p>
+              </div>
+            )}
+            {!form.write_in_pickup && contacts.length > 0 && form.pickup_person_name && (
+              <div>
+                <p className="text-sm font-medium">Selected: {form.pickup_person_name}</p>
+              </div>
+            )}
             <div>
               <Label>Relationship</Label>
               <Input placeholder="e.g. Owner, spouse, dog walker" value={form.relationship_to_household}
