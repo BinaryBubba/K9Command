@@ -24,14 +24,9 @@ const StaffDashboard = () => {
     finally { setShiftLoading(false); }
   };
 
-  const handleClockOut = async () => {
-    setShiftLoading(true);
-    try {
-      await api.post('/users/shift/clock-out');
-      setOnShift(false);
-      toast.success('Clocked out — great work today!');
-    } catch { toast.error('Failed to clock out'); }
-    finally { setShiftLoading(false); }
+  const handleClockOut = () => {
+    // Navigate to handoff page which handles clock-out
+    navigate('/staff/handoff');
   };
   const [data, setData] = useState(null);
   const [onShift, setOnShift] = useState(false);

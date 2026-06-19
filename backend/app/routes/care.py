@@ -502,3 +502,159 @@ def _handoff_dict(h: ShiftHandoff) -> dict:
         "acknowledged_at": h.acknowledged_at.isoformat() if h.acknowledged_at else None,
         "is_acknowledged": h.acknowledged_at is not None,
     }
+
+
+# ── Shift Handoffs ────────────────────────────────────────────────────────────
+from db_models import ShiftHandoff
+
+@router.get("/handoffs")
+async def list_handoffs(
+    limit: int = Query(10),
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import text
+    result = await db.execute(text("""
+        SELECT h.id, h.staff_id, h.shift_start, h.shift_end, h.staff_notes,
+               h.follow_up_items, h.outstanding_care, h.active_medications,
+               h.active_alerts, h.open_incidents, h.dogs_on_site_snapshot,
+               h.submitted_at, h.acknowledged_by, h.acknowledged_at, h.created_at,
+               u.full_name as staff_name,
+               ab.full_name as acknowledged_by_name
+        FROM shift_handoffs h
+        JOIN users u ON h.staff_id = u.id
+        LEFT JOIN users ab ON h.acknowledged_by = ab.id
+        WHERE h.organization_id = :org_id
+        ORDER BY h.created_at DESC
+        LIMIT :limit
+    """), {"org_id": current_user.organization_id, "limit": limit})
+    rows = result.fetchall()
+    import json as _json
+    def safe_json(v):
+        if v is None: return []
+        if isinstance(v, str):
+            try: return _json.loads(v)
+            except: return []
+        return v
+    return [{
+        "id": r.id,
+        "staff_id": r.staff_id,
+        "staff_name": r.staff_name,
+        "shift_start": r.shift_start.isoformat() if r.shift_start else None,
+        "shift_end": r.shift_end.isoformat() if r.shift_end else None,
+        "staff_notes": r.staff_notes,
+        "follow_up_items": safe_json(r.follow_up_items),
+        "outstanding_care": safe_json(r.outstanding_care),
+        "active_medications": safe_json(r.active_medications),
+        "active_alerts": safe_json(r.active_alerts),
+        "open_incidents": safe_json(r.open_incidents),
+        "dogs_on_site_snapshot": safe_json(r.dogs_on_site_snapshot),
+        "submitted_at": r.submitted_at.isoformat() if r.submitted_at else None,
+        "acknowledged_by_name": r.acknowledged_by_name,
+        "acknowledged_at": r.acknowledged_at.isoformat() if r.acknowledged_at else None,
+        "created_at": r.created_at.isoformat() if r.created_at else None,
+    } for r in rows]
+
+
+@router.post("/handoffs")
+async def create_handoff(
+    data: dict,
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import text
+    import uuid, json as _json
+    from datetime import datetime, timezone
+
+    # Auto-populate dogs on site
+    dogs_result = await db.execute(text("""
+        SELECT d.name, d.breed, r.name as room_name
+        FROM stays s JOIN dogs d ON s.dog_id = d.id
+        LEFT JOIN rooms r ON s.room_id = r.id
+        WHERE s.organization_id = :org_id
+        AND s.status::text IN ('CHECKED_IN','ON_SITE','on_site','checked_in')
+    """), {"org_id": current_user.organization_id})
+    dogs_snapshot = [{"name": r.name, "breed": r.breed, "room": r.room_name} for r in dogs_result.fetchall()]
+
+    # Auto-populate active medications
+    meds_result = await db.execute(text("""
+        SELECT d.name as dog_name, m.name as med_name, m.dosage, m.frequency
+        FROM medications m JOIN dogs d ON m.dog_id = d.id
+        JOIN stays s ON s.dog_id = d.id
+        WHERE s.organization_id = :org_id
+        AND s.status::text IN ('CHECKED_IN','ON_SITE','on_site','checked_in')
+        AND m.is_active = TRUE
+    """), {"org_id": current_user.organization_id})
+    meds = [{"dog": r.dog_name, "medication": r.med_name, "dosage": r.dosage, "frequency": r.frequency} for r in meds_result.fetchall()]
+
+    # Auto-populate open incidents
+    inc_result = await db.execute(text("""
+        SELECT title, severity::text as severity
+        FROM incidents
+        WHERE organization_id = :org_id
+        AND status::text NOT IN ('CLOSED','RESOLVED')
+    """), {"org_id": current_user.organization_id})
+    incidents = [{"title": r.title, "severity": r.severity} for r in inc_result.fetchall()]
+
+    # Auto-populate active alerts
+    alerts_result = await db.execute(text("""
+        SELECT d.name as dog_name, sa.alert_message
+        FROM stay_alerts sa JOIN stays s ON sa.stay_id = s.id
+        JOIN dogs d ON s.dog_id = d.id
+        WHERE s.organization_id = :org_id
+        AND sa.cleared_at IS NULL
+        AND s.status::text IN ('CHECKED_IN','ON_SITE','on_site','checked_in')
+    """), {"org_id": current_user.organization_id})
+    alerts = [{"dog": r.dog_name, "alert": r.alert_message} for r in alerts_result.fetchall()]
+
+    # Lunch feeding reminder - dogs on site at midday
+    lunch_reminder = []
+    for dog in dogs_snapshot:
+        lunch_reminder.append({"dog": dog["name"], "note": "Check lunch feeding schedule"})
+
+    handoff_id = str(uuid.uuid4())
+    await db.execute(text("""
+        INSERT INTO shift_handoffs (
+            id, organization_id, staff_id, shift_start, shift_end,
+            dogs_on_site_snapshot, active_medications, active_alerts,
+            open_incidents, outstanding_care, follow_up_items, staff_notes, submitted_at
+        ) VALUES (
+            :id, :org_id, :staff_id, :shift_start, NOW(),
+            :dogs, :meds, :alerts, :incidents, :care, :followup, :notes, NOW()
+        )
+    """), {
+        "id": handoff_id,
+        "org_id": current_user.organization_id,
+        "staff_id": current_user.id,
+        "shift_start": data.get("shift_start"),
+        "dogs": _json.dumps(dogs_snapshot),
+        "meds": _json.dumps(meds),
+        "alerts": _json.dumps(alerts),
+        "incidents": _json.dumps(incidents),
+        "care": _json.dumps(lunch_reminder),
+        "followup": _json.dumps(data.get("follow_up_items", [])),
+        "notes": data.get("staff_notes", ""),
+    })
+
+    # Clock out the user
+    await db.execute(text("""
+        UPDATE users SET is_on_shift = FALSE, shift_started_at = NULL WHERE id = :user_id
+    """), {"user_id": current_user.id})
+
+    await db.commit()
+    return {"handoff_id": handoff_id, "clocked_out": True}
+
+
+@router.post("/handoffs/{handoff_id}/acknowledge")
+async def acknowledge_handoff(
+    handoff_id: str,
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import text
+    await db.execute(text("""
+        UPDATE shift_handoffs SET acknowledged_by = :user_id, acknowledged_at = NOW()
+        WHERE id = :id AND organization_id = :org_id
+    """), {"user_id": current_user.id, "id": handoff_id, "org_id": current_user.organization_id})
+    await db.commit()
+    return {"acknowledged": True}
