@@ -539,3 +539,50 @@ def _room_dict(r: Room) -> dict:
     }
 
 from typing import Optional
+
+
+# ── Booking Notes ─────────────────────────────────────────────────────────────
+@router.get("/{booking_id}/notes")
+async def get_booking_notes(
+    booking_id: str,
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import text
+    result = await db.execute(text("""
+        SELECT bn.id, bn.note_text, bn.created_at, u.full_name as created_by_name
+        FROM booking_notes bn
+        LEFT JOIN users u ON bn.created_by = u.id
+        WHERE bn.booking_id = :booking_id
+        AND bn.organization_id = :org_id
+        ORDER BY bn.created_at DESC
+    """), {"booking_id": booking_id, "org_id": current_user.organization_id})
+    rows = result.fetchall()
+    return [{"id": r.id, "note_text": r.note_text, "created_by_name": r.created_by_name,
+             "created_at": r.created_at.isoformat() if r.created_at else None} for r in rows]
+
+
+@router.post("/{booking_id}/notes")
+async def add_booking_note(
+    booking_id: str,
+    data: dict,
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import text
+    import uuid
+    note_text = data.get("note_text", "").strip()
+    if not note_text:
+        raise HTTPException(status_code=400, detail="note_text required")
+    await db.execute(text("""
+        INSERT INTO booking_notes (id, organization_id, booking_id, note_text, created_by)
+        VALUES (:id, :org_id, :booking_id, :note_text, :created_by)
+    """), {
+        "id": str(uuid.uuid4()),
+        "org_id": current_user.organization_id,
+        "booking_id": booking_id,
+        "note_text": note_text,
+        "created_by": current_user.id,
+    })
+    await db.commit()
+    return {"created": True}

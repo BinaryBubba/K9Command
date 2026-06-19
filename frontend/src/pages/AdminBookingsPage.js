@@ -160,6 +160,9 @@ const AdminBookingsPage = () => {
 
 const CreateBookingModal = ({ onClose, onSuccess }) => {
   const [households, setHouseholds] = useState([]);
+  const [showNewCustomer, setShowNewCustomer] = useState(false);
+  const [newCustForm, setNewCustForm] = useState({ display_name: '', first_name: '', last_name: '', email: '', phone: '' });
+  const [creatingCustomer, setCreatingCustomer] = useState(false);
   const [dogs, setDogs] = useState([]);
   const [form, setForm] = useState({
     household_id: '',
@@ -178,6 +181,7 @@ const CreateBookingModal = ({ onClose, onSuccess }) => {
   }, []);
 
   const onHouseholdChange = async (householdId) => {
+    if (householdId === '__new__') { setShowNewCustomer(true); return; }
     setForm(f => ({...f, household_id: householdId, dog_ids: []}));
     if (householdId) {
       try {
@@ -221,6 +225,32 @@ const CreateBookingModal = ({ onClose, onSuccess }) => {
       } catch {}
     }
     return warnings;
+  };
+
+  const handleCreateNewCustomer = async () => {
+    if (!newCustForm.display_name.trim()) { toast.error('Household name required'); return; }
+    if (!newCustForm.email.trim()) { toast.error('Email required'); return; }
+    setCreatingCustomer(true);
+    try {
+      const hhRes = await api.post('/households', {
+        display_name: newCustForm.display_name,
+        primary_contact: {
+          first_name: newCustForm.first_name,
+          last_name: newCustForm.last_name,
+          email: newCustForm.email,
+          phone: newCustForm.phone,
+          is_authorized_pickup: true,
+          is_emergency_contact: false,
+        },
+      });
+      const newHh = hhRes.data;
+      setHouseholds(prev => [...prev, newHh]);
+      await onHouseholdChange(newHh.id);
+      setShowNewCustomer(false);
+      setNewCustForm({ display_name: '', first_name: '', last_name: '', email: '', phone: '' });
+      toast.success(`${newHh.display_name} created`);
+    } catch (err) { toast.error(err.response?.data?.detail || 'Failed to create customer'); }
+    finally { setCreatingCustomer(false); }
   };
 
   const handleSubmit = async () => {
@@ -271,6 +301,7 @@ const CreateBookingModal = ({ onClose, onSuccess }) => {
               onChange={e => onHouseholdChange(e.target.value)}
             >
               <option value="">Select household...</option>
+              <option value="__new__">➕ Create new customer...</option>
               {households.map(h => (
                 <option key={h.id} value={h.id}>{h.display_name}</option>
               ))}
@@ -279,6 +310,29 @@ const CreateBookingModal = ({ onClose, onSuccess }) => {
 
           <div>
             <Label>Dogs *</Label>
+            {showNewCustomer && (
+              <div className="mt-2 p-3 border border-primary/30 rounded-lg bg-primary/5 space-y-2">
+                <p className="text-xs font-medium text-primary">New Customer</p>
+                <Input placeholder="Household/Family name *" value={newCustForm.display_name}
+                  onChange={e => setNewCustForm(f=>({...f,display_name:e.target.value}))} />
+                <div className="grid grid-cols-2 gap-2">
+                  <Input placeholder="First name" value={newCustForm.first_name}
+                    onChange={e => setNewCustForm(f=>({...f,first_name:e.target.value}))} />
+                  <Input placeholder="Last name" value={newCustForm.last_name}
+                    onChange={e => setNewCustForm(f=>({...f,last_name:e.target.value}))} />
+                </div>
+                <Input placeholder="Email *" type="email" value={newCustForm.email}
+                  onChange={e => setNewCustForm(f=>({...f,email:e.target.value}))} />
+                <Input placeholder="Phone" value={newCustForm.phone}
+                  onChange={e => setNewCustForm(f=>({...f,phone:e.target.value}))} />
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => setShowNewCustomer(false)}>Cancel</Button>
+                  <Button size="sm" className="flex-1" onClick={handleCreateNewCustomer} disabled={creatingCustomer}>
+                    {creatingCustomer ? 'Creating...' : 'Create & Select'}
+                  </Button>
+                </div>
+              </div>
+            )}
             {!form.household_id ? (
               <p className="text-xs text-muted-foreground mt-2 italic">Select a household above to see their dogs</p>
             ) : dogs.length === 0 ? (

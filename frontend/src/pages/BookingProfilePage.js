@@ -37,10 +37,12 @@ const BookingProfilePage = () => {
       const res = await api.get(`/bookings/${bookingId}`);
       setBooking(res.data);
       // Load notes and changes from localStorage (quick solution)
-      const savedNotes = JSON.parse(localStorage.getItem(`booking_notes_${bookingId}`) || '[]');
-      const savedChanges = JSON.parse(localStorage.getItem(`booking_changes_${bookingId}`) || '[]');
-      setNotes(savedNotes);
-      setChanges(savedChanges);
+      const [notesRes, changesRes] = await Promise.all([
+        api.get(`/bookings/${bookingId}/notes`).catch(() => ({ data: [] })),
+        Promise.resolve({ data: JSON.parse(localStorage.getItem(`booking_changes_${bookingId}`) || '[]') }),
+      ]);
+      setNotes(notesRes.data);
+      setChanges(changesRes.data);
       // Fetch dog details
       if (res.data.dog_ids?.length) {
         const dogData = await Promise.all(
@@ -57,20 +59,15 @@ const BookingProfilePage = () => {
     fetchData();
   }, [user, navigate, fetchData]);
 
-  const handleAddNote = () => {
+  const handleAddNote = async () => {
     if (!noteText.trim()) return;
-    const note = {
-      id: Date.now(),
-      text: noteText,
-      created_by: user.full_name,
-      created_at: new Date().toISOString(),
-    };
-    const updated = [note, ...notes];
-    localStorage.setItem(`booking_notes_${bookingId}`, JSON.stringify(updated));
-    setNotes(updated);
-    setNoteText('');
-    setShowAddNote(false);
-    toast.success('Note added');
+    try {
+      await api.post(`/bookings/${bookingId}/notes`, { note_text: noteText });
+      setNoteText('');
+      setShowAddNote(false);
+      toast.success('Note added');
+      fetchData();
+    } catch { toast.error('Failed to add note'); }
   };
 
   if (loading) return (
@@ -188,9 +185,9 @@ const BookingProfilePage = () => {
           ) : notes.map(note => (
             <Card key={note.id} className="mb-2">
               <CardContent className="py-3 px-4">
-                <p className="text-sm">{note.text}</p>
+                <p className="text-sm">{note.note_text || note.text}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {note.created_by} · {new Date(note.created_at).toLocaleString()}
+                  {note.created_by_name || note.created_by} · {new Date(note.created_at).toLocaleString()}
                 </p>
               </CardContent>
             </Card>
