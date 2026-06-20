@@ -60,6 +60,7 @@ const NavBar = () => {
     { label: 'Book a Stay', icon: <CalendarIcon size={18} />, path: '/customer/request' },
     { label: 'Book a Stay', icon: <CalendarIcon size={18} />, path: '/customer/request' },
     { label: 'Book a Stay', icon: <CalendarIcon size={18} />, path: '/customer/request' },
+    { label: 'Book a Stay', icon: <CalendarIcon size={18} />, path: '/customer/request' },
   ];
 
   const links = isAdmin ? adminLinks : isStaff ? staffLinks : customerLinks;
