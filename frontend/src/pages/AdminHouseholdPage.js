@@ -24,19 +24,26 @@ const AdminHouseholdPage = () => {
   const [dogs, setDogs] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [linkedUsers, setLinkedUsers] = useState([]);
+  const [allCustomers, setAllCustomers] = useState([]);
+  const [showLinkUser, setShowLinkUser] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
-      const [hhRes, contactsRes, dogsRes, bookingsRes] = await Promise.all([
+      const [hhRes, contactsRes, dogsRes, bookingsRes, customersRes] = await Promise.all([
         api.get(`/households/${householdId}`),
         api.get(`/households/${householdId}/contacts`).catch(() => ({ data: [] })),
         api.get('/dogs', { params: { household_id: householdId } }),
         api.get('/bookings', { params: { household_id: householdId, limit: 20 } }),
+        api.get('/users', { params: { role: 'customer', limit: 100 } }).catch(() => ({ data: [] })),
       ]);
       setHousehold(hhRes.data);
       setContacts(contactsRes.data || []);
       setDogs(dogsRes.data?.dogs || dogsRes.data || []);
       setBookings(bookingsRes.data || []);
+      const customers = customersRes.data || [];
+      setAllCustomers(customers);
+      setLinkedUsers(customers.filter(u => u.household_id === householdId));
     } catch { toast.error('Failed to load customer'); }
     finally { setLoading(false); }
   }, [householdId]);
@@ -186,6 +193,48 @@ const AdminHouseholdPage = () => {
                 </Badge>
               </div>
             ))}
+          </CardContent>
+        </Card>
+
+        {/* Linked Customer Accounts */}
+        <Card>
+          <CardHeader className="pb-2 pt-4 px-4">
+            <CardTitle className="text-sm flex items-center justify-between">
+              Linked Customer Accounts ({linkedUsers.length})
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowLinkUser(!showLinkUser)}>
+                Link Account
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            {linkedUsers.length === 0 ? (
+              <p className="text-xs text-amber-600">No customer accounts linked — customers won't see their bookings online</p>
+            ) : linkedUsers.map(u => (
+              <div key={u.id} className="flex items-center gap-2 py-1">
+                <UserIcon size={14} className="text-muted-foreground" />
+                <p className="text-sm">{u.full_name} · {u.email}</p>
+              </div>
+            ))}
+            {showLinkUser && (
+              <div className="mt-3 space-y-2">
+                <p className="text-xs text-muted-foreground">Select a customer account to link:</p>
+                <select className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                  onChange={async (e) => {
+                    if (!e.target.value) return;
+                    try {
+                      await api.patch(`/users/${e.target.value}/household`, { household_id: householdId });
+                      toast.success('Account linked');
+                      setShowLinkUser(false);
+                      fetchData();
+                    } catch { toast.error('Failed to link'); }
+                  }}>
+                  <option value="">Select customer...</option>
+                  {allCustomers.filter(u => !u.household_id || u.household_id === householdId).map(u => (
+                    <option key={u.id} value={u.id}>{u.full_name} — {u.email}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </CardContent>
         </Card>
 

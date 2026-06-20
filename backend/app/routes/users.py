@@ -298,6 +298,40 @@ async def verify_manager_pin(
     return {"verified": True, "user_name": user.full_name, "role": role}
 
 
+@router.patch("/{user_id}/household")
+async def link_user_household(
+    user_id: str,
+    data: dict,
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Link a customer user to a household."""
+    from sqlalchemy import text
+    household_id = data.get("household_id")
+    await db.execute(text("""
+        UPDATE users SET household_id = :hh_id WHERE id = :user_id AND organization_id = :org_id
+    """), {"hh_id": household_id, "user_id": user_id, "org_id": current_user.organization_id})
+    await db.commit()
+    return {"linked": True}
+
+
+@router.patch("/{user_id}/household")
+async def link_user_household(
+    user_id: str,
+    data: dict,
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Link a customer user to a household."""
+    from sqlalchemy import text
+    household_id = data.get("household_id")
+    await db.execute(text("""
+        UPDATE users SET household_id = :hh_id WHERE id = :user_id AND organization_id = :org_id
+    """), {"hh_id": household_id, "user_id": user_id, "org_id": current_user.organization_id})
+    await db.commit()
+    return {"linked": True}
+
+
 @router.get("/org/settings")
 async def get_org_settings(
     current_user: UserORM = Depends(get_current_user),
