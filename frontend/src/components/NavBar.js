@@ -49,8 +49,6 @@ const NavBar = () => {
     { label: 'Daily Ops', icon: <ClipboardListIcon size={18} />, path: '/staff/daily-ops' },
     { label: 'Playgroups', icon: <UsersIcon size={18} />, path: '/admin/playgroups' },
     { label: 'Customers', icon: <UsersIcon size={18} />, path: '/admin/customers' },
-    { label: 'Customers', icon: <UsersIcon size={18} />, path: '/admin/customers' },
-    { label: 'Customers', icon: <UsersIcon size={18} />, path: '/admin/customers' },
     { label: 'Incidents', icon: <AlertCircleIcon size={18} />, path: '/admin/incidents' },
     { label: 'Forms', icon: <ClipboardListIcon size={18} />, path: '/forms' },
     { label: 'Handoff', icon: <ClipboardListIcon size={18} />, path: '/staff/handoff' },
@@ -59,6 +57,7 @@ const NavBar = () => {
   const customerLinks = [
     { label: 'My Account', icon: <HomeIcon size={18} />, path: '/customer/dashboard' },
     { label: 'My Profile', icon: <UserIcon size={18} />, path: '/customer/profile' },
+    { label: 'Book a Stay', icon: <CalendarIcon size={18} />, path: '/customer/request' },
   ];
 
   const links = isAdmin ? adminLinks : isStaff ? staffLinks : customerLinks;

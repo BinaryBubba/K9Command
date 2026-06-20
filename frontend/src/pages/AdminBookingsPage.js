@@ -169,6 +169,7 @@ const AdminBookingsPage = () => {
 };
 
 const CreateBookingModal = ({ onClose, onSuccess }) => {
+  const navigate = useNavigate();
   const [households, setHouseholds] = useState([]);
   const [showNewCustomer, setShowNewCustomer] = useState(false);
   const [newCustForm, setNewCustForm] = useState({ display_name: '', first_name: '', last_name: '', email: '', phone: '' });
