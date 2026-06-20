@@ -88,9 +88,11 @@ const TaskDashboardPage = () => {
             </Button>
             <h1 className="text-lg font-serif font-bold text-primary">Tasks</h1>
           </div>
-          {(user?.role === 'admin' || user?.role === 'manager') && <Button size="sm" onClick={() => setShowCreate(true)}>
-            <PlusIcon size={16} className="mr-1" /> New Task
-          </Button>
+          {(user?.role === 'admin' || user?.role === 'manager') && (
+            <Button size="sm" onClick={() => setShowCreate(true)}>
+              <PlusIcon size={16} className="mr-1" /> New Task
+            </Button>
+          )}
         </div>
       </header>
 
