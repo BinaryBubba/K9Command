@@ -58,6 +58,7 @@ const NavBar = () => {
     { label: 'My Account', icon: <HomeIcon size={18} />, path: '/customer/dashboard' },
     { label: 'My Profile', icon: <UserIcon size={18} />, path: '/customer/profile' },
     { label: 'Book a Stay', icon: <CalendarIcon size={18} />, path: '/customer/request' },
+    { label: 'Book a Stay', icon: <CalendarIcon size={18} />, path: '/customer/request' },
   ];
 
   const links = isAdmin ? adminLinks : isStaff ? staffLinks : customerLinks;
