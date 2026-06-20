@@ -19,6 +19,7 @@ const AdminCustomersPage = () => {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [newHousehold, setNewHousehold] = useState(null); // triggers M&G prompt
   const [showMagPin, setShowMagPin] = useState(false);
 
@@ -49,9 +50,12 @@ const AdminCustomersPage = () => {
             </Button>
             <h1 className="text-lg font-serif font-bold text-primary">Customers</h1>
           </div>
-          <Button size="sm" onClick={() => setShowCreate(true)}>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setShowImport(true)}>Import</Button>
+            <Button size="sm" onClick={() => setShowCreate(true)}>
             <PlusIcon size={16} className="mr-1" /> New
           </Button>
+          </div>
         </div>
       </header>
 
@@ -103,6 +107,12 @@ const AdminCustomersPage = () => {
         )}
       </main>
 
+      {showImport && (
+        <ImportCustomersModal
+          onClose={() => setShowImport(false)}
+          onImported={() => { fetchHouseholds(); toast.success('Import complete'); }}
+        />
+      )}
       {newHousehold && (
         <MagPromptModal
           household={newHousehold}
@@ -376,6 +386,127 @@ const CreateHouseholdModal = ({ onClose, onSuccess }) => {
   );
 };
 
+
+const ImportCustomersModal = ({ onClose, onImported }) => {
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState([]);
+  const [importing, setImporting] = useState(false);
+  const [results, setResults] = useState(null);
+
+  const parseFile = async (f) => {
+    const text = await f.text();
+    let rows = [];
+    if (f.name.endsWith('.csv')) {
+      rows = text.split('\n').map(r => r.split(',').map(c => c.trim().replace(/^"|"$/g, '')));
+    } else {
+      alert('Please upload a CSV file. For XLS, save as CSV first.');
+      return;
+    }
+    const headers = rows[0].map(h => h.toLowerCase().replace(/\s+/g, '_'));
+    const data = rows.slice(1).filter(r => r.some(c => c)).map(row => {
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = row[i] || ''; });
+      return obj;
+    });
+    setPreview(data.slice(0, 5));
+    setFile({ data, name: f.name });
+  };
+
+  const handleImport = async () => {
+    if (!file) return;
+    setImporting(true);
+    const results = { success: 0, failed: 0, errors: [] };
+    for (const row of file.data) {
+      const name = row.household_name || row.family_name || row.name || row.display_name || `${row.first_name || ''} ${row.last_name || ''}`.trim();
+      if (!name) continue;
+      try {
+        await api.post('/households', {
+          display_name: name,
+          primary_contact: {
+            first_name: row.first_name || name.split(' ')[0] || '',
+            last_name: row.last_name || name.split(' ').slice(1).join(' ') || '',
+            email: row.email || row.email_address || '',
+            phone: row.phone || row.phone_number || row.cell || '',
+            is_authorized_pickup: true,
+            is_emergency_contact: false,
+          },
+        });
+        results.success++;
+      } catch (err) {
+        results.failed++;
+        results.errors.push(`${name}: ${err.response?.data?.detail || 'Failed'}`);
+      }
+    }
+    setResults(results);
+    setImporting(false);
+    if (results.success > 0) onImported();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-4">
+      <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
+        <div className="p-6 space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg font-bold">Import Customers</h2>
+            <button onClick={onClose} className="text-muted-foreground text-xl">×</button>
+          </div>
+          {!results ? (
+            <>
+              <div className="bg-blue-50 border border-blue-200 rounded p-3 text-xs text-blue-800 space-y-1">
+                <p className="font-medium">CSV Format</p>
+                <p>Expected columns (flexible): <code>household_name, first_name, last_name, email, phone</code></p>
+                <p>Also accepts: <code>name, family_name, email_address, phone_number, cell</code></p>
+              </div>
+              <div>
+                <label className="text-sm font-medium">Upload CSV File</label>
+                <input type="file" accept=".csv" className="mt-1 w-full text-sm"
+                  onChange={e => { if (e.target.files[0]) parseFile(e.target.files[0]); }} />
+              </div>
+              {preview.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium mb-2">Preview ({file.data.length} rows)</p>
+                  <div className="overflow-x-auto">
+                    <table className="text-xs w-full border-collapse">
+                      <thead>
+                        <tr>{Object.keys(preview[0]).map(k => <th key={k} className="border px-2 py-1 bg-muted text-left">{k}</th>)}</tr>
+                      </thead>
+                      <tbody>
+                        {preview.map((row, i) => (
+                          <tr key={i}>{Object.values(row).map((v, j) => <td key={j} className="border px-2 py-1">{v}</td>)}</tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {file.data.length > 5 && <p className="text-xs text-muted-foreground mt-1">...and {file.data.length - 5} more rows</p>}
+                </div>
+              )}
+              <div className="flex gap-3">
+                <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+                <Button className="flex-1" onClick={handleImport} disabled={!file || importing}>
+                  {importing ? `Importing...` : `Import ${file?.data?.length || 0} Customers`}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="space-y-3">
+              <div className={`p-4 rounded-lg ${results.failed === 0 ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200'}`}>
+                <p className="font-medium">Import Complete</p>
+                <p className="text-sm mt-1">✅ {results.success} imported successfully</p>
+                {results.failed > 0 && <p className="text-sm text-red-600">❌ {results.failed} failed</p>}
+              </div>
+              {results.errors.length > 0 && (
+                <div className="text-xs text-red-600 space-y-1 max-h-32 overflow-y-auto">
+                  {results.errors.map((e, i) => <p key={i}>{e}</p>)}
+                </div>
+              )}
+              <Button className="w-full" onClick={onClose}>Done</Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const MagPromptModal = ({ household, onSchedule, onSkip, onPinOverride, showPin, onPinCancel }) => (
   <>
