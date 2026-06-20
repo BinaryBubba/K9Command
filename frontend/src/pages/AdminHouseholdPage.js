@@ -201,9 +201,11 @@ const AdminHouseholdPage = () => {
           <CardHeader className="pb-2 pt-4 px-4">
             <CardTitle className="text-sm flex items-center justify-between">
               Linked Customer Accounts ({linkedUsers.length})
-              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowLinkUser(!showLinkUser)}>
-                Link Account
-              </Button>
+              <div className="flex gap-1">
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowLinkUser(!showLinkUser)}>
+                  Link Account
+                </Button>
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4">

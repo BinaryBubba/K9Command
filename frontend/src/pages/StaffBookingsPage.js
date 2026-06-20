@@ -75,7 +75,7 @@ const StaffBookingsPage = () => {
             </Button>
             <h1 className="text-lg font-serif font-bold text-primary">Bookings</h1>
           </div>
-          {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
+          {(user?.role !== 'customer') && (
             <Button size="sm" onClick={() => setShowCreate(true)}>
               <PlusIcon size={16} className="mr-1" /> New
             </Button>

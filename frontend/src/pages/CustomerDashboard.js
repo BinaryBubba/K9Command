@@ -36,7 +36,7 @@ const CustomerDashboard = () => {
       const householdId = meRes.data.household_id;
 
       const [bookRes, dogsRes, formsRes, orgRes] = await Promise.all([
-        api.get('/bookings', { params: { limit: 30 } }),
+        householdId ? api.get('/bookings', { params: { household_id: householdId, limit: 30 } }) : Promise.resolve({ data: [] }),
         householdId
           ? api.get('/dogs', { params: { household_id: householdId, limit: 50 } })
           : Promise.resolve({ data: [] }),

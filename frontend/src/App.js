@@ -334,6 +334,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/admin/forms-fill" element={<ProtectedRoute allowedRoles={['admin','staff']}><FormsPage /></ProtectedRoute>} />
           <Route
             path="/admin/forms"
             element={

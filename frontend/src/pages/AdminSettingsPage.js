@@ -54,7 +54,7 @@ const AdminSettingsPage = () => {
           </TabsList>
           <TabsContent value="rooms"><RoomsTab /></TabsContent>
           <TabsContent value="closures"><ClosuresTab /></TabsContent>
-          <TabsContent value="org"><OrgTab /></TabsContent>
+          <TabsContent value="org"><OrgTab orgSettings={orgSettings} setOrgSettings={setOrgSettings} handleSaveOrg={handleSaveOrg} orgSaving={orgSaving} /></TabsContent>
         </Tabs>
         <ExportsSection />
       </main>
@@ -367,12 +367,29 @@ const ClosuresTab = () => {
   );
 };
 
-const OrgTab = () => (
-  <Card><CardContent className="py-6 space-y-3">
-    <div><Label>Organization Name</Label><Input value="K9 Country Club" disabled className="mt-1 bg-muted" /></div>
-    <div><Label>Timezone</Label><Input value="America/Chicago" disabled className="mt-1 bg-muted" /></div>
-    <div><Label>Owner Email</Label><Input value="owners@k9countryclubkennel.com" disabled className="mt-1 bg-muted" /></div>
-    <p className="text-xs text-muted-foreground flex items-center gap-1"><AlertCircleIcon size={12} /> Organization settings require server access.</p>
+const OrgTab = ({ orgSettings, setOrgSettings, handleSaveOrg, orgSaving }) => (
+  <Card><CardContent className="py-6 space-y-4">
+    <div>
+      <Label>Contact Phone</Label>
+      <Input value={orgSettings.contact_phone || ''} className="mt-1"
+        placeholder="(763) 000-0000"
+        onChange={e => setOrgSettings(s => ({...s, contact_phone: e.target.value}))} />
+    </div>
+    <div>
+      <Label>Contact Email</Label>
+      <Input value={orgSettings.contact_email || ''} className="mt-1"
+        placeholder="info@k9countryclubkennel.com"
+        onChange={e => setOrgSettings(s => ({...s, contact_email: e.target.value}))} />
+    </div>
+    <div>
+      <Label>Address</Label>
+      <Input value={orgSettings.contact_address || ''} className="mt-1"
+        placeholder="123 Main St, Elk River MN 55330"
+        onChange={e => setOrgSettings(s => ({...s, contact_address: e.target.value}))} />
+    </div>
+    <Button onClick={handleSaveOrg} disabled={orgSaving}>
+      {orgSaving ? 'Saving...' : 'Save Contact Info'}
+    </Button>
   </CardContent></Card>
 );
 
