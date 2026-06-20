@@ -207,6 +207,49 @@ async def update_booking_status(
 
 # ── Cancel booking ────────────────────────────────────────────────────────────
 
+@router.patch("/{booking_id}")
+async def update_booking(
+    booking_id: str,
+    data: dict,
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update booking details — managers and admins only."""
+    from sqlalchemy import text
+    role = str(current_user.role).lower().replace("userrole.", "")
+    if role not in ["admin", "manager"]:
+        raise HTTPException(status_code=403, detail="Manager or admin required")
+
+    result = await db.execute(
+        select(Booking).where(Booking.id == booking_id, Booking.organization_id == current_user.organization_id)
+    )
+    booking = result.scalar_one_or_none()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    allowed = ["check_in_date", "check_out_date", "special_request", "notes", "status"]
+    for field in allowed:
+        if field in data and data[field] is not None:
+            if field in ["check_in_date", "check_out_date"]:
+                from datetime import datetime
+                try:
+                    val = datetime.fromisoformat(data[field].replace("Z", "+00:00"))
+                    setattr(booking, field, val)
+                except Exception:
+                    pass
+            elif field == "status":
+                try:
+                    setattr(booking, field, BookingStatus(data[field].upper()))
+                except Exception:
+                    pass
+            else:
+                setattr(booking, field, data[field])
+
+    await db.commit()
+    bd = await _get_booking_dogs(booking_id, db)
+    return _booking_dict(booking, bd)
+
+
 @router.post("/{booking_id}/cancel")
 async def cancel_booking(
     booking_id: str,

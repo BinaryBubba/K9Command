@@ -62,6 +62,22 @@ const TaskDashboardPage = () => {
     fetchTasks();
   }, [user, navigate, fetchTasks]);
 
+  const claimTask = async (taskId) => {
+    try {
+      await api.patch(`/tasks/${taskId}`, { assigned_to: user.id });
+      toast.success('Task claimed');
+      fetchTasks();
+    } catch { toast.error('Failed to claim task'); }
+  };
+
+  const claimTask = async (taskId) => {
+    try {
+      await api.patch(`/tasks/${taskId}`, { assigned_to: user.id });
+      toast.success('Task claimed');
+      fetchTasks();
+    } catch { toast.error('Failed to claim task'); }
+  };
+
   const completeTask = async (taskId) => {
     try {
       await api.post(`/tasks/${taskId}/complete`);
@@ -111,8 +127,8 @@ const TaskDashboardPage = () => {
             <TaskList tasks={myTasks} onComplete={completeTask} onRefresh={fetchTasks} onEdit={setEditTask} />
           </TabsContent>
           <TabsContent value="open">
-            <div className="mb-3 text-xs text-muted-foreground">All active tasks — unassigned tasks can be claimed by any staff member</div>
-            <TaskList tasks={tasks} onComplete={completeTask} onRefresh={fetchTasks} onEdit={setEditTask} showAssignee />
+            <div className="mb-3 text-xs text-muted-foreground">All active tasks — tap an unassigned task to claim it</div>
+            <TaskList tasks={tasks} onComplete={completeTask} onRefresh={fetchTasks} onEdit={setEditTask} onClaim={claimTask} showAssignee />
           </TabsContent>
           <TabsContent value="all">
             <TaskList tasks={tasks} onComplete={completeTask} onRefresh={fetchTasks} onEdit={setEditTask} showAssignee />
