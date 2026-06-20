@@ -210,7 +210,7 @@ const CheckInModal = ({ arrival, rooms, onClose, onSuccess }) => {
 
   const handleSubmit = async () => {
     if (!form.room_id) { toast.error('Please select a room'); return; }
-    if (dogInfo?.meet_and_greet_status !== 'completed' && !magOverridden) {
+    if (dogInfo && dogInfo.meet_and_greet_status === 'required' && !magOverridden) {
       toast.error('M&G not completed — use Manager Override to proceed');
       return;
     }
@@ -254,7 +254,7 @@ const CheckInModal = ({ arrival, rooms, onClose, onSuccess }) => {
             <button onClick={onClose} className="text-muted-foreground text-xl leading-none">×</button>
           </div>
 
-          {dogInfo?.meet_and_greet_status !== 'completed' && !magOverridden && (
+          {dogInfo?.meet_and_greet_status === 'required' && !magOverridden && (
             <div className="p-3 bg-amber-50 border border-amber-200 rounded space-y-2">
               <div className="flex items-center gap-2 text-xs text-amber-800">
                 <AlertCircleIcon size={12} /> Meet & greet not completed

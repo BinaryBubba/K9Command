@@ -32,7 +32,6 @@ const AdminSettingsPage = () => {
     finally { setOrgSaving(false); }
   };
   useEffect(() => {
-    api.get('/users/org/settings').then(r => setOrgSettings(r.data)).catch(() => {});
   }, []);
 
   const { user } = useAuthStore();

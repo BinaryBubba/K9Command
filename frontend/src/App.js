@@ -19,6 +19,7 @@ import AdminAuditPage from './pages/AdminAuditPage';
 import AdminSettingsPage from './pages/AdminSettingsPage';
 import AdminOperationsHubPage from './pages/AdminOperationsHubPage';
 import AdminCustomerManagementHubPage from './pages/AdminCustomerManagementHubPage';
+import AdminHouseholdPage from './pages/AdminHouseholdPage';
 import AdminAdministrationHubPage from './pages/AdminAdministrationHubPage';
 
 // Pages - Shared Admin+Staff
@@ -354,8 +355,6 @@ function App() {
           <Route path="/customer/profile" element={<ProtectedRoute allowedRoles={['customer','admin','staff']}><CustomerProfilePage /></ProtectedRoute>} />
           <Route path="/customer/stay/:bookingId" element={<ProtectedRoute allowedRoles={['customer','admin','staff']}><CustomerStayPage /></ProtectedRoute>} />
           <Route path="/customer/dog/:dogId" element={<ProtectedRoute allowedRoles={['customer','admin','staff']}><CustomerDogPage /></ProtectedRoute>} />
-          <Route path="/customer/profile" element={<ProtectedRoute allowedRoles={['customer','admin','staff']}><CustomerProfilePage /></ProtectedRoute>} />
-          {/* Fallback */}
           <Route path="/minio/*" element={null} />
           <Route
             path="/customer/dashboard"
@@ -377,7 +376,7 @@ function App() {
             path="/admin/customers/:householdId"
             element={
               <ProtectedRoute allowedRoles={["admin", "staff"]}>
-                <CustomerProfilePage />
+                <AdminHouseholdPage />
               </ProtectedRoute>
             }
           />

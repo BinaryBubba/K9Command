@@ -33,10 +33,20 @@ const AdminBookingsPage = () => {
     try {
       const now = new Date();
       const params = { limit: 100 };
-      if (filter === 'upcoming') { params.start_date = now.toISOString(); params.status = 'CONFIRMED'; }
-      else if (filter === 'past') { params.end_date = now.toISOString(); }
-      else if (filter === 'cancelled') { params.status = 'CANCELLED'; }
-      else if (filter === 'completed') { params.status = 'CHECKED_OUT'; }
+      if (filter === 'upcoming') {
+        params.start_date = now.toISOString();
+        params.status = 'CONFIRMED';
+      } else if (filter === 'past') {
+        // check_out_date < now
+        params.end_date = new Date(now.getTime() - 1).toISOString();
+        params.status = 'CHECKED_OUT';
+      } else if (filter === 'cancelled') {
+        params.status = 'CANCELLED';
+      } else if (filter === 'completed') {
+        params.status = 'CHECKED_OUT';
+      } else if (filter === 'all') {
+        // no filter - show everything
+      }
       else if (filter === 'today') {
         params.start_date = new Date(now.setHours(0,0,0,0)).toISOString();
         params.end_date = new Date(now.setHours(23,59,59,999)).toISOString();
