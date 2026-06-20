@@ -239,7 +239,7 @@ async def update_booking(
                     pass
             elif field == "status":
                 try:
-                    setattr(booking, field, BookingStatus(data[field].upper()))
+                    setattr(booking, field, BookingStatus(data[field].lower()))
                 except Exception:
                     pass
             else:

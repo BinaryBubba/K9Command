@@ -145,19 +145,19 @@ async def get_all_active_medications(
     """Get all active medications for dogs currently on site."""
     from sqlalchemy import text
     result = await db.execute(text("""
-        SELECT m.id, m.dog_id, m.name, m.dosage, m.frequency, m.instructions,
+        SELECT m.id, m.dog_id, m.name, m.dose, m.frequency, m.administration_instructions as instructions,
                d.name as dog_name
         FROM medications m
         JOIN dogs d ON m.dog_id = d.id
         JOIN stays s ON s.dog_id = d.id
         WHERE s.organization_id = :org_id
-        AND s.status::text IN ('ON_SITE','on_site','CHECKED_IN','checked_in')
+        AND LOWER(s.status::text) IN ('on_site','checked_in')
         AND m.is_active = TRUE
         ORDER BY d.name
     """), {"org_id": current_user.organization_id})
     rows = result.fetchall()
-    return [{"id": r.id, "dog_id": r.dog_id, "name": r.name, "dosage": r.dosage,
-             "frequency": r.frequency, "instructions": r.instructions,
+    return [{"id": r.id, "dog_id": r.dog_id, "name": r.name, "dosage": r.dose,
+             "frequency": r.frequency, "instructions": r.instructions, "dosage": r.dose,
              "dog_name": r.dog_name} for r in rows]
 
 
