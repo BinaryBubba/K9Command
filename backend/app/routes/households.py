@@ -276,6 +276,52 @@ def _household_dict(h: Household) -> dict:
         "updated_at": h.updated_at.isoformat() if h.updated_at else None,
     }
 
+@router.get("/{household_id}/notes")
+async def get_household_notes(
+    household_id: str,
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import text
+    result = await db.execute(text("""
+        SELECT n.id, n.note_text, n.created_at, u.full_name as created_by_name
+        FROM household_notes n
+        LEFT JOIN users u ON n.created_by = u.id
+        WHERE n.household_id = :hh_id AND n.organization_id = :org_id
+        ORDER BY n.created_at DESC
+    """), {"hh_id": household_id, "org_id": current_user.organization_id})
+    rows = result.fetchall()
+    return [{"id": r.id, "note_text": r.note_text,
+             "created_by_name": r.created_by_name,
+             "created_at": r.created_at.isoformat() if r.created_at else None} for r in rows]
+
+
+@router.post("/{household_id}/notes")
+async def add_household_note(
+    household_id: str,
+    data: dict,
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import text
+    import uuid
+    note_text = data.get("note_text", "").strip()
+    if not note_text:
+        raise HTTPException(status_code=400, detail="note_text required")
+    await db.execute(text("""
+        INSERT INTO household_notes (id, organization_id, household_id, note_text, created_by)
+        VALUES (:id, :org_id, :hh_id, :note, :user_id)
+    """), {
+        "id": str(uuid.uuid4()),
+        "org_id": current_user.organization_id,
+        "hh_id": household_id,
+        "note": note_text,
+        "user_id": current_user.id
+    })
+    await db.commit()
+    return {"created": True}
+
+
 def _contact_dict(c: Contact) -> dict:
     return {
         "id": c.id,

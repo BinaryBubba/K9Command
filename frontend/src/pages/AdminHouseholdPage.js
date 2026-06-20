@@ -70,9 +70,8 @@ const AdminHouseholdPage = () => {
       const customers = customersRes.data || [];
       setAllCustomers(customers);
       setLinkedUsers(customers.filter(u => u.household_id === householdId));
-      // Load notes from localStorage for now
-      const savedNotes = JSON.parse(localStorage.getItem(`household_notes_${householdId}`) || '[]');
-      setNotes(savedNotes);
+      const notesRes = await api.get(`/households/${householdId}/notes`).catch(() => ({ data: [] }));
+      setNotes(notesRes.data || []);
     } catch { toast.error('Failed to load'); }
     finally { setLoading(false); }
   }, [householdId]);
@@ -101,15 +100,15 @@ const AdminHouseholdPage = () => {
     } catch { toast.error('Failed'); }
   };
 
-  const handleAddNote = () => {
+  const handleAddNote = async () => {
     if (!noteText.trim()) return;
-    const note = { id: Date.now(), text: noteText, created_by: user.full_name, created_at: new Date().toISOString() };
-    const updated = [note, ...notes];
-    localStorage.setItem(`household_notes_${householdId}`, JSON.stringify(updated));
-    setNotes(updated);
-    setNoteText('');
-    setShowAddNote(false);
-    toast.success('Note added');
+    try {
+      await api.post(`/households/${householdId}/notes`, { note_text: noteText });
+      setNoteText('');
+      setShowAddNote(false);
+      toast.success('Note added');
+      fetchData();
+    } catch { toast.error('Failed to add note'); }
   };
 
   const handleSendPortalInvite = async (userId) => {
@@ -387,8 +386,8 @@ const AdminHouseholdPage = () => {
               <p className="text-sm text-muted-foreground">No notes yet</p>
             ) : notes.map(n => (
               <div key={n.id} className="py-2 border-b last:border-0">
-                <p className="text-sm">{n.text}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{n.created_by} · {new Date(n.created_at).toLocaleString()}</p>
+                <p className="text-sm">{n.note_text}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{n.created_by_name} · {new Date(n.created_at).toLocaleString()}</p>
               </div>
             ))}
           </CardContent>
