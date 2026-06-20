@@ -137,6 +137,30 @@ async def log_feeding(
 # MEDICATIONS
 # ══════════════════════════════════════════════════════════════
 
+@router.get("/medications")
+async def get_all_active_medications(
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get all active medications for dogs currently on site."""
+    from sqlalchemy import text
+    result = await db.execute(text("""
+        SELECT m.id, m.dog_id, m.name, m.dosage, m.frequency, m.instructions,
+               d.name as dog_name
+        FROM medications m
+        JOIN dogs d ON m.dog_id = d.id
+        JOIN stays s ON s.dog_id = d.id
+        WHERE s.organization_id = :org_id
+        AND s.status::text IN ('ON_SITE','on_site','CHECKED_IN','checked_in')
+        AND m.is_active = TRUE
+        ORDER BY d.name
+    """), {"org_id": current_user.organization_id})
+    rows = result.fetchall()
+    return [{"id": r.id, "dog_id": r.dog_id, "name": r.name, "dosage": r.dosage,
+             "frequency": r.frequency, "instructions": r.instructions,
+             "dog_name": r.dog_name} for r in rows]
+
+
 @router.get("/medications/dog/{dog_id}")
 async def get_dog_medications(
     dog_id: str,

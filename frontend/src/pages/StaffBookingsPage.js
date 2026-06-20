@@ -39,6 +39,13 @@ const StaffBookingsPage = () => {
         const end = new Date(now); end.setDate(end.getDate() + 7);
         params.start_date = now.toISOString();
         params.end_date = end.toISOString();
+      } else if (tab === 'all') {
+        params.start_date = now.toISOString();
+        params.status = 'CONFIRMED';
+      } else if (tab === 'past') {
+        params.end_date = now.toISOString();
+      } else if (tab === 'cancelled') {
+        params.status = 'CANCELLED';
       }
       const res = await api.get('/bookings', { params });
       setBookings(res.data);
@@ -61,23 +68,29 @@ const StaffBookingsPage = () => {
   return (
     <div className="min-h-screen bg-[#F9F7F2]">
       <header className="bg-white border-b shadow-sm sticky top-0 z-10">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-            <ArrowLeftIcon size={18} />
-          </Button>
-          <h1 className="text-lg font-serif font-bold text-primary">Bookings</h1>
+        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+              <ArrowLeftIcon size={18} />
+            </Button>
+            <h1 className="text-lg font-serif font-bold text-primary">Bookings</h1>
+          </div>
+          {(user?.role === 'admin' || user?.role === 'manager' || user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
+            <Button size="sm" onClick={() => setShowCreate(true)}>
+              <PlusIcon size={16} className="mr-1" /> New
+            </Button>
+          )}
         </div>
-        <Button size="sm" onClick={() => setShowCreate(true)}>
-          <PlusIcon size={16} className="mr-1" /> New
-        </Button>
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-6">
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="w-full mb-6">
             <TabsTrigger value="today" className="flex-1">Today</TabsTrigger>
-            <TabsTrigger value="week" className="flex-1">Next 7 Days</TabsTrigger>
-            <TabsTrigger value="all" className="flex-1">All Upcoming</TabsTrigger>
+            <TabsTrigger value="week" className="flex-1">This Week</TabsTrigger>
+            <TabsTrigger value="all" className="flex-1">Upcoming</TabsTrigger>
+            <TabsTrigger value="past" className="flex-1">Past</TabsTrigger>
+            <TabsTrigger value="cancelled" className="flex-1">Cancelled</TabsTrigger>
           </TabsList>
 
           <TabsContent value={tab}>
@@ -92,7 +105,7 @@ const StaffBookingsPage = () => {
             ) : (
               <div className="space-y-3">
                 {bookings.map(b => (
-                  <Card key={b.id}>
+                  <Card key={b.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate(`/admin/bookings/${b.id}`)}>
                     <CardContent className="py-4 px-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3">

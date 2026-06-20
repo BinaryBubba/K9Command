@@ -97,9 +97,24 @@ const BookingProfilePage = () => {
               {booking.status?.replace('_', ' ')}
             </Badge>
             {user?.role !== 'customer' && (
-              <Button size="sm" variant="outline" onClick={() => setEditing(!editing)}>
-                <PencilIcon size={14} className="mr-1" /> {editing ? 'Cancel' : 'Edit'}
-              </Button>
+              <div className="flex gap-2">
+                {booking.status !== 'cancelled' && booking.status !== 'CANCELLED' && booking.status !== 'checked_out' && booking.status !== 'CHECKED_OUT' && (
+                  <Button size="sm" variant="outline" className="text-red-600 border-red-200"
+                    onClick={async () => {
+                      if (!window.confirm('Cancel this booking?')) return;
+                      try {
+                        await api.patch(`/bookings/${bookingId}`, { status: 'CANCELLED' });
+                        toast.success('Booking cancelled');
+                        fetchData();
+                      } catch { toast.error('Failed to cancel'); }
+                    }}>
+                    Cancel Booking
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" onClick={() => setEditing(!editing)}>
+                  <PencilIcon size={14} className="mr-1" /> {editing ? 'Cancel' : 'Edit'}
+                </Button>
+              </div>
             )}
           </div>
         </div>

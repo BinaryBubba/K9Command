@@ -88,7 +88,7 @@ const TaskDashboardPage = () => {
             </Button>
             <h1 className="text-lg font-serif font-bold text-primary">Tasks</h1>
           </div>
-          <Button size="sm" onClick={() => setShowCreate(true)}>
+          {(user?.role === 'admin' || user?.role === 'manager') && <Button size="sm" onClick={() => setShowCreate(true)}>
             <PlusIcon size={16} className="mr-1" /> New Task
           </Button>
         </div>
@@ -98,14 +98,19 @@ const TaskDashboardPage = () => {
         <Tabs defaultValue={user?.role === 'admin' ? 'all' : 'mine'}>
           <TabsList className="w-full mb-6">
             <TabsTrigger value="mine" className="flex-1">My Tasks ({myTasks.length})</TabsTrigger>
+            <TabsTrigger value="open" className="flex-1">All Tasks ({tasks.length})</TabsTrigger>
             {user?.role === 'admin' && (
-              <TabsTrigger value="all" className="flex-1">All Tasks ({tasks.length})</TabsTrigger>
+              <TabsTrigger value="all" className="flex-1">Admin View</TabsTrigger>
             )}
             <TabsTrigger value="completed" className="flex-1">Completed</TabsTrigger>
           </TabsList>
 
           <TabsContent value="mine">
             <TaskList tasks={myTasks} onComplete={completeTask} onRefresh={fetchTasks} onEdit={setEditTask} />
+          </TabsContent>
+          <TabsContent value="open">
+            <div className="mb-3 text-xs text-muted-foreground">All active tasks — unassigned tasks can be claimed by any staff member</div>
+            <TaskList tasks={tasks} onComplete={completeTask} onRefresh={fetchTasks} onEdit={setEditTask} showAssignee />
           </TabsContent>
           <TabsContent value="all">
             <TaskList tasks={tasks} onComplete={completeTask} onRefresh={fetchTasks} onEdit={setEditTask} showAssignee />
@@ -263,7 +268,16 @@ const CreateTaskModal = ({ staff, onClose, onSuccess }) => {
             <select className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
               value={form.assigned_to} onChange={e => setForm(f=>({...f,assigned_to:e.target.value}))}>
               <option value="">Unassigned (anyone can claim)</option>
-              {staff.map(s => <option key={s.id} value={s.id}>{s.full_name}</option>)}
+              <optgroup label="── Staff ──">
+                {staff.filter(s => ['admin','manager','staff'].includes(s.role?.toLowerCase())).map(s => (
+                  <option key={s.id} value={s.id}>{s.full_name} ({s.role})</option>
+                ))}
+              </optgroup>
+              <optgroup label="── Customers ──">
+                {staff.filter(s => s.role?.toLowerCase() === 'customer').map(s => (
+                  <option key={s.id} value={s.id}>{s.full_name}</option>
+                ))}
+              </optgroup>
             </select>
           </div>
           <div>

@@ -88,7 +88,7 @@ const AdminCustomersPage = () => {
                       <div>
                         <p className="font-medium">{h.display_name}</p>
                         <div className="flex items-center gap-3 mt-0.5">
-                          <MagStatusBadge status={h.meet_and_greet_status} />
+                          {h.meet_and_greet_status && h.meet_and_greet_status !== 'completed' && h.meet_and_greet_status !== 'COMPLETED' && <MagStatusBadge status={h.meet_and_greet_status} />}
                         </div>
                       </div>
                     </div>

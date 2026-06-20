@@ -40,10 +40,15 @@ async def get_on_site(
     for stay in stays:
         dog = await _get_dog(stay.dog_id, db)
         alerts = await _get_active_alerts(stay.id, db)
+        room = None
+        if stay.room_id:
+            room_res = await db.execute(select(Room).where(Room.id == stay.room_id))
+            room = room_res.scalar_one_or_none()
         out.append({
             **_stay_dict(stay),
             "dog_name": dog.name if dog else None,
             "dog_breed": dog.breed if dog else None,
+            "room_name": room.name if room else None,
             "active_alerts": [_alert_dict(a) for a in alerts],
             "alert_count": len(alerts),
             "has_warning": any(a.severity == StayAlertSeverity.WARNING for a in alerts),
