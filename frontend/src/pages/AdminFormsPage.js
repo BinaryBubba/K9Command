@@ -9,6 +9,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { PlusIcon, PencilIcon, UsersIcon, TrashIcon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
+
 import { toast } from 'sonner';
 
 const TYPE_COLORS = {
@@ -45,7 +46,7 @@ const AdminFormsPage = () => {
   }, []);
 
   useEffect(() => {
-    if (!user || user.role !== 'admin') { navigate('/auth'); return; }
+    if (!user || !['admin','manager','ADMIN','MANAGER'].includes(user.role)) { navigate('/auth'); return; }
     fetchData();
   }, [user, navigate, fetchData]);
 
@@ -68,9 +69,12 @@ const AdminFormsPage = () => {
       <header className="bg-white border-b shadow-sm sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <h1 className="text-lg font-serif font-bold text-primary">Form Management</h1>
-          <Button size="sm" onClick={() => setShowCreate(true)}>
-            <PlusIcon size={14} className="mr-1" /> New Form
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => navigate('/forms')}>Fill Forms</Button>
+            <Button size="sm" onClick={() => setShowCreate(true)}>
+              <PlusIcon size={14} className="mr-1" /> New Form
+            </Button>
+          </div>
         </div>
       </header>
 
