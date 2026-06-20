@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import {
-  HomeIcon, DogIcon, CalendarIcon, UsersIcon,
+  HomeIcon, DogIcon, CalendarIcon, UsersIcon, UserIcon,
   ActivityIcon, ClipboardListIcon, AlertCircleIcon,
   HomeIcon as KennelIcon, MenuIcon, XIcon, LogOutIcon,
   ShieldIcon,
