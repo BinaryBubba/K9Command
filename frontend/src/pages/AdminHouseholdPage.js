@@ -5,7 +5,9 @@ import api from '../utils/api';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { ArrowLeftIcon, DogIcon, CalendarIcon, PlusIcon, PhoneIcon, MailIcon, UserIcon } from 'lucide-react';
+import { ArrowLeftIcon, DogIcon, CalendarIcon, PlusIcon, PhoneIcon, MailIcon, UserIcon, PencilIcon, SaveIcon } from 'lucide-react';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 import { toast } from 'sonner';
 
 const STATUS_COLORS = {
@@ -27,6 +29,9 @@ const AdminHouseholdPage = () => {
   const [linkedUsers, setLinkedUsers] = useState([]);
   const [allCustomers, setAllCustomers] = useState([]);
   const [showLinkUser, setShowLinkUser] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ display_name: '', general_notes: '' });
+  const [saving, setSaving] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -38,6 +43,7 @@ const AdminHouseholdPage = () => {
         api.get('/users', { params: { role: 'customer', limit: 100 } }).catch(() => ({ data: [] })),
       ]);
       setHousehold(hhRes.data);
+      setEditForm({ display_name: hhRes.data.display_name || '', general_notes: hhRes.data.general_notes || '' });
       setContacts(contactsRes.data || []);
       setDogs(dogsRes.data?.dogs || dogsRes.data || []);
       setBookings(bookingsRes.data || []);
@@ -58,6 +64,17 @@ const AdminHouseholdPage = () => {
     scheduled: 'bg-blue-100 text-blue-700',
     completed: 'bg-green-100 text-green-700',
     waived: 'bg-gray-100 text-gray-600',
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await api.patch(`/households/${householdId}`, editForm);
+      toast.success('Saved');
+      setEditing(false);
+      fetchData();
+    } catch { toast.error('Failed to save'); }
+    finally { setSaving(false); }
   };
 
   if (loading) return (
@@ -81,6 +98,18 @@ const AdminHouseholdPage = () => {
             </div>
           </div>
           <div className="flex gap-2">
+            {editing ? (
+              <>
+                <Button size="sm" variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
+                <Button size="sm" onClick={handleSave} disabled={saving}>
+                  <SaveIcon size={14} className="mr-1" />{saving ? 'Saving...' : 'Save'}
+                </Button>
+              </>
+            ) : (
+              <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+                <PencilIcon size={14} className="mr-1" />Edit
+              </Button>
+            )}
             {household.meet_and_greet_status && household.meet_and_greet_status !== 'completed' && (
               <Badge className={`text-xs ${MAG_COLORS[household.meet_and_greet_status] || ''}`}>
                 M&G {household.meet_and_greet_status}
@@ -95,6 +124,24 @@ const AdminHouseholdPage = () => {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-6 space-y-4">
+        {/* Edit form */}
+        {editing && (
+          <Card className="border-primary/30">
+            <CardContent className="py-4 px-4 space-y-3">
+              <div>
+                <Label>Household Name</Label>
+                <Input value={editForm.display_name}
+                  onChange={e => setEditForm(f=>({...f,display_name:e.target.value}))} className="mt-1" />
+              </div>
+              <div>
+                <Label>Notes</Label>
+                <Input value={editForm.general_notes}
+                  onChange={e => setEditForm(f=>({...f,general_notes:e.target.value}))} className="mt-1" />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Contacts */}
         <Card>
           <CardHeader className="pb-2 pt-4 px-4">
