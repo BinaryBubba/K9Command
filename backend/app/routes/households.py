@@ -156,6 +156,16 @@ async def update_household(
 
 # ── Add contact to household ─────────────────────────────────────────────────
 
+@router.get("/{household_id}/contacts")
+async def get_contacts(
+    household_id: str,
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    contacts = await _get_contacts(household_id, db)
+    return [_contact_dict(c) for c in contacts]
+
+
 @router.post("/{household_id}/contacts")
 async def add_contact(
     household_id: str,

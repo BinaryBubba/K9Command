@@ -400,7 +400,7 @@ const AdminHouseholdPage = () => {
             <CardTitle className="text-sm flex items-center justify-between">
               Customer Portal Accounts ({linkedUsers.length})
               <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowLinkUser(!showLinkUser)}>
-                <PlusIcon size={12} className="mr-1" />Link Account
+                <PlusIcon size={12} className="mr-1" />Create Account
               </Button>
             </CardTitle>
           </CardHeader>
@@ -414,10 +414,13 @@ const AdminHouseholdPage = () => {
                   <p className="text-sm font-medium">{u.full_name}</p>
                   <p className="text-xs text-muted-foreground">{u.email}</p>
                 </div>
-                <Button size="sm" variant="outline" className="h-7 text-xs"
-                  onClick={() => handleSendPortalInvite(u.id)}>
-                  Send Login
-                </Button>
+                <div className="text-right">
+                  {u.last_login_at && <p className="text-xs text-muted-foreground">Last login: {new Date(u.last_login_at).toLocaleDateString()}</p>}
+                  <Button size="sm" variant="outline" className="h-7 text-xs mt-1"
+                    onClick={() => handleSendPortalInvite(u.id)}>
+                    Reset Password
+                  </Button>
+                </div>
               </div>
             ))}
             {tempPassword && (
@@ -428,16 +431,15 @@ const AdminHouseholdPage = () => {
               </div>
             )}
             {showLinkUser && (
-              <div className="mt-3 space-y-2">
-                <p className="text-xs text-muted-foreground">Select a customer account to link:</p>
-                <select className="w-full border rounded-md px-3 py-2 text-sm bg-background"
-                  onChange={e => e.target.value && handleLinkUser(e.target.value)}>
-                  <option value="">Select customer account...</option>
-                  {allCustomers.filter(u => !u.household_id).map(u => (
-                    <option key={u.id} value={u.id}>{u.full_name} — {u.email}</option>
-                  ))}
-                </select>
-              </div>
+              <CreatePortalAccountForm
+                householdId={householdId}
+                onCreated={(pwd, email) => {
+                  setTempPassword(pwd);
+                  setShowLinkUser(false);
+                  fetchData();
+                }}
+                onCancel={() => setShowLinkUser(false)}
+              />
             )}
           </CardContent>
         </Card>
@@ -510,6 +512,40 @@ const AddContactForm = ({ householdId, onSaved, onCancel }) => {
         <Button variant="outline" size="sm" className="flex-1" onClick={onCancel}>Cancel</Button>
         <Button size="sm" className="flex-1" onClick={handleSave} disabled={saving}>
           {saving ? 'Saving...' : 'Add Contact'}
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+const CreatePortalAccountForm = ({ householdId, onCreated, onCancel }) => {
+  const [form, setForm] = useState({ full_name: '', email: '' });
+  const [saving, setSaving] = useState(false);
+
+  const handleCreate = async () => {
+    if (!form.email.trim()) { toast.error('Email required'); return; }
+    setSaving(true);
+    try {
+      const res = await api.post('/users/create-portal-account', {
+        ...form, household_id: householdId
+      });
+      onCreated(res.data.temp_password, res.data.email);
+      toast.success('Portal account created');
+    } catch (err) { toast.error(err.response?.data?.detail || 'Failed'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="mt-3 p-3 border border-primary/30 rounded-lg bg-primary/5 space-y-2">
+      <p className="text-xs font-medium text-primary">Create Customer Portal Account</p>
+      <Input placeholder="Full name" value={form.full_name}
+        onChange={e => setForm(f=>({...f,full_name:e.target.value}))} />
+      <Input placeholder="Email address *" type="email" value={form.email}
+        onChange={e => setForm(f=>({...f,email:e.target.value}))} />
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" className="flex-1" onClick={onCancel}>Cancel</Button>
+        <Button size="sm" className="flex-1" onClick={handleCreate} disabled={saving}>
+          {saving ? 'Creating...' : 'Create Account'}
         </Button>
       </div>
     </div>

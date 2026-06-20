@@ -46,6 +46,7 @@ def _user_dict(u: UserORM) -> dict:
         "manager_pin": u.manager_pin,
         "connecteam_user_id": u.connecteam_user_id,
         "household_id": u.household_id,
+        "last_login_at": u.last_login_at.isoformat() if u.last_login_at else None,
         "created_at": u.created_at.isoformat() if u.created_at else None,
     }
 
@@ -298,6 +299,49 @@ async def verify_manager_pin(
     return {"verified": True, "user_name": user.full_name, "role": role}
 
 
+@router.post("/create-portal-account")
+async def create_portal_account(
+    data: dict,
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a customer portal account and link to a household."""
+    from sqlalchemy import text
+    import uuid, secrets, string
+    from passlib.context import CryptContext
+
+    email = data.get("email", "").strip().lower()
+    household_id = data.get("household_id", "").strip()
+    full_name = data.get("full_name", "").strip()
+
+    if not email or not household_id:
+        raise HTTPException(status_code=400, detail="email and household_id required")
+
+    # Check if email already exists
+    existing = await db.execute(text("SELECT id FROM users WHERE email = :email"), {"email": email})
+    if existing.fetchone():
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    # Generate temp password
+    alphabet = string.ascii_letters + string.digits
+    temp_password = ''.join(secrets.choice(alphabet) for _ in range(10)) + "!"
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    hashed = pwd_context.hash(temp_password)
+
+    user_id = str(uuid.uuid4())
+    await db.execute(text("""
+        INSERT INTO users (id, organization_id, email, hashed_password, full_name, role, household_id, is_active)
+        VALUES (:id, :org_id, :email, :hashed, :full_name, 'CUSTOMER', :hh_id, TRUE)
+    """), {
+        "id": user_id, "org_id": current_user.organization_id,
+        "email": email, "hashed": hashed,
+        "full_name": full_name or email.split("@")[0],
+        "hh_id": household_id
+    })
+    await db.commit()
+    return {"user_id": user_id, "temp_password": temp_password, "email": email}
+
+
 @router.patch("/{user_id}/household")
 async def link_user_household(
     user_id: str,
@@ -313,6 +357,49 @@ async def link_user_household(
     """), {"hh_id": household_id, "user_id": user_id, "org_id": current_user.organization_id})
     await db.commit()
     return {"linked": True}
+
+
+@router.post("/create-portal-account")
+async def create_portal_account(
+    data: dict,
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a customer portal account and link to a household."""
+    from sqlalchemy import text
+    import uuid, secrets, string
+    from passlib.context import CryptContext
+
+    email = data.get("email", "").strip().lower()
+    household_id = data.get("household_id", "").strip()
+    full_name = data.get("full_name", "").strip()
+
+    if not email or not household_id:
+        raise HTTPException(status_code=400, detail="email and household_id required")
+
+    # Check if email already exists
+    existing = await db.execute(text("SELECT id FROM users WHERE email = :email"), {"email": email})
+    if existing.fetchone():
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    # Generate temp password
+    alphabet = string.ascii_letters + string.digits
+    temp_password = ''.join(secrets.choice(alphabet) for _ in range(10)) + "!"
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    hashed = pwd_context.hash(temp_password)
+
+    user_id = str(uuid.uuid4())
+    await db.execute(text("""
+        INSERT INTO users (id, organization_id, email, hashed_password, full_name, role, household_id, is_active)
+        VALUES (:id, :org_id, :email, :hashed, :full_name, 'CUSTOMER', :hh_id, TRUE)
+    """), {
+        "id": user_id, "org_id": current_user.organization_id,
+        "email": email, "hashed": hashed,
+        "full_name": full_name or email.split("@")[0],
+        "hh_id": household_id
+    })
+    await db.commit()
+    return {"user_id": user_id, "temp_password": temp_password, "email": email}
 
 
 @router.patch("/{user_id}/household")
