@@ -177,6 +177,10 @@ const CreateBookingModal = ({ onClose, onSuccess }) => {
   const [newHhId, setNewHhId] = useState(null);
   const [newHhName, setNewHhName] = useState('');
   const [newDogForm, setNewDogForm] = useState({ name: '', breed: '', age: '', weight: '' });
+  const [newCustStep, setNewCustStep] = useState('info'); // info | dog | mag
+  const [newHhId, setNewHhId] = useState(null);
+  const [newHhName, setNewHhName] = useState('');
+  const [newDogForm, setNewDogForm] = useState({ name: '', breed: '', age: '', weight: '' });
   const [dogs, setDogs] = useState([]);
   const [form, setForm] = useState({
     household_id: '',

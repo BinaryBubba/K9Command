@@ -49,6 +49,7 @@ const NavBar = () => {
     { label: 'Daily Ops', icon: <ClipboardListIcon size={18} />, path: '/staff/daily-ops' },
     { label: 'Playgroups', icon: <UsersIcon size={18} />, path: '/admin/playgroups' },
     { label: 'Customers', icon: <UsersIcon size={18} />, path: '/admin/customers' },
+    { label: 'Customers', icon: <UsersIcon size={18} />, path: '/admin/customers' },
     { label: 'Incidents', icon: <AlertCircleIcon size={18} />, path: '/admin/incidents' },
     { label: 'Forms', icon: <ClipboardListIcon size={18} />, path: '/forms' },
     { label: 'Handoff', icon: <ClipboardListIcon size={18} />, path: '/staff/handoff' },
