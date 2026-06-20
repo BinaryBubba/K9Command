@@ -173,6 +173,10 @@ const CreateBookingModal = ({ onClose, onSuccess }) => {
   const [showNewCustomer, setShowNewCustomer] = useState(false);
   const [newCustForm, setNewCustForm] = useState({ display_name: '', first_name: '', last_name: '', email: '', phone: '' });
   const [creatingCustomer, setCreatingCustomer] = useState(false);
+  const [newCustStep, setNewCustStep] = useState('info'); // info | dog | mag
+  const [newHhId, setNewHhId] = useState(null);
+  const [newHhName, setNewHhName] = useState('');
+  const [newDogForm, setNewDogForm] = useState({ name: '', breed: '', age: '', weight: '' });
   const [dogs, setDogs] = useState([]);
   const [form, setForm] = useState({
     household_id: '',
@@ -255,10 +259,10 @@ const CreateBookingModal = ({ onClose, onSuccess }) => {
       });
       const newHh = hhRes.data;
       setHouseholds(prev => [...prev, newHh]);
-      await onHouseholdChange(newHh.id);
-      setShowNewCustomer(false);
-      setNewCustForm({ display_name: '', first_name: '', last_name: '', email: '', phone: '' });
-      toast.success(`${newHh.display_name} created`);
+      setNewHhId(newHh.id);
+      setNewHhName(newHh.display_name);
+      setNewCustStep('dog');
+      toast.success(`${newHh.display_name} created — add their dog`);
     } catch (err) { toast.error(err.response?.data?.detail || 'Failed to create customer'); }
     finally { setCreatingCustomer(false); }
   };
@@ -320,9 +324,9 @@ const CreateBookingModal = ({ onClose, onSuccess }) => {
 
           <div>
             <Label>Dogs *</Label>
-            {showNewCustomer && (
+            {showNewCustomer && newCustStep === 'info' && (
               <div className="mt-2 p-3 border border-primary/30 rounded-lg bg-primary/5 space-y-2">
-                <p className="text-xs font-medium text-primary">New Customer</p>
+                <p className="text-xs font-medium text-primary">Step 1 of 3 — New Customer</p>
                 <Input placeholder="Household/Family name *" value={newCustForm.display_name}
                   onChange={e => setNewCustForm(f=>({...f,display_name:e.target.value}))} />
                 <div className="grid grid-cols-2 gap-2">
@@ -338,8 +342,64 @@ const CreateBookingModal = ({ onClose, onSuccess }) => {
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => setShowNewCustomer(false)}>Cancel</Button>
                   <Button size="sm" className="flex-1" onClick={handleCreateNewCustomer} disabled={creatingCustomer}>
-                    {creatingCustomer ? 'Creating...' : 'Create & Select'}
+                    {creatingCustomer ? 'Creating...' : 'Next: Add Dog →'}
                   </Button>
+                </div>
+              </div>
+            )}
+            {showNewCustomer && newCustStep === 'dog' && (
+              <div className="mt-2 p-3 border border-green-200 rounded-lg bg-green-50 space-y-2">
+                <p className="text-xs font-medium text-green-800">Step 2 of 3 — Add Dog for {newHhName}</p>
+                <Input placeholder="Dog name *" value={newDogForm.name}
+                  onChange={e => setNewDogForm(f=>({...f,name:e.target.value}))} />
+                <div className="grid grid-cols-2 gap-2">
+                  <Input placeholder="Breed" value={newDogForm.breed}
+                    onChange={e => setNewDogForm(f=>({...f,breed:e.target.value}))} />
+                  <Input placeholder="Age (yrs)" type="number" value={newDogForm.age}
+                    onChange={e => setNewDogForm(f=>({...f,age:e.target.value}))} />
+                </div>
+                <Input placeholder="Weight (lbs)" type="number" value={newDogForm.weight}
+                  onChange={e => setNewDogForm(f=>({...f,weight:e.target.value}))} />
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="flex-1"
+                    onClick={async () => {
+                      // Skip dog, go to M&G
+                      await onHouseholdChange(newHhId);
+                      setNewCustStep('mag');
+                    }}>Skip</Button>
+                  <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700"
+                    onClick={async () => {
+                      if (!newDogForm.name.trim()) { toast.error('Dog name required'); return; }
+                      try {
+                        await api.post('/dogs', {
+                          name: newDogForm.name, breed: newDogForm.breed || undefined,
+                          age: newDogForm.age ? parseInt(newDogForm.age) : undefined,
+                          weight: newDogForm.weight ? parseFloat(newDogForm.weight) : undefined,
+                          household_id: newHhId,
+                        });
+                        await onHouseholdChange(newHhId);
+                        setNewCustStep('mag');
+                        toast.success(`${newDogForm.name} added`);
+                      } catch { toast.error('Failed to add dog'); }
+                    }}>Add Dog & Continue →</Button>
+                </div>
+              </div>
+            )}
+            {showNewCustomer && newCustStep === 'mag' && (
+              <div className="mt-2 p-3 border border-blue-200 rounded-lg bg-blue-50 space-y-2">
+                <p className="text-xs font-medium text-blue-800">Step 3 of 3 — Meet & Greet for {newHhName}</p>
+                <p className="text-xs text-blue-700">Dogs must complete a meet & greet before their first stay.</p>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="flex-1"
+                    onClick={() => { setShowNewCustomer(false); setNewCustStep('info'); }}>
+                    Skip for Now
+                  </Button>
+                  <Button size="sm" className="flex-1 bg-blue-600 hover:bg-blue-700"
+                    onClick={() => {
+                      setShowNewCustomer(false);
+                      setNewCustStep('info');
+                      navigate(`/admin/meet-and-greet?household_id=${newHhId}`);
+                    }}>Schedule M&G →</Button>
                 </div>
               </div>
             )}

@@ -134,7 +134,7 @@ const ShiftHandoffPage = () => {
                   <p className="text-sm">{h.staff_notes}</p>
                 </div>
               )}
-              {!h.acknowledged_at && h.staff_id !== user?.id && (
+              {!h.acknowledged_at && (
                 <Button size="sm" className="w-full" onClick={() => handleAcknowledge(h.id)}>
                   <CheckCircleIcon size={14} className="mr-1" /> Acknowledge Handoff
                 </Button>
