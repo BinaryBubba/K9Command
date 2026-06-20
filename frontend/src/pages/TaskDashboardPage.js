@@ -70,13 +70,6 @@ const TaskDashboardPage = () => {
     } catch { toast.error('Failed to claim task'); }
   };
 
-  const claimTask = async (taskId) => {
-    try {
-      await api.patch(`/tasks/${taskId}`, { assigned_to: user.id });
-      toast.success('Task claimed');
-      fetchTasks();
-    } catch { toast.error('Failed to claim task'); }
-  };
 
   const completeTask = async (taskId) => {
     try {
