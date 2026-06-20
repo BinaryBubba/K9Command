@@ -49,10 +49,6 @@ import CustomerDashboard from "./pages/CustomerDashboard";
 import CustomerStayPage from "./pages/CustomerStayPage";
 import CustomerDogPage from "./pages/CustomerDogPage";
 import CustomerProfilePage from "./pages/CustomerProfilePage";
-import CustomerStayPage from "./pages/CustomerStayPage";
-import CustomerDogPage from "./pages/CustomerDogPage";
-import CustomerProfilePage from "./pages/CustomerProfilePage";
-import CustomerProfilePage from "./pages/CustomerProfilePage";
 import DogProfilePage from "./pages/DogProfilePage";
 // Store
 import useAuthStore from './store/authStore';
