@@ -31,21 +31,10 @@ const AdminSettingsPage = () => {
     } catch { toast.error('Failed'); }
     finally { setOrgSaving(false); }
   };
-  const [orgSettings, setOrgSettings] = useState({ contact_phone: '', contact_email: '', contact_address: '' });
-  const [orgSaving, setOrgSaving] = useState(false);
-
   useEffect(() => {
     api.get('/users/org/settings').then(r => setOrgSettings(r.data)).catch(() => {});
   }, []);
 
-  const handleSaveOrg = async () => {
-    setOrgSaving(true);
-    try {
-      await api.patch('/users/org/settings', orgSettings);
-      toast.success('Settings saved');
-    } catch { toast.error('Failed'); }
-    finally { setOrgSaving(false); }
-  };
   const { user } = useAuthStore();
   const navigate = useNavigate();
   useEffect(() => { if (!user || user.role !== 'admin') navigate('/auth'); }, [user, navigate]);
