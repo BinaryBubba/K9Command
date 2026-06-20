@@ -45,6 +45,7 @@ def _user_dict(u: UserORM) -> dict:
         "last_name": u.last_name,
         "manager_pin": u.manager_pin,
         "connecteam_user_id": u.connecteam_user_id,
+        "household_id": u.household_id,
         "created_at": u.created_at.isoformat() if u.created_at else None,
     }
 
@@ -295,6 +296,42 @@ async def verify_manager_pin(
     
     role = user.role.value if hasattr(user.role, "value") else str(user.role)
     return {"verified": True, "user_name": user.full_name, "role": role}
+
+
+@router.get("/org/settings")
+async def get_org_settings(
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import text
+    result = await db.execute(text("""
+        SELECT name, contact_phone, contact_email, contact_address
+        FROM organizations WHERE id = :org_id
+    """), {"org_id": current_user.organization_id})
+    row = result.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Org not found")
+    return {"name": row.name, "contact_phone": row.contact_phone,
+            "contact_email": row.contact_email, "contact_address": row.contact_address}
+
+
+@router.patch("/org/settings")
+async def update_org_settings(
+    data: dict,
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import text
+    await db.execute(text("""
+        UPDATE organizations SET
+            contact_phone = COALESCE(:phone, contact_phone),
+            contact_email = COALESCE(:email, contact_email),
+            contact_address = COALESCE(:address, contact_address)
+        WHERE id = :org_id
+    """), {"phone": data.get("contact_phone"), "email": data.get("contact_email"),
+           "address": data.get("contact_address"), "org_id": current_user.organization_id})
+    await db.commit()
+    return {"updated": True}
 
 
 @router.post("/shift/clock-in")

@@ -46,6 +46,12 @@ import ShiftHandoffPage from './pages/ShiftHandoffPage';
 import MeetAndGreetPage from './pages/MeetAndGreetPage';
 // Pages - Customer
 import CustomerDashboard from "./pages/CustomerDashboard";
+import CustomerStayPage from "./pages/CustomerStayPage";
+import CustomerDogPage from "./pages/CustomerDogPage";
+import CustomerProfilePage from "./pages/CustomerProfilePage";
+import CustomerStayPage from "./pages/CustomerStayPage";
+import CustomerDogPage from "./pages/CustomerDogPage";
+import CustomerProfilePage from "./pages/CustomerProfilePage";
 import CustomerProfilePage from "./pages/CustomerProfilePage";
 import DogProfilePage from "./pages/DogProfilePage";
 // Store
@@ -347,6 +353,12 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/customer/stay/:bookingId" element={<ProtectedRoute allowedRoles={['customer','admin','staff']}><CustomerStayPage /></ProtectedRoute>} />
+          <Route path="/customer/dog/:dogId" element={<ProtectedRoute allowedRoles={['customer','admin','staff']}><CustomerDogPage /></ProtectedRoute>} />
+          <Route path="/customer/profile" element={<ProtectedRoute allowedRoles={['customer','admin','staff']}><CustomerProfilePage /></ProtectedRoute>} />
+          <Route path="/customer/stay/:bookingId" element={<ProtectedRoute allowedRoles={['customer','admin','staff']}><CustomerStayPage /></ProtectedRoute>} />
+          <Route path="/customer/dog/:dogId" element={<ProtectedRoute allowedRoles={['customer','admin','staff']}><CustomerDogPage /></ProtectedRoute>} />
+          <Route path="/customer/profile" element={<ProtectedRoute allowedRoles={['customer','admin','staff']}><CustomerProfilePage /></ProtectedRoute>} />
           {/* Fallback */}
           <Route path="/minio/*" element={null} />
           <Route
