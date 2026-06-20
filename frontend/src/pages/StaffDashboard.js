@@ -75,13 +75,7 @@ const StaffDashboard = () => {
               <LogOutIcon size={16} />
             </Button>
           </div>
-          <Button size="sm"
-            variant={onShift ? 'outline' : 'default'}
-            className={onShift ? 'border-red-200 text-red-600 hover:bg-red-50' : 'bg-green-600 hover:bg-green-700 text-white'}
-            onClick={onShift ? handleClockOut : handleClockIn}
-            disabled={shiftLoading}>
-            {shiftLoading ? '...' : onShift ? 'Clock Out' : 'Clock In'}
-          </Button>
+
         </div>
       </header>
 

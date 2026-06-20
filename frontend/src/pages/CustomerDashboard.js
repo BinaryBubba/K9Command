@@ -89,14 +89,9 @@ const CustomerDashboard = () => {
             <h1 className="text-base font-serif font-bold text-primary">K9 Country Club</h1>
             <p className="text-xs text-muted-foreground">Welcome, {user?.full_name}</p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/customer/profile')}>
-              <UserIcon size={16} />
-            </Button>
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
-              <LogOutIcon size={16} />
-            </Button>
-          </div>
+          <Button variant="ghost" size="sm" onClick={handleLogout}>
+            <LogOutIcon size={16} />
+          </Button>
         </div>
       </header>
 
