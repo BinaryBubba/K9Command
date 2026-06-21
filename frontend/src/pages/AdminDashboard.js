@@ -242,7 +242,7 @@ const AdminDashboard = () => {
                   <div>
                     <p className="text-sm font-medium">{m.dog_name} <span className="text-muted-foreground font-normal">— {m.household_name}</span></p>
                     <p className="text-xs text-muted-foreground">
-                      {new Date(m.scheduled_at).toLocaleDateString([], {weekday:'short',month:'short',day:'numeric'})} · {m.slot === '10:00-12:00' ? '10am–noon' : '2pm–4pm'}
+                      {new Date(m.scheduled_at).toLocaleDateString([], {weekday:'short',month:'short',day:'numeric'})} · {m.slot ? m.slot.replace('10:00-10:30','10:00am').replace('10:30-11:00','10:30am').replace('11:00-11:30','11:00am').replace('11:30-12:00','11:30am').replace('14:00-14:30','2:00pm').replace('14:30-15:00','2:30pm').replace('15:00-15:30','3:00pm').replace('15:30-16:00','3:30pm') : ''}
                     </p>
                     {m.requested_stay_start && (
                       <p className="text-xs text-blue-600">

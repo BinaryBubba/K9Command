@@ -12,8 +12,14 @@ import { toast } from 'sonner';
 const ALLOWED_DAYS = [0, 1, 3, 5]; // Sun=0, Mon=1, Wed=3, Fri=5 (JS getDay())
 const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const SLOTS = [
-  { id: '10:00-12:00', label: '10:00 AM – 12:00 PM' },
-  { id: '14:00-16:00', label: '2:00 PM – 4:00 PM' },
+  { id: '10:00-10:30', label: '10:00 – 10:30 AM', window: 'Morning' },
+  { id: '10:30-11:00', label: '10:30 – 11:00 AM', window: 'Morning' },
+  { id: '11:00-11:30', label: '11:00 – 11:30 AM', window: 'Morning' },
+  { id: '11:30-12:00', label: '11:30 AM – 12:00 PM', window: 'Morning' },
+  { id: '14:00-14:30', label: '2:00 – 2:30 PM', window: 'Afternoon' },
+  { id: '14:30-15:00', label: '2:30 – 3:00 PM', window: 'Afternoon' },
+  { id: '15:00-15:30', label: '3:00 – 3:30 PM', window: 'Afternoon' },
+  { id: '15:30-16:00', label: '3:30 – 4:00 PM', window: 'Afternoon' },
 ];
 
 const CustomerMagRequestPage = () => {
@@ -145,23 +151,30 @@ const CustomerMagRequestPage = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-4 space-y-2">
-              {SLOTS.map(slot => {
-                const available = availableSlots.includes(slot.id);
-                return (
-                  <button key={slot.id} type="button"
-                    disabled={!available}
-                    onClick={() => available && setSelectedSlot(slot.id)}
-                    className={`w-full p-3 rounded-lg border text-left text-sm transition-colors ${
-                      !available ? 'opacity-40 cursor-not-allowed bg-gray-50' :
-                      selectedSlot === slot.id
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'border-border hover:bg-muted'
-                    }`}>
-                    <span className="font-medium">{slot.label}</span>
-                    {!available && <span className="ml-2 text-xs">(Unavailable)</span>}
-                  </button>
-                );
-              })}
+              {['Morning', 'Afternoon'].map(window => (
+                <div key={window}>
+                  <p className="text-xs font-medium text-muted-foreground mb-1 mt-2">{window}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {SLOTS.filter(s => s.window === window).map(slot => {
+                      const available = availableSlots.includes(slot.id);
+                      return (
+                        <button key={slot.id} type="button"
+                          disabled={!available}
+                          onClick={() => available && setSelectedSlot(slot.id)}
+                          className={`p-2.5 rounded-lg border text-sm transition-colors ${
+                            !available ? 'opacity-40 cursor-not-allowed bg-gray-50 text-gray-400' :
+                            selectedSlot === slot.id
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'border-border hover:bg-muted'
+                          }`}>
+                          {slot.label}
+                          {!available && <span className="block text-xs">Unavailable</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </CardContent>
           </Card>
         )}
@@ -202,7 +215,7 @@ const CustomerMagRequestPage = () => {
               Date: {new Date(selectedDate + 'T12:00:00').toLocaleDateString([], {weekday:'long',month:'long',day:'numeric'})}
             </p>
             <p className="text-xs text-muted-foreground">
-              Time: {SLOTS.find(s => s.id === selectedSlot)?.label}
+              Time: {SLOTS.find(s => s.id === selectedSlot)?.label || selectedSlot}
             </p>
             {stayStart && stayEnd && (
               <p className="text-xs text-muted-foreground">

@@ -80,7 +80,10 @@ async def get_available_slots(
     import calendar
 
     ALLOWED_DAYS = [6, 0, 2, 4]  # Sun=6, Mon=0, Wed=2, Fri=4
-    SLOTS = ["10:00-12:00", "14:00-16:00"]
+    SLOTS = [
+        "10:00-10:30", "10:30-11:00", "11:00-11:30", "11:30-12:00",
+        "14:00-14:30", "14:30-15:00", "15:00-15:30", "15:30-16:00"
+    ]
 
     if date:
         try:
@@ -110,6 +113,7 @@ async def get_available_slots(
     return {
         "days": ["Sunday", "Monday", "Wednesday", "Friday"],
         "slots": SLOTS,
+        "windows": ["10:00 AM – 12:00 PM", "2:00 PM – 4:00 PM"],
         "description": "Meet & Greets available Sun/Mon/Wed/Fri, 10am-noon or 2pm-4pm"
     }
 
