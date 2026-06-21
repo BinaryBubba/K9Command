@@ -171,7 +171,7 @@ async def request_mag(
         "id": mag_id,
         "org_id": current_user.organization_id,
         "dog_id": dog_id,
-        "household_id": household_id,
+        "hh_id": household_id,
         "scheduled_at": scheduled_at,
         "slot": slot,
         "stay_start": stay_start or None,
