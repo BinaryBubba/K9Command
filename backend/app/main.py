@@ -369,7 +369,7 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
         id=real_household_id,
         organization_id="00000000-0000-0000-0000-000000000001",
         display_name=user_data.full_name or user_data.email.split("@")[0],
-        status="active",
+        status="ACTIVE",
     )
     db.add(household)
 
