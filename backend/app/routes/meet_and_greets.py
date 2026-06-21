@@ -142,7 +142,7 @@ async def request_mag(
     taken = await db.execute(text("""
         SELECT id FROM meet_and_greets
         WHERE organization_id = :org_id
-        AND DATE(scheduled_at) = :date::date
+        AND DATE(scheduled_at) = CAST(:date AS DATE)
         AND slot = :slot
         AND status NOT IN ('cancelled', 'completed')
     """), {"org_id": current_user.organization_id, "date": scheduled_date, "slot": slot})
