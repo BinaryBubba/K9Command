@@ -10,7 +10,7 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { PlusIcon, PencilIcon, UsersIcon, TrashIcon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import FormsPage from './FormsPage';
+
 
 import { toast } from 'sonner';
 
@@ -124,7 +124,10 @@ const AdminFormsPage = () => {
 
           </TabsContent>
           <TabsContent value="fill">
-            <FormsPage embedded />
+            <div className="text-center py-12 space-y-3">
+              <p className="text-muted-foreground">Fill out forms as staff or customer</p>
+              <Button onClick={() => window.open('/forms', '_blank')}>Open Forms Page</Button>
+            </div>
           </TabsContent>
         </Tabs>
       {(showCreate || editForm) && (
