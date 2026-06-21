@@ -132,12 +132,24 @@ const BookingProfilePage = () => {
                     onClick={async () => {
                       if (!window.confirm('Cancel this booking?')) return;
                       try {
-                        await api.patch(`/bookings/${bookingId}`, { status: 'CANCELLED' });
+                        await api.patch(`/bookings/${bookingId}/status`, { status: 'cancelled' });
                         toast.success('Booking cancelled');
                         fetchData();
-                      } catch { toast.error('Failed to cancel'); }
+                      } catch (err) { toast.error(err.response?.data?.detail || 'Failed to cancel'); }
                     }}>
                     Cancel Booking
+                  </Button>
+                )}
+                {['cancelled','CANCELLED'].includes(booking.status) && isManager && (
+                  <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white mt-1"
+                    onClick={async () => {
+                      try {
+                        await api.patch(`/bookings/${bookingId}/status`, { status: 'confirmed' });
+                        toast.success('Booking restored');
+                        fetchData();
+                      } catch (err) { toast.error(err.response?.data?.detail || 'Failed'); }
+                    }}>
+                    ↩ Restore Booking
                   </Button>
                 )}
                 <Button size="sm" variant="outline" onClick={() => setEditing(!editing)}>
