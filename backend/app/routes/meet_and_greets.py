@@ -130,6 +130,20 @@ async def record_outcome(
         elif outcome == MeetAndGreetOutcome.RESCHEDULED:
             dog.meet_and_greet_status = "scheduled"
             dog.meet_and_greet_outcome = "rescheduled"
+    # Auto-create household note with M&G outcome
+    if dog and dog.household_id:
+        from sqlalchemy import text as _sqlt
+        import uuid as _uuid
+        outcome_label = {"PASS": "Pass", "CONDITIONAL": "Conditional", "FAIL": "Fail",
+                         "NO_SHOW": "No Show", "RESCHEDULED": "Rescheduled"}.get(outcome_str, outcome_str)
+        note_parts = [f"M&G {outcome_label} for {dog.name}"]
+        if mag.notes: note_parts.append(mag.notes)
+        if mag.conditions: note_parts.append(f"Conditions: {mag.conditions}")
+        await db.execute(_sqlt("""
+            INSERT INTO household_notes (id, organization_id, household_id, note_text, created_by)
+            VALUES (:id, :org_id, :hh_id, :note, :uid)
+        """), {"id": str(_uuid.uuid4()), "org_id": current_user.organization_id,
+               "hh_id": dog.household_id, "note": " | ".join(note_parts), "uid": current_user.id})
 
     await db.commit()
     await db.refresh(mag)
