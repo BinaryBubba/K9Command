@@ -132,8 +132,11 @@ async def request_mag(
     household_id = data.get("household_id")
     scheduled_date = data.get("scheduled_date")
     slot = data.get("slot")
-    stay_start = data.get("stay_start")
-    stay_end = data.get("stay_end")
+    from datetime import date as _date2, datetime as _dt2
+    stay_start_str = data.get("stay_start")
+    stay_end_str = data.get("stay_end")
+    stay_start = _date2.fromisoformat(stay_start_str) if stay_start_str else None
+    stay_end = _date2.fromisoformat(stay_end_str) if stay_end_str else None
 
     if not all([dog_id, household_id, scheduled_date, slot]):
         raise HTTPException(status_code=400, detail="dog_id, household_id, scheduled_date, slot required")
