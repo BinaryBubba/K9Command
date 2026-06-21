@@ -125,7 +125,7 @@ const AdminFormsPage = () => {
           <TabsContent value="fill">
             <div className="text-center py-12 space-y-3">
               <p className="text-muted-foreground">Fill out forms as staff or customer</p>
-              <Button onClick={() => window.open('/forms', '_blank')}>Open Forms Page</Button>
+              <Button onClick={() => navigate('/forms')}>Go to Forms</Button>
             </div>
           </TabsContent>
         </Tabs>

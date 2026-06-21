@@ -17,9 +17,9 @@ const NavBar = () => {
   const publicRoutes = ['/', '/auth', '/forgot-password', '/staff-request'];
   if (!user || publicRoutes.includes(location.pathname)) return null;
 
-  const isAdmin = user.role === 'admin';
-  const isStaff = user.role === 'staff';
-  const isCustomer = user.role === 'customer';
+  const isAdmin = ['admin','ADMIN'].includes(user.role);
+  const isStaff = ['staff','STAFF','manager','MANAGER'].includes(user.role);
+  const isCustomer = ['customer','CUSTOMER'].includes(user.role);
 
   const dashboardPath = isAdmin ? '/admin/dashboard' : isStaff ? '/staff/dashboard' : '/customer/dashboard';
 

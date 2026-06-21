@@ -36,8 +36,12 @@ const StaffDashboard = () => {
 
   const fetchDashboard = useCallback(async () => {
     try {
-      const res = await api.get('/dashboard');
-      setData(res.data);
+      const [dashRes, groupsRes] = await Promise.all([
+        api.get('/dashboard'),
+        api.get('/playgroups/today').catch(() => ({ data: [] })),
+      ]);
+      setData(dashRes.data);
+      setGroups(groupsRes.data || []);
     } catch {
       toast.error('Failed to load dashboard');
     } finally {
