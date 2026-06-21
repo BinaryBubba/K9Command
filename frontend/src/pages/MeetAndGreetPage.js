@@ -134,27 +134,29 @@ const MeetAndGreetPage = () => {
                     </div>
                     <div className="flex flex-col gap-1 items-end">
                       <Badge className="text-xs bg-amber-100 text-amber-700">Pending</Badge>
-                      <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white mt-1"
-                        onClick={async () => {
-                          try {
-                            await api.patch(`/meet-and-greets/${r.id}/status`, { status: 'confirmed' });
-                            toast.success('M&G confirmed');
-                            setPendingRequests(prev => prev.filter(x => x.id !== r.id));
-                          } catch { toast.error('Failed'); }
-                        }}>Confirm</Button>
-                      <Button size="sm" variant="outline" className="h-7 text-xs mt-1"
-                        onClick={() => { setSelectedDog({ id: r.dog_id, household_id: r.household_id }); setShowSchedule(true); }}>
-                        Edit
-                      </Button>
-                      <Button size="sm" variant="outline" className="h-7 text-xs text-red-500 border-red-200 mt-1"
-                        onClick={async () => {
-                          if (!window.confirm('Cancel this M&G request?')) return;
-                          try {
-                            await api.patch(`/meet-and-greets/${r.id}/status`, { status: 'cancelled' });
-                            toast.success('M&G cancelled');
-                            setPendingRequests(prev => prev.filter(x => x.id !== r.id));
-                          } catch { toast.error('Failed'); }
-                        }}>Cancel</Button>
+                      <div className="flex gap-1 mt-1">
+                        <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
+                          onClick={async () => {
+                            try {
+                              await api.patch(`/meet-and-greets/${r.id}/status`, { status: 'confirmed' });
+                              toast.success('M&G confirmed');
+                              setPendingRequests(prev => prev.filter(x => x.id !== r.id));
+                            } catch { toast.error('Failed'); }
+                          }}>Confirm</Button>
+                        <Button size="sm" variant="outline" className="h-7 text-xs"
+                          onClick={() => { setSelectedDog({ id: r.dog_id, household_id: r.household_id }); setShowSchedule(true); }}>
+                          Edit
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-7 text-xs text-red-500 border-red-200"
+                          onClick={async () => {
+                            if (!window.confirm('Cancel this M&G request?')) return;
+                            try {
+                              await api.patch(`/meet-and-greets/${r.id}/status`, { status: 'cancelled' });
+                              toast.success('M&G cancelled');
+                              setPendingRequests(prev => prev.filter(x => x.id !== r.id));
+                            } catch { toast.error('Failed'); }
+                          }}>Cancel</Button>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
