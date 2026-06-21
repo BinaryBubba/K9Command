@@ -175,6 +175,7 @@ async def create_booking(
 
     await db.commit()
     await db.refresh(booking)
+
     booking_dogs = await _get_booking_dogs(booking.id, db)
     result = _booking_dict(booking, booking_dogs)
     result["warnings"] = warnings
