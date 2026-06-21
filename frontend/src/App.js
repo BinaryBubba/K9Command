@@ -50,6 +50,7 @@ import CustomerDashboard from "./pages/CustomerDashboard";
 import CustomerStayPage from "./pages/CustomerStayPage";
 import CustomerDogPage from "./pages/CustomerDogPage";
 import CustomerProfilePage from "./pages/CustomerProfilePage";
+import CustomerBookingRequestPage from "./pages/CustomerBookingRequestPage";
 import DogProfilePage from "./pages/DogProfilePage";
 // Store
 import useAuthStore from './store/authStore';
