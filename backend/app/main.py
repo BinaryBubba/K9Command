@@ -361,13 +361,25 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
 
     # Force customer role
     household_id = os.urandom(16).hex()
+    import uuid as _uuid
+    # Create a real household for this customer
+    from db_models import Household
+    real_household_id = str(_uuid.uuid4())
+    household = Household(
+        id=real_household_id,
+        organization_id="00000000-0000-0000-0000-000000000001",
+        display_name=user_data.full_name or user_data.email.split("@")[0],
+        status="active",
+    )
+    db.add(household)
+
     user = UserORM(
         email=user_data.email,
         hashed_password=hash_password(user_data.password),
         full_name=user_data.full_name,
         phone=user_data.phone,
         role=UserRole.CUSTOMER,
-        household_id=household_id,
+        household_id=real_household_id,
         organization_id="00000000-0000-0000-0000-000000000001",
         is_active=True,
         is_owner=False,
