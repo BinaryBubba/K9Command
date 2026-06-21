@@ -51,6 +51,7 @@ import CustomerStayPage from "./pages/CustomerStayPage";
 import CustomerDogPage from "./pages/CustomerDogPage";
 import CustomerProfilePage from "./pages/CustomerProfilePage";
 import CustomerBookingRequestPage from "./pages/CustomerBookingRequestPage";
+import CustomerAddDogPage from "./pages/CustomerAddDogPage";
 import DogProfilePage from "./pages/DogProfilePage";
 // Store
 import useAuthStore from './store/authStore';
@@ -398,6 +399,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/customer/add-dog" element={<ProtectedRoute allowedRoles={["customer","admin","staff"]}><CustomerAddDogPage /></ProtectedRoute>} />
           <Route path="/customer/request" element={<ProtectedRoute allowedRoles={["customer","admin","staff","manager"]}><CustomerBookingRequestPage /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
