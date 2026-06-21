@@ -397,6 +397,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/customer/request" element={<ProtectedRoute allowedRoles={["customer","admin","staff","manager"]}><CustomerBookingRequestPage /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         </AppLayout>
