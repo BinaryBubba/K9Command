@@ -16,7 +16,6 @@ const CustomerAddDogPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [newDog, setNewDog] = useState(null);
-  const [newDog, setNewDog] = useState(null);
 
   const handleSubmit = async () => {
     if (!form.name.trim()) { toast.error('Dog name is required'); return; }
