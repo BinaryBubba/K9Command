@@ -15,6 +15,8 @@ const CustomerAddDogPage = () => {
   const [form, setForm] = useState({ name: '', breed: '', age: '', weight: '', notes: '' });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [newDog, setNewDog] = useState(null);
+  const [newDog, setNewDog] = useState(null);
 
   const handleSubmit = async () => {
     if (!form.name.trim()) { toast.error('Dog name is required'); return; }
@@ -26,7 +28,7 @@ const CustomerAddDogPage = () => {
         toast.error('Your account is not linked to a household. Please contact us.');
         return;
       }
-      await api.post('/dogs', {
+      const dogRes = await api.post('/dogs', {
         name: form.name,
         breed: form.breed || undefined,
         age: form.age ? parseInt(form.age) : undefined,
@@ -34,6 +36,7 @@ const CustomerAddDogPage = () => {
         household_id: householdId,
         notes: form.notes || undefined,
       });
+      setNewDog({ id: dogRes.data.id, name: form.name, householdId });
       setSubmitted(true);
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Failed to add dog');
@@ -46,16 +49,19 @@ const CustomerAddDogPage = () => {
     <div className="min-h-screen bg-[#F9F7F2] flex items-center justify-center p-4">
       <div className="text-center space-y-4 max-w-sm">
         <CheckCircleIcon size={48} className="mx-auto text-green-500" />
-        <h2 className="text-xl font-bold">Dog Added!</h2>
+        <h2 className="text-xl font-bold">{form.name || newDog?.name} Added!</h2>
         <p className="text-muted-foreground text-sm">
-          Your dog has been added to your account. Contact us to schedule a Meet & Greet before your first stay.
+          All dogs need a Meet & Greet with our staff before their first stay. Would you like to schedule one now?
         </p>
+        <Button className="w-full bg-primary" onClick={() => navigate(`/customer/mag-request?dog_id=${newDog?.id}&household_id=${newDog?.householdId}&dog_name=${encodeURIComponent(newDog?.name || '')}`)}>
+          Schedule Meet & Greet →
+        </Button>
         <div className="flex gap-2">
-          <Button variant="outline" className="flex-1" onClick={() => { setSubmitted(false); setForm({ name:'',breed:'',age:'',weight:'',notes:'' }); }}>
-            Add Another
+          <Button variant="outline" className="flex-1" onClick={() => { setSubmitted(false); setForm({ name:'',breed:'',age:'',weight:'',notes:'' }); setNewDog(null); }}>
+            Add Another Dog
           </Button>
-          <Button className="flex-1" onClick={() => navigate('/customer/dashboard')}>
-            Back to Dashboard
+          <Button variant="ghost" className="flex-1" onClick={() => navigate('/customer/dashboard')}>
+            Skip for Now
           </Button>
         </div>
       </div>

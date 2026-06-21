@@ -18,21 +18,24 @@ const AdminDashboard = () => {
   const [groups, setGroups] = useState([]);
   const [activeStaff, setActiveStaff] = useState([]);
   const [pendingRequests, setPendingRequests] = useState(0);
+  const [upcomingMags, setUpcomingMags] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchDashboard = useCallback(async () => {
     try {
-      const [res, groupsRes, shiftRes, pendingRes] = await Promise.all([
+      const [res, groupsRes, shiftRes, pendingRes, magsRes] = await Promise.all([
         api.get('/dashboard'),
         api.get('/playgroups/today').catch(() => ({ data: [] })),
         api.get('/users/shift/active').catch(() => ({ data: [] })),
         api.get('/bookings', { params: { status: 'PENDING', limit: 100 } }).catch(() => ({ data: [] })),
+        api.get('/meet-and-greets/upcoming').catch(() => ({ data: [] })),
       ]);
       setData(res.data);
       setGroups(groupsRes.data || []);
       setActiveStaff(shiftRes?.data || []);
       const pendingBookings = pendingRes?.data || [];
       if (pendingBookings.length > 0) setPendingRequests(pendingBookings.length);
+      setUpcomingMags(magsRes?.data || []);
     } catch {
       toast.error('Failed to load dashboard');
     } finally {
@@ -223,6 +226,36 @@ const AdminDashboard = () => {
               <p className="text-xs text-amber-700">Customer requests awaiting review</p>
             </div>
             <span className="text-amber-600 text-xl">→</span>
+          </div>
+        )}
+
+        {/* Upcoming Meet & Greets */}
+        {upcomingMags.length > 0 && (
+          <div className="bg-white rounded-xl border shadow-sm p-4">
+            <h2 className="font-serif font-semibold text-primary mb-3 text-sm flex items-center justify-between">
+              Upcoming Meet & Greets
+              <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{upcomingMags.length}</span>
+            </h2>
+            <div className="space-y-2">
+              {upcomingMags.map(m => (
+                <div key={m.id} className="flex items-center justify-between py-1.5 border-b last:border-0">
+                  <div>
+                    <p className="text-sm font-medium">{m.dog_name} <span className="text-muted-foreground font-normal">— {m.household_name}</span></p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(m.scheduled_at).toLocaleDateString([], {weekday:'short',month:'short',day:'numeric'})} · {m.slot === '10:00-12:00' ? '10am–noon' : '2pm–4pm'}
+                    </p>
+                    {m.requested_stay_start && (
+                      <p className="text-xs text-blue-600">
+                        Stay: {new Date(m.requested_stay_start+'T12:00:00').toLocaleDateString([], {month:'short',day:'numeric'})} – {new Date(m.requested_stay_end+'T12:00:00').toLocaleDateString([], {month:'short',day:'numeric'})}
+                      </p>
+                    )}
+                  </div>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${m.status === 'pending' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
+                    {m.status}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
