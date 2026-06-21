@@ -2,7 +2,7 @@
 Households and Contacts API
 Handles customer household creation, retrieval, and contact management.
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, func
 from typing import Optional
@@ -275,6 +275,74 @@ def _household_dict(h: Household) -> dict:
         "created_at": h.created_at.isoformat() if h.created_at else None,
         "updated_at": h.updated_at.isoformat() if h.updated_at else None,
     }
+
+@router.post("/import-csv")
+async def import_customers_csv(
+    file: UploadFile = File(...),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Import customers from CSV file."""
+    import csv, io, uuid
+    from sqlalchemy import text
+
+    content_bytes = await file.read()
+    content_str = content_bytes.decode('utf-8-sig')
+    reader = csv.DictReader(io.StringIO(content_str))
+
+    created = 0
+    skipped = 0
+    errors = 0
+
+    for row in reader:
+        try:
+            display_name = row.get('display_name', '').strip()
+            email = row.get('email', '').strip().lower()
+            first_name = row.get('first_name', '').strip()
+            last_name = row.get('last_name', '').strip()
+            phone = row.get('phone', '').strip()
+
+            if not display_name:
+                display_name = f"{first_name} {last_name}".strip() or email
+
+            if not display_name:
+                errors += 1
+                continue
+
+            # Check if household with same name exists
+            existing = await db.execute(text(
+                "SELECT id FROM households WHERE organization_id = :org_id AND LOWER(display_name) = LOWER(:name)"
+            ), {"org_id": current_user.organization_id, "name": display_name})
+            if existing.fetchone():
+                skipped += 1
+                continue
+
+            hh_id = str(uuid.uuid4())
+            await db.execute(text("""
+                INSERT INTO households (id, organization_id, display_name, status)
+                VALUES (:id, :org_id, :name, 'ACTIVE')
+            """), {"id": hh_id, "org_id": current_user.organization_id, "name": display_name})
+
+            if first_name or email:
+                await db.execute(text("""
+                    INSERT INTO contacts (id, organization_id, household_id, first_name, last_name, email, phone, is_primary, contact_type)
+                    VALUES (:id, :org_id, :hh_id, :fn, :ln, :email, :phone, TRUE, 'primary')
+                """), {
+                    "id": str(uuid.uuid4()),
+                    "org_id": current_user.organization_id,
+                    "hh_id": hh_id,
+                    "fn": first_name or display_name,
+                    "ln": last_name or '',
+                    "email": email or None,
+                    "phone": phone or None,
+                })
+            created += 1
+        except Exception as e:
+            errors += 1
+
+    await db.commit()
+    return {"created": created, "skipped": skipped, "errors": errors}
+
 
 @router.get("/{household_id}/notes")
 async def get_household_notes(

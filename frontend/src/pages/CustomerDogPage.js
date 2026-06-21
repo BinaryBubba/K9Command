@@ -43,6 +43,21 @@ const CustomerDogPage = () => {
   const today = new Date();
   const in30 = new Date(today.getTime() + 30*24*60*60*1000);
 
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('dog_id', dogId);
+      await api.post('/uploads/dog-photo', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      toast.success('Photo uploaded!');
+      fetchDog();
+    } catch { toast.error('Upload failed'); }
+  };
+
+  const photoRef = React.useRef();
+
   return (
     <div className="min-h-screen bg-[#F9F7F2]">
       <header className="bg-white border-b shadow-sm sticky top-0 z-10">

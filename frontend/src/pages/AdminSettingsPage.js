@@ -48,10 +48,12 @@ const AdminSettingsPage = () => {
       <main className="max-w-4xl mx-auto px-4 py-6">
         <Tabs defaultValue="rooms">
           <TabsList className="w-full mb-6">
+            <TabsTrigger value="import" className="flex-1">Import</TabsTrigger>
             <TabsTrigger value="rooms" className="flex-1">Rooms & Crates</TabsTrigger>
             <TabsTrigger value="closures" className="flex-1">Closures</TabsTrigger>
             <TabsTrigger value="org" className="flex-1">Organization</TabsTrigger>
           </TabsList>
+          <TabsContent value="import"><ImportTab /></TabsContent>
           <TabsContent value="rooms"><RoomsTab /></TabsContent>
           <TabsContent value="closures"><ClosuresTab /></TabsContent>
           <TabsContent value="org"><OrgTab orgSettings={orgSettings} setOrgSettings={setOrgSettings} handleSaveOrg={handleSaveOrg} orgSaving={orgSaving} /></TabsContent>
@@ -392,6 +394,95 @@ const OrgTab = ({ orgSettings, setOrgSettings, handleSaveOrg, orgSaving }) => (
     </Button>
   </CardContent></Card>
 );
+
+const ImportTab = () => {
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState([]);
+  const [importing, setImporting] = useState(false);
+  const [results, setResults] = useState(null);
+  const fileRef = React.useRef();
+
+  const handleFile = (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    setFile(f);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const lines = ev.target.result.split('\n').filter(Boolean);
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g,''));
+      const rows = lines.slice(1, 6).map(l => {
+        const vals = l.split(',').map(v => v.trim().replace(/"/g,''));
+        return Object.fromEntries(headers.map((h, i) => [h, vals[i] || '']));
+      });
+      setPreview(rows);
+    };
+    reader.readAsText(f);
+  };
+
+  const handleImport = async () => {
+    if (!file) return;
+    setImporting(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await api.post('/households/import-csv', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setResults(res.data);
+      toast.success(`Imported ${res.data.created} customers`);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Import failed');
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="py-4 px-4 space-y-3">
+          <h3 className="font-medium text-sm">Customer CSV Import</h3>
+          <p className="text-xs text-muted-foreground">
+            Upload a CSV with columns: <code className="bg-muted px-1 rounded">display_name, first_name, last_name, email, phone</code>
+          </p>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+              Choose CSV File
+            </Button>
+            {file && <span className="text-xs text-green-600">✓ {file.name}</span>}
+            <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFile} />
+          </div>
+          {preview.length > 0 && (
+            <div className="overflow-x-auto">
+              <p className="text-xs text-muted-foreground mb-1">Preview (first 5 rows):</p>
+              <table className="text-xs w-full border-collapse">
+                <thead>
+                  <tr>{Object.keys(preview[0]).map(h => <th key={h} className="border px-2 py-1 text-left bg-muted">{h}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {preview.map((row, i) => (
+                    <tr key={i}>{Object.values(row).map((v, j) => <td key={j} className="border px-2 py-1">{v}</td>)}</tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {file && (
+            <Button onClick={handleImport} disabled={importing}>
+              {importing ? 'Importing...' : 'Import Customers'}
+            </Button>
+          )}
+          {results && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm">
+              <p className="font-medium text-green-800">Import Complete</p>
+              <p className="text-xs text-green-700 mt-1">
+                Created: {results.created} · Skipped: {results.skipped} · Errors: {results.errors}
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
 
 const ExportsSection = () => {
   const downloadCSV = async (endpoint, filename) => {

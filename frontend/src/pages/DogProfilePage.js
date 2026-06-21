@@ -160,6 +160,43 @@ const DogProfilePage = () => {
   );
 };
 
+const getVaxStatus = (v) => {
+  if (v.verification_status === 'rejected') return 'rejected';
+  if (!v.expiration_date) return v.verification_status;
+  const today = new Date();
+  const expiry = new Date(v.expiration_date);
+  const daysUntilExpiry = Math.ceil((expiry - today) / (1000*60*60*24));
+  if (daysUntilExpiry < 0) return 'expired';
+  if (daysUntilExpiry <= 30) return 'expiring_soon';
+  return v.verification_status;
+};
+
+const VAX_STATUS_STYLES = {
+  verified: 'bg-green-100 text-green-700',
+  pending: 'bg-amber-100 text-amber-700',
+  rejected: 'bg-red-100 text-red-700',
+  expired: 'bg-red-100 text-red-700',
+  expiring_soon: 'bg-orange-100 text-orange-700',
+};
+
+const VAX_STATUS_LABELS = {
+  verified: 'Verified',
+  pending: 'Pending Review',
+  rejected: 'Rejected',
+  expired: 'Expired',
+  expiring_soon: 'Expiring Soon',
+};
+
+// Common vax intervals in days
+const VAX_INTERVALS = {
+  'Rabies': 365,
+  'Distemper': 365,
+  'Bordetella': 180,
+  'Leptospirosis': 365,
+  'Lyme': 365,
+  'Influenza': 365,
+};
+
 const VaccinationsTab = ({ dogId, vaccinations, onRefresh, isStaff }) => {
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ vaccination_type: '', administration_date: '', expiration_date: '', provider: '', auto_verify: false });
@@ -234,7 +271,18 @@ const VaccinationsTab = ({ dogId, vaccinations, onRefresh, isStaff }) => {
               <div><Label>Provider</Label><Input value={form.provider} onChange={e => setForm(f=>({...f,provider:e.target.value}))} className="mt-1" /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Admin Date</Label><Input type="date" value={form.administration_date} onChange={e => setForm(f=>({...f,administration_date:e.target.value}))} className="mt-1" /></div>
+              <div><Label>Admin Date</Label><Input type="date" value={form.administration_date}
+                onChange={e => {
+                  const val = e.target.value;
+                  const interval = VAX_INTERVALS[form.vaccination_type];
+                  let expiry = form.expiration_date;
+                  if (val && interval && !form.expiration_date) {
+                    const d = new Date(val);
+                    d.setDate(d.getDate() + interval);
+                    expiry = d.toISOString().split('T')[0];
+                  }
+                  setForm(f=>({...f, administration_date:val, expiration_date: expiry}));
+                }} className="mt-1" /></div>
               <div><Label>Expiry Date</Label><Input type="date" value={form.expiration_date} onChange={e => setForm(f=>({...f,expiration_date:e.target.value}))} className="mt-1" /></div>
             </div>
             <div>
@@ -270,9 +318,22 @@ const VaccinationsTab = ({ dogId, vaccinations, onRefresh, isStaff }) => {
               <div className="flex items-start gap-2">
                 <SyringeIcon size={14} className="mt-0.5 text-muted-foreground" />
                 <div>
-                  <p className="font-medium text-sm">{v.vaccination_type}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-sm">{v.vaccination_type}</p>
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${VAX_STATUS_STYLES[getVaxStatus(v)] || 'bg-gray-100 text-gray-600'}`}>
+                      {VAX_STATUS_LABELS[getVaxStatus(v)] || v.verification_status}
+                    </span>
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    {v.expiration_date ? `Expires: ${new Date(v.expiration_date).toLocaleDateString()}` : 'No expiry'}
+                    {v.administration_date && `Given: ${new Date(v.administration_date).toLocaleDateString()} · `}
+                    {v.expiration_date ? (
+                      (() => {
+                        const days = Math.ceil((new Date(v.expiration_date) - new Date()) / (1000*60*60*24));
+                        if (days < 0) return <span className="text-red-600">Expired {Math.abs(days)} days ago</span>;
+                        if (days <= 30) return <span className="text-orange-600">Expires in {days} days</span>;
+                        return `Expires: ${new Date(v.expiration_date).toLocaleDateString()}`;
+                      })()
+                    ) : 'No expiry'}
                     {v.provider && ` · ${v.provider}`}
                   </p>
                   {v.document_url && (
