@@ -65,10 +65,11 @@ const CustomerDashboard = () => {
   const handleLogout = () => { logout(); navigate('/'); };
 
   const currentStay = bookings.find(b => ['checked_in','on_site','CHECKED_IN','ON_SITE'].includes(b.status));
+  const pendingStays = bookings.filter(b => ['pending','PENDING'].includes(b.status));
   const upcoming = bookings.filter(b => {
     const s = b.status?.toLowerCase();
     const checkIn = new Date(b.check_in_date);
-    return (s === 'confirmed' || s === 'pending') && checkIn >= new Date();
+    return s === 'confirmed' && checkIn >= new Date();
   });
   const past = bookings.filter(b => {
     const s = b.status?.toLowerCase();
@@ -106,6 +107,19 @@ const CustomerDashboard = () => {
 
           {/* Bookings/Stays tab */}
           <TabsContent value="bookings" className="space-y-4">
+            {/* Pending requests */}
+            {pendingStays.length > 0 && (
+              <div>
+                <h3 className="text-xs font-medium text-amber-700 mb-2 flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>
+                  Pending Requests ({pendingStays.length})
+                </h3>
+                {pendingStays.map(b => (
+                  <BookingCard key={b.id} booking={b} onClick={() => navigate(`/customer/stay/${b.id}`)} />
+                ))}
+              </div>
+            )}
+
             {/* Current stay */}
             {currentStay && (
               <div>

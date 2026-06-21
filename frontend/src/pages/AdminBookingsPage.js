@@ -95,7 +95,7 @@ const AdminBookingsPage = () => {
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
         {/* Filter tabs */}
         <div className="flex gap-2">
-          {['upcoming', 'today', 'all', 'past', 'completed', 'cancelled', 'requests'].map(f => (
+          {['requests', 'upcoming', 'today', 'all', 'past', 'completed', 'cancelled'].map(f => (
             <button key={f} onClick={() => setFilter(f)}
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 filter === f ? 'bg-primary text-primary-foreground' : f === 'requests' ? 'bg-amber-50 border-amber-200 text-amber-700 border hover:bg-amber-100' : 'bg-white border hover:bg-muted'
