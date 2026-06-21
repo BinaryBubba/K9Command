@@ -152,7 +152,7 @@ async def create_booking(
         location_id=data.get("location_id") or await _get_default_location(org_id, db),
         check_in_date=check_in_date,
         check_out_date=check_out_date,
-        status=BookingStatus(data.get("status", "CONFIRMED").upper()) if data.get("status") else BookingStatus.CONFIRMED,
+        status=BookingStatus(data.get("status", "confirmed").lower()) if data.get("status") else BookingStatus.CONFIRMED,
         total_price=data.get("total_price", 0.0),
         notes=data.get("notes"),
         special_request=data.get("special_request"),
