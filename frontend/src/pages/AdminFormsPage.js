@@ -120,7 +120,6 @@ const AdminFormsPage = () => {
             </CardContent>
           </Card>
         ))}
-      </main>
 
           </TabsContent>
           <TabsContent value="fill">
@@ -130,6 +129,8 @@ const AdminFormsPage = () => {
             </div>
           </TabsContent>
         </Tabs>
+      </main>
+
       {(showCreate || editForm) && (
         <FormEditorModal
           form={editForm}
