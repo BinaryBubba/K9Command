@@ -95,7 +95,7 @@ class User(Base):
     connecteam_user_id = Column(String, nullable=True)
     is_on_shift = Column(Boolean, default=False)
     last_login_at = Column(DateTime(timezone=True), nullable=True)
-    shift_started_at = Column(String, nullable=True)
+    shift_started_at = Column(DateTime(timezone=True), nullable=True)
     address = Column(String, nullable=True)
     birthday = Column(String, nullable=True)
     avatar_key = Column(String, nullable=True)
