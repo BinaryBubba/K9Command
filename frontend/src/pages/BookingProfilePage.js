@@ -144,8 +144,8 @@ const BookingProfilePage = () => {
                   <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white mt-1"
                     onClick={async () => {
                       try {
-                        await api.patch(`/bookings/${bookingId}/status`, { status: 'confirmed' });
-                        toast.success('Booking restored');
+                        await api.patch(`/bookings/${bookingId}/status`, { status: 'pending' });
+                        toast.success('Booking restored to pending');
                         fetchData();
                       } catch (err) { toast.error(err.response?.data?.detail || 'Failed'); }
                     }}>
