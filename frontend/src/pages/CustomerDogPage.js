@@ -86,10 +86,15 @@ const CustomerDogPage = () => {
                 <p className="text-sm text-muted-foreground">
                   {[dog.breed, dog.age ? `${dog.age} yrs` : null, dog.weight ? `${dog.weight} lbs` : null].filter(Boolean).join(' · ')}
                 </p>
-                <div className="flex gap-1 mt-1">
+                <div className="flex gap-1 mt-1 flex-wrap">
                   {dog.meet_and_greet_status === 'completed' && <Badge className="text-xs bg-green-100 text-green-700">M&G ✓</Badge>}
                   {dog.is_neutered && <Badge variant="outline" className="text-xs">Fixed</Badge>}
                 </div>
+                <button type="button" className="text-xs text-primary hover:underline mt-1"
+                  onClick={() => photoRef.current?.click()}>
+                  {dog.photo_url ? '📷 Change Photo' : '📷 Add Photo'}
+                </button>
+                <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
               </div>
             </div>
           </CardContent>

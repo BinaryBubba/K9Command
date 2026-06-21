@@ -160,6 +160,21 @@ const DogProfilePage = () => {
   );
 };
 
+const REQUIRED_VAXES = ['Rabies', 'Distemper', 'Bordetella'];
+
+const getRequiredVaxStatus = (vaccinations) => {
+  const today = new Date();
+  return REQUIRED_VAXES.map(vax => {
+    const records = vaccinations.filter(v => v.vaccination_type === vax);
+    const valid = records.find(v => {
+      if (v.verification_status === 'rejected') return false;
+      if (!v.expiration_date) return v.verification_status === 'verified';
+      return new Date(v.expiration_date) > today && v.verification_status === 'verified';
+    });
+    return { vax, status: valid ? 'ok' : records.length > 0 ? 'pending' : 'missing' };
+  });
+};
+
 const getVaxStatus = (v) => {
   if (v.verification_status === 'rejected') return 'rejected';
   if (!v.expiration_date) return v.verification_status;
@@ -241,8 +256,44 @@ const VaccinationsTab = ({ dogId, vaccinations, onRefresh, isStaff }) => {
     catch { toast.error('Failed to reject'); }
   };
 
+  const requiredStatus = getRequiredVaxStatus(vaccinations);
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({});
+
+  const handleEdit = (v) => {
+    setEditingId(v.id);
+    setEditForm({
+      vaccination_type: v.vaccination_type,
+      administration_date: v.administration_date ? v.administration_date.split('T')[0] : '',
+      expiration_date: v.expiration_date ? v.expiration_date.split('T')[0] : '',
+      provider: v.provider || '',
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      await api.patch(`/vaccinations/${editingId}`, editForm);
+      toast.success('Updated');
+      setEditingId(null);
+      onRefresh();
+    } catch { toast.error('Failed to update'); }
+  };
+
   return (
     <div className="space-y-3">
+      {/* Required vaccines status */}
+      <div className="flex gap-2 flex-wrap">
+        {requiredStatus.map(r => (
+          <span key={r.vax} className={`text-xs px-2 py-1 rounded-full font-medium ${
+            r.status === 'ok' ? 'bg-green-100 text-green-700' :
+            r.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+            'bg-red-100 text-red-700'
+          }`}>
+            {r.vax}: {r.status === 'ok' ? '✓' : r.status === 'pending' ? 'Pending' : 'Missing'}
+          </span>
+        ))}
+      </div>
+
       {isStaff && (
         <div className="flex justify-end">
           <Button size="sm" onClick={() => setShowAdd(!showAdd)}>

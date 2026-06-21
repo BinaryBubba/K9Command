@@ -128,6 +128,25 @@ async def reject_vaccination(
 
 # ── Get vaccination status summary for a dog ────────────────────────────────
 
+@router.patch("/{record_id}")
+async def update_vaccination(
+    record_id: str,
+    data: dict,
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    record = await _get_record_or_404(record_id, current_user.organization_id, db)
+    for field in ['vaccination_type', 'administration_date', 'expiration_date', 'provider', 'notes']:
+        if field in data and data[field] is not None:
+            if field in ['administration_date', 'expiration_date']:
+                record.__setattr__(field, _parse_date(data[field]))
+            else:
+                record.__setattr__(field, data[field])
+    await db.commit()
+    await db.refresh(record)
+    return _vax_dict(record)
+
+
 @router.get("/dog/{dog_id}/status")
 async def get_vaccination_status(
     dog_id: str,

@@ -441,7 +441,11 @@ const ImportTab = () => {
         <CardContent className="py-4 px-4 space-y-3">
           <h3 className="font-medium text-sm">Customer CSV Import</h3>
           <p className="text-xs text-muted-foreground">
-            Upload a CSV with columns: <code className="bg-muted px-1 rounded">display_name, first_name, last_name, email, phone</code>
+            Upload a CSV with columns in this order:
+          </p>
+          <code className="text-xs bg-muted px-2 py-1 rounded block">display_name, first_name, last_name, email, phone, dogs</code>
+          <p className="text-xs text-muted-foreground">
+            The <strong>dogs</strong> column is optional. Use semicolons to separate multiple dogs (e.g. <code className="bg-muted px-1 rounded">Buddy;Max</code>).
           </p>
           <div className="flex items-center gap-3">
             <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
