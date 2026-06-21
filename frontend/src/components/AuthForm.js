@@ -40,15 +40,20 @@ const AuthForm = () => {
       toast.success(`Welcome ${user.full_name}!`);
 
       // Redirect based on role
-      if (user.role === 'customer') {
+      const role = user.role?.toLowerCase();
+      if (role === 'customer') {
         navigate('/customer/dashboard');
-      } else if (user.role === 'staff') {
+      } else if (role === 'staff' || role === 'manager') {
         navigate('/staff/dashboard');
-      } else if (user.role === 'admin') {
+      } else if (role === 'admin') {
         navigate('/admin/dashboard');
+      } else {
+        navigate('/customer/dashboard');
       }
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Authentication failed');
+      const detail = error.response?.data?.detail;
+      const msg = Array.isArray(detail) ? detail.map(d => d.msg || d).join(', ') : (typeof detail === 'string' ? detail : 'Authentication failed');
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
