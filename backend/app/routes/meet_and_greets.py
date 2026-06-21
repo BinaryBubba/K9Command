@@ -155,8 +155,9 @@ async def request_mag(
         raise HTTPException(status_code=409, detail="This slot is already booked. Please choose another.")
 
     # Parse scheduled_at from date + slot start time
+    from datetime import datetime as _dt
     slot_start = slot.split("-")[0]
-    scheduled_at = f"{scheduled_date}T{slot_start}:00"
+    scheduled_at = _dt.fromisoformat(f"{scheduled_date}T{slot_start}:00")
 
     mag_id = str(uuid.uuid4())
     await db.execute(text("""
