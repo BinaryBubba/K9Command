@@ -25,7 +25,8 @@ const AdminBookingsPage = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [viewMode, setViewMode] = useState('list'); // list | calendar
+  const [viewMode, setViewMode] = useState('list');
+  const [pendingCount, setPendingCount] = useState(0); // list | calendar
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [filter, setFilter] = useState('upcoming');
 
@@ -33,6 +34,8 @@ const AdminBookingsPage = () => {
     try {
       const now = new Date();
       const params = { limit: 100 };
+      // Count pending requests
+      api.get('/bookings', { params: { status: 'PENDING', limit: 100 } }).then(r => setPendingCount(r.data.length)).catch(() => {});
       if (filter === 'upcoming') {
         params.start_date = now.toISOString();
         params.status = 'CONFIRMED';
@@ -46,6 +49,8 @@ const AdminBookingsPage = () => {
         params.status = 'CHECKED_OUT';
       } else if (filter === 'all') {
         // no filter - show everything
+      } else if (filter === 'requests') {
+        params.status = 'PENDING';
       }
       else if (filter === 'today') {
         params.start_date = new Date(now.setHours(0,0,0,0)).toISOString();
@@ -90,12 +95,12 @@ const AdminBookingsPage = () => {
       <main className="max-w-4xl mx-auto px-4 py-6 space-y-4">
         {/* Filter tabs */}
         <div className="flex gap-2">
-          {['upcoming', 'today', 'all', 'past', 'completed', 'cancelled'].map(f => (
+          {['upcoming', 'today', 'all', 'past', 'completed', 'cancelled', 'requests'].map(f => (
             <button key={f} onClick={() => setFilter(f)}
               className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                filter === f ? 'bg-primary text-primary-foreground' : 'bg-white border hover:bg-muted'
+                filter === f ? 'bg-primary text-primary-foreground' : f === 'requests' ? 'bg-amber-50 border-amber-200 text-amber-700 border hover:bg-amber-100' : 'bg-white border hover:bg-muted'
               }`}>
-              {f.charAt(0).toUpperCase() + f.slice(1)}
+              {f === 'requests' ? `Requests${pendingCount > 0 ? ` (${pendingCount})` : ''}` : f.charAt(0).toUpperCase() + f.slice(1)}
             </button>
           ))}
         </div>

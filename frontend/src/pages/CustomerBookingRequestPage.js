@@ -78,6 +78,7 @@ const CustomerBookingRequestPage = () => {
         dog_ids: form.dog_ids,
         check_in_date: new Date(form.check_in_date).toISOString(),
         check_out_date: new Date(form.check_out_date).toISOString(),
+        status: 'PENDING',
         special_request: form.special_request || undefined,
         notes: form.notes || undefined,
         service_type: 'Boarding',

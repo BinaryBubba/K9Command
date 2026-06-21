@@ -17,18 +17,22 @@ const AdminDashboard = () => {
   const [data, setData] = useState(null);
   const [groups, setGroups] = useState([]);
   const [activeStaff, setActiveStaff] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const fetchDashboard = useCallback(async () => {
     try {
-      const [res, groupsRes, , shiftRes] = await Promise.all([
+      const [res, groupsRes, , shiftRes, pendingRes] = await Promise.all([
         api.get('/dashboard'),
         api.get('/playgroups/today').catch(() => ({ data: [] })),
         api.get('/users/shift/active').catch(() => ({ data: [] })),
+        api.get('/bookings', { params: { status: 'PENDING', limit: 100 } }).catch(() => ({ data: [] })),
       ]);
       setData(res.data);
       setGroups(groupsRes.data || []);
       setActiveStaff(shiftRes?.data || []);
+      const pendingBookings = pendingRes?.data || [];
+      if (pendingBookings.length > 0) setPendingRequests(pendingBookings.length);
     } catch {
       toast.error('Failed to load dashboard');
     } finally {
@@ -209,6 +213,18 @@ const AdminDashboard = () => {
           <QuickAction label="Kennels" icon={<HomeIcon size={18} />} onClick={() => navigate('/admin/kennels')} />
         </div>
 
+
+        {/* Pending Booking Requests */}
+        {pendingRequests > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between cursor-pointer"
+            onClick={() => navigate('/admin/bookings?filter=requests')}>
+            <div>
+              <p className="font-semibold text-amber-900">{pendingRequests} Pending Booking Request{pendingRequests !== 1 ? 's' : ''}</p>
+              <p className="text-xs text-amber-700">Customer requests awaiting review</p>
+            </div>
+            <span className="text-amber-600 text-xl">→</span>
+          </div>
+        )}
 
         {/* Who's On Shift */}
         <div className="bg-white rounded-xl border shadow-sm p-4">
