@@ -66,7 +66,7 @@ const BookingProfilePage = () => {
       await api.patch(`/bookings/${bookingId}/status`, { status: 'confirmed' });
       toast.success('Booking confirmed');
       fetchBooking();
-    } catch { toast.error('Failed to confirm'); }
+    } catch (err) { toast.error(err.response?.data?.detail || err.message || 'Failed to confirm'); }
   };
 
   const handleDecline = async () => {
@@ -75,7 +75,7 @@ const BookingProfilePage = () => {
       await api.patch(`/bookings/${bookingId}/status`, { status: 'cancelled' });
       toast.success('Booking declined');
       fetchBooking();
-    } catch { toast.error('Failed to decline'); }
+    } catch (err) { toast.error(err.response?.data?.detail || err.message || 'Failed to decline'); }
   };
 
   const handleAddNote = async () => {
