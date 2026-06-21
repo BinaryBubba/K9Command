@@ -368,6 +368,7 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
         phone=user_data.phone,
         role=UserRole.CUSTOMER,
         household_id=household_id,
+        organization_id="00000000-0000-0000-0000-000000000001",
         is_active=True,
         is_owner=False,
     )
