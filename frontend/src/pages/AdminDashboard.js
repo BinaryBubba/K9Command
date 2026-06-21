@@ -22,7 +22,7 @@ const AdminDashboard = () => {
 
   const fetchDashboard = useCallback(async () => {
     try {
-      const [res, groupsRes, , shiftRes, pendingRes] = await Promise.all([
+      const [res, groupsRes, shiftRes, pendingRes] = await Promise.all([
         api.get('/dashboard'),
         api.get('/playgroups/today').catch(() => ({ data: [] })),
         api.get('/users/shift/active').catch(() => ({ data: [] })),

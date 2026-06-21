@@ -59,6 +59,25 @@ const BookingProfilePage = () => {
     fetchData();
   }, [user, navigate, fetchData]);
 
+  const isManager = ['admin','manager','ADMIN','MANAGER'].includes(user?.role);
+
+  const handleConfirm = async () => {
+    try {
+      await api.patch(`/bookings/${bookingId}/status`, { status: 'confirmed' });
+      toast.success('Booking confirmed');
+      fetchBooking();
+    } catch { toast.error('Failed to confirm'); }
+  };
+
+  const handleDecline = async () => {
+    if (!window.confirm('Decline this booking request?')) return;
+    try {
+      await api.patch(`/bookings/${bookingId}/status`, { status: 'cancelled' });
+      toast.success('Booking declined');
+      fetchBooking();
+    } catch { toast.error('Failed to decline'); }
+  };
+
   const handleAddNote = async () => {
     if (!noteText.trim()) return;
     try {
@@ -98,6 +117,16 @@ const BookingProfilePage = () => {
             </Badge>
             {user?.role !== 'customer' && (
               <div className="flex gap-2">
+                {['pending','PENDING'].includes(booking.status) && isManager && (
+                  <div className="flex gap-2">
+                    <Button className="flex-1 bg-green-600 hover:bg-green-700 text-white" onClick={handleConfirm}>
+                      ✓ Confirm
+                    </Button>
+                    <Button className="flex-1" variant="outline" onClick={handleDecline}>
+                      ✗ Decline
+                    </Button>
+                  </div>
+                )}
                 {booking.status !== 'cancelled' && booking.status !== 'CANCELLED' && booking.status !== 'checked_out' && booking.status !== 'CHECKED_OUT' && (
                   <Button size="sm" variant="outline" className="text-red-600 border-red-200"
                     onClick={async () => {
