@@ -301,4 +301,5 @@ const FormField = ({ field, value, onChange }) => {
   }
 };
 
+export { FormRenderer };
 export default FormsPage;

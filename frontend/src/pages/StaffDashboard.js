@@ -194,10 +194,10 @@ const StaffDashboard = () => {
               {groups.map(g => (
                 <div key={g.group_number} className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                    Group {g.group_number}
+                    {g.label || `Group ${g.group_number}`}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {g.members?.map(m => m.dog_name).join(', ')}
+                    {g.dogs?.map(m => m.dog_name).join(', ')}
                   </span>
                 </div>
               ))}

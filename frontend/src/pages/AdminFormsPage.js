@@ -9,6 +9,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { PlusIcon, PencilIcon, UsersIcon, TrashIcon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
+import { FormRenderer } from './FormsPage';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 
 
@@ -34,6 +35,7 @@ const AdminFormsPage = () => {
   const [editForm, setEditForm] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [accessModal, setAccessModal] = useState(null);
+  const [fillForm, setFillForm] = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -122,14 +124,38 @@ const AdminFormsPage = () => {
         ))}
 
           </TabsContent>
-          <TabsContent value="fill">
-            <div className="text-center py-12 space-y-3">
-              <p className="text-muted-foreground">Fill out forms as staff or customer</p>
-              <Button onClick={() => navigate('/forms')}>Go to Forms</Button>
-            </div>
+          <TabsContent value="fill" className="space-y-3">
+            {forms.filter(f => f.is_active).map(form => (
+              <Card key={form.id} className="cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => setFillForm(form)}>
+                <CardContent className="py-3 px-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-sm">{form.title}</p>
+                      {form.description && <p className="text-xs text-muted-foreground">{form.description}</p>}
+                    </div>
+                    <Badge className="text-xs">{form.form_type.replace('_',' ')}</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </TabsContent>
         </Tabs>
       </main>
+
+      {fillForm && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-end md:items-center justify-center p-4">
+          <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="font-bold">{fillForm.title}</h2>
+              <button onClick={() => setFillForm(null)} className="text-muted-foreground text-xl">×</button>
+            </div>
+            <FormRenderer form={fillForm} user={user}
+              onBack={() => setFillForm(null)}
+              onSubmitted={() => { setFillForm(null); toast.success('Form submitted'); }} />
+          </div>
+        </div>
+      )}
 
       {(showCreate || editForm) && (
         <FormEditorModal
