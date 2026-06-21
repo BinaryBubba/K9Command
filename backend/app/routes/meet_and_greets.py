@@ -139,13 +139,18 @@ async def request_mag(
         raise HTTPException(status_code=400, detail="dog_id, household_id, scheduled_date, slot required")
 
     # Check slot not taken
+    from datetime import date as _date
+    try:
+        parsed_date = _date.fromisoformat(scheduled_date)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid date format")
     taken = await db.execute(text("""
         SELECT id FROM meet_and_greets
         WHERE organization_id = :org_id
-        AND DATE(scheduled_at) = CAST(:date AS DATE)
+        AND DATE(scheduled_at) = :date
         AND slot = :slot
         AND status NOT IN ('cancelled', 'completed')
-    """), {"org_id": current_user.organization_id, "date": scheduled_date, "slot": slot})
+    """), {"org_id": current_user.organization_id, "date": parsed_date, "slot": slot})
     if taken.fetchone():
         raise HTTPException(status_code=409, detail="This slot is already booked. Please choose another.")
 
