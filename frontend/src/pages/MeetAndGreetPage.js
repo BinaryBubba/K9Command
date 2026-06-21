@@ -33,6 +33,7 @@ const MeetAndGreetPage = () => {
   const params = new URLSearchParams(location.search);
   const preselectedHouseholdId = params.get('household_id');
   const [dogs, setDogs] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
   const [mags, setMags] = useState({});
   const [loading, setLoading] = useState(true);
   const [showSchedule, setShowSchedule] = useState(!!new URLSearchParams(window.location.search).get('household_id'));
@@ -45,6 +46,9 @@ const MeetAndGreetPage = () => {
         d.meet_and_greet_status === 'required' || d.meet_and_greet_status === 'scheduled'
       );
       setDogs(pending);
+
+      // Load pending customer M&G requests
+      api.get('/meet-and-greets/upcoming').then(r => setPendingRequests(r.data || [])).catch(() => {});
 
       // Load MAG records for each pending dog
       const magData = {};
@@ -88,8 +92,11 @@ const MeetAndGreetPage = () => {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-6">
-        <Tabs defaultValue="scheduled">
+        <Tabs defaultValue="requests">
           <TabsList className="w-full mb-6">
+            <TabsTrigger value="requests" className="flex-1">
+              Requests ({pendingRequests.length})
+            </TabsTrigger>
             <TabsTrigger value="scheduled" className="flex-1">
               Scheduled ({scheduled.length})
             </TabsTrigger>
@@ -97,6 +104,50 @@ const MeetAndGreetPage = () => {
               Needs M&G ({required.length})
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="requests">
+            {pendingRequests.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-sm">No pending M&G requests</div>
+            ) : pendingRequests.map(r => (
+              <Card key={r.id} className="mb-3">
+                <CardContent className="py-3 px-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="font-medium text-sm">{r.dog_name} <span className="text-muted-foreground font-normal">— {r.household_name}</span></p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {new Date(r.scheduled_at).toLocaleDateString([], {weekday:'long',month:'short',day:'numeric'})}
+                        {' · '}
+                        {r.slot === '10:00-10:30' ? '10:00–10:30 AM' :
+                         r.slot === '10:30-11:00' ? '10:30–11:00 AM' :
+                         r.slot === '11:00-11:30' ? '11:00–11:30 AM' :
+                         r.slot === '11:30-12:00' ? '11:30 AM–12:00 PM' :
+                         r.slot === '14:00-14:30' ? '2:00–2:30 PM' :
+                         r.slot === '14:30-15:00' ? '2:30–3:00 PM' :
+                         r.slot === '15:00-15:30' ? '3:00–3:30 PM' :
+                         r.slot === '15:30-16:00' ? '3:30–4:00 PM' : r.slot}
+                      </p>
+                      {r.requested_stay_start && (
+                        <p className="text-xs text-blue-600 mt-0.5">
+                          Planned stay: {new Date(r.requested_stay_start+'T12:00:00').toLocaleDateString([], {month:'short',day:'numeric'})} – {new Date(r.requested_stay_end+'T12:00:00').toLocaleDateString([], {month:'short',day:'numeric',year:'numeric'})}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-1 items-end">
+                      <Badge className="text-xs bg-amber-100 text-amber-700">Pending</Badge>
+                      <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white mt-1"
+                        onClick={async () => {
+                          try {
+                            await api.patch(`/meet-and-greets/${r.id}/status`, { status: 'confirmed' });
+                            toast.success('M&G confirmed');
+                            setPendingRequests(prev => prev.filter(x => x.id !== r.id));
+                          } catch { toast.error('Failed'); }
+                        }}>Confirm</Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </TabsContent>
 
           <TabsContent value="scheduled">
             {scheduled.length === 0 ? (
@@ -202,6 +253,7 @@ const MAGCard = ({ dog, mags, onRecordOutcome, onRefresh }) => {
 
 const ScheduleMAGModal = ({ preselectedDog, onClose, onSuccess }) => {
   const [dogs, setDogs] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
   const [households, setHouseholds] = useState([]);
   const [form, setForm] = useState({
     dog_id: preselectedDog?.id || '',

@@ -255,6 +255,25 @@ async def update_mag_status(
     return {"updated": True}
 
 
+@router.patch("/{mag_id}/status")
+async def update_mag_status(
+    mag_id: str,
+    data: dict,
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import text
+    status = data.get("status", "").lower()
+    if status not in ["pending", "confirmed", "cancelled"]:
+        raise HTTPException(status_code=400, detail="Invalid status")
+    await db.execute(text("""
+        UPDATE meet_and_greets SET status = :status
+        WHERE id = :id AND organization_id = :org_id
+    """), {"status": status, "id": mag_id, "org_id": current_user.organization_id})
+    await db.commit()
+    return {"updated": True}
+
+
 @router.post("/{mag_id}/outcome")
 async def record_outcome(
     mag_id: str,
