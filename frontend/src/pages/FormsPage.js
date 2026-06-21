@@ -28,7 +28,7 @@ const TYPE_ICONS = {
   custom: '📄',
 };
 
-const FormsPage = () => {
+const FormsPage = ({ embedded = false }) => {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const [forms, setForms] = useState([]);
@@ -71,15 +71,15 @@ const FormsPage = () => {
   }, {});
 
   return (
-    <div className="min-h-screen bg-[#F9F7F2]">
-      <header className="bg-white border-b shadow-sm sticky top-0 z-10">
+    <div className={embedded ? '' : 'min-h-screen bg-[#F9F7F2]'}>
+      {!embedded && <header className="bg-white border-b shadow-sm sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 py-3">
           <h1 className="text-lg font-serif font-bold text-primary">Forms</h1>
           <p className="text-xs text-muted-foreground">Complete and submit forms for K9 Country Club</p>
         </div>
-      </header>
+      </header>}
 
-      <main className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+      <main className={embedded ? 'space-y-4' : 'max-w-3xl mx-auto px-4 py-6 space-y-6'}>
         {Object.entries(grouped).map(([type, typeForms]) => (
           <div key={type}>
             <h2 className="text-sm font-medium text-muted-foreground mb-2 capitalize">
@@ -195,8 +195,8 @@ const FormRenderer = ({ form, user, onBack, onSubmitted }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F9F7F2]">
-      <header className="bg-white border-b shadow-sm sticky top-0 z-10">
+    <div className={embedded ? '' : 'min-h-screen bg-[#F9F7F2]'}>
+      {!embedded && <header className="bg-white border-b shadow-sm sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button onClick={onBack} className="text-muted-foreground hover:text-foreground">←</button>

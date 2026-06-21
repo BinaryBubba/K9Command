@@ -9,6 +9,8 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { PlusIcon, PencilIcon, UsersIcon, TrashIcon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import FormsPage from './FormsPage';
 
 import { toast } from 'sonner';
 
@@ -69,16 +71,19 @@ const AdminFormsPage = () => {
       <header className="bg-white border-b shadow-sm sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <h1 className="text-lg font-serif font-bold text-primary">Form Management</h1>
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => navigate('/forms')}>Fill Forms</Button>
-            <Button size="sm" onClick={() => setShowCreate(true)}>
-              <PlusIcon size={14} className="mr-1" /> New Form
-            </Button>
-          </div>
+          <Button size="sm" onClick={() => setShowCreate(true)}>
+            <PlusIcon size={14} className="mr-1" /> New Form
+          </Button>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 py-6 space-y-3">
+      <main className="max-w-4xl mx-auto px-4 py-4">
+        <Tabs defaultValue="manage">
+          <TabsList className="w-full mb-4">
+            <TabsTrigger value="manage" className="flex-1">Manage Forms</TabsTrigger>
+            <TabsTrigger value="fill" className="flex-1">Fill a Form</TabsTrigger>
+          </TabsList>
+          <TabsContent value="manage" className="space-y-3">
         {forms.map(form => (
           <Card key={form.id} className={!form.is_active ? 'opacity-60' : ''}>
             <CardContent className="py-3 px-4">
@@ -117,6 +122,11 @@ const AdminFormsPage = () => {
         ))}
       </main>
 
+          </TabsContent>
+          <TabsContent value="fill">
+            <FormsPage embedded />
+          </TabsContent>
+        </Tabs>
       {(showCreate || editForm) && (
         <FormEditorModal
           form={editForm}

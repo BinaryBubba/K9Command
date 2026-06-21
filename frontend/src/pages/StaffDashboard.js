@@ -29,6 +29,7 @@ const StaffDashboard = () => {
     navigate('/staff/handoff');
   };
   const [data, setData] = useState(null);
+  const [groups, setGroups] = useState([]);
   const [onShift, setOnShift] = useState(false);
   const [shiftLoading, setShiftLoading] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -181,6 +182,24 @@ const StaffDashboard = () => {
           </CardContent>
         </Card>
 
+        {/* Today's Groups */}
+        {groups.length > 0 && (
+          <div className="bg-white rounded-xl border shadow-sm p-4">
+            <h2 className="font-serif font-semibold text-primary mb-3 text-sm">Today's Groups</h2>
+            <div className="space-y-2">
+              {groups.map(g => (
+                <div key={g.group_number} className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-medium bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                    Group {g.group_number}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {g.members?.map(m => m.dog_name).join(', ')}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
