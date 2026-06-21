@@ -195,8 +195,15 @@ const CustomerDashboard = () => {
 
           {/* Dogs tab */}
           <TabsContent value="dogs" className="space-y-3">
+            <div className="flex justify-end mb-2">
+              <Button size="sm" variant="outline" onClick={() => navigate('/customer/add-dog')}>+ Add a Dog</Button>
+            </div>
             {dogs.length === 0 ? (
-              <Card><CardContent className="py-12 text-center text-muted-foreground">No dogs on your account</CardContent></Card>
+              <Card><CardContent className="py-8 text-center space-y-3">
+                <p className="text-sm font-medium">No dogs on your account yet</p>
+                <p className="text-xs text-muted-foreground">Add your dog — we'll schedule a Meet & Greet before your first stay.</p>
+                <Button size="sm" onClick={() => navigate('/customer/add-dog')}>+ Add a Dog</Button>
+              </CardContent></Card>
             ) : dogs.map(dog => (
               <Card key={dog.id} className="cursor-pointer hover:shadow-md transition-shadow"
                 onClick={() => navigate(`/customer/dog/${dog.id}`)}>
