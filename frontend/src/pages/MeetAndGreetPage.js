@@ -142,6 +142,19 @@ const MeetAndGreetPage = () => {
                             setPendingRequests(prev => prev.filter(x => x.id !== r.id));
                           } catch { toast.error('Failed'); }
                         }}>Confirm</Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs mt-1"
+                        onClick={() => { setSelectedDog({ id: r.dog_id, household_id: r.household_id }); setShowSchedule(true); }}>
+                        Edit
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs text-red-500 border-red-200 mt-1"
+                        onClick={async () => {
+                          if (!window.confirm('Cancel this M&G request?')) return;
+                          try {
+                            await api.patch(`/meet-and-greets/${r.id}/status`, { status: 'cancelled' });
+                            toast.success('M&G cancelled');
+                            setPendingRequests(prev => prev.filter(x => x.id !== r.id));
+                          } catch { toast.error('Failed'); }
+                        }}>Cancel</Button>
                     </div>
                   </div>
                 </CardContent>
@@ -251,15 +264,31 @@ const MAGCard = ({ dog, mags, onRecordOutcome, onRefresh }) => {
   );
 };
 
+const MAG_SLOTS = [
+  { id: '10:00-10:30', label: '10:00–10:30 AM', window: 'Morning' },
+  { id: '10:30-11:00', label: '10:30–11:00 AM', window: 'Morning' },
+  { id: '11:00-11:30', label: '11:00–11:30 AM', window: 'Morning' },
+  { id: '11:30-12:00', label: '11:30 AM–12:00 PM', window: 'Morning' },
+  { id: '14:00-14:30', label: '2:00–2:30 PM', window: 'Afternoon' },
+  { id: '14:30-15:00', label: '2:30–3:00 PM', window: 'Afternoon' },
+  { id: '15:00-15:30', label: '3:00–3:30 PM', window: 'Afternoon' },
+  { id: '15:30-16:00', label: '3:30–4:00 PM', window: 'Afternoon' },
+];
+const MAG_DAYS = [0,1,3,5];
+const MAG_DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
 const ScheduleMAGModal = ({ preselectedDog, onClose, onSuccess }) => {
   const [dogs, setDogs] = useState([]);
-  const [pendingRequests, setPendingRequests] = useState([]);
   const [households, setHouseholds] = useState([]);
   const [form, setForm] = useState({
     dog_id: preselectedDog?.id || '',
-    household_id: '',
-    scheduled_at: '',
+    household_id: preselectedDog?.household_id || '',
+    scheduled_date: '',
+    slot: '',
+    stay_start: '',
+    stay_end: '',
   });
+  const [availableSlots, setAvailableSlots] = useState(MAG_SLOTS.map(s => s.id));
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -267,24 +296,44 @@ const ScheduleMAGModal = ({ preselectedDog, onClose, onSuccess }) => {
       api.get('/dogs', { params: { limit: 200 } }),
       api.get('/households', { params: { limit: 100 } }),
     ]).then(([dogsRes, hhRes]) => {
-      setDogs(dogsRes.data.filter(d => d.meet_and_greet_status !== 'completed'));
-      setHouseholds(hhRes.data);
-      if (preselectedDog) {
-        setForm(f => ({ ...f, household_id: preselectedDog.household_id || '' }));
-      }
+      setDogs((dogsRes.data?.dogs || dogsRes.data || []).filter(d => d.meet_and_greet_status !== 'completed'));
+      setHouseholds(hhRes.data || []);
     });
-  }, [preselectedDog]);
+  }, []);
+
+  useEffect(() => {
+    if (form.scheduled_date) {
+      api.get('/meet-and-greets/available-slots', { params: { date: form.scheduled_date } })
+        .then(r => { if (r.data.slots) setAvailableSlots(r.data.slots); })
+        .catch(() => setAvailableSlots(MAG_SLOTS.map(s => s.id)));
+    }
+  }, [form.scheduled_date]);
+
+  const availableDates = [];
+  const today = new Date();
+  for (let i = 0; i <= 90 && availableDates.length < 16; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    if (MAG_DAYS.includes(d.getDay())) {
+      const str = d.toISOString().split('T')[0];
+      availableDates.push({ str, label: `${MAG_DAY_NAMES[d.getDay()]} ${d.toLocaleDateString([], {month:'short',day:'numeric'})}` });
+    }
+  }
 
   const handleSubmit = async () => {
-    if (!form.dog_id || !form.household_id) { toast.error('Dog and household are required'); return; }
+    if (!form.dog_id || !form.household_id) { toast.error('Dog and household required'); return; }
+    if (!form.scheduled_date || !form.slot) { toast.error('Date and time slot required'); return; }
     setSubmitting(true);
     try {
-      await api.post('/meet-and-greets', {
+      await api.post('/meet-and-greets/request', {
         dog_id: form.dog_id,
         household_id: form.household_id,
-        scheduled_at: form.scheduled_at ? new Date(form.scheduled_at).toISOString() : undefined,
+        scheduled_date: form.scheduled_date,
+        slot: form.slot,
+        stay_start: form.stay_start || undefined,
+        stay_end: form.stay_end || undefined,
       });
-      toast.success('Meet & greet scheduled');
+      toast.success('M&G scheduled');
       onSuccess();
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Failed to schedule');
@@ -295,37 +344,81 @@ const ScheduleMAGModal = ({ preselectedDog, onClose, onSuccess }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-4">
-      <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-md">
-        <div className="p-6 space-y-4">
+      <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="p-5 space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-bold">Schedule Meet & Greet</h2>
             <button onClick={onClose} className="text-muted-foreground text-xl">×</button>
           </div>
-          <div>
-            <Label>Dog *</Label>
-            <select className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
-              value={form.dog_id} onChange={e => setForm(f => ({...f, dog_id: e.target.value}))}>
-              <option value="">Select dog...</option>
-              {dogs.map(d => <option key={d.id} value={d.id}>{d.name} ({d.breed})</option>)}
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Dog *</Label>
+              <select className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
+                value={form.dog_id} onChange={e => setForm(f => ({...f, dog_id: e.target.value}))}>
+                <option value="">Select dog...</option>
+                {dogs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label>Household *</Label>
+              <select className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
+                value={form.household_id} onChange={e => setForm(f => ({...f, household_id: e.target.value}))}>
+                <option value="">Select household...</option>
+                {households.map(h => <option key={h.id} value={h.id}>{h.display_name}</option>)}
+              </select>
+            </div>
           </div>
           <div>
-            <Label>Household *</Label>
-            <select className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
-              value={form.household_id} onChange={e => setForm(f => ({...f, household_id: e.target.value}))}>
-              <option value="">Select household...</option>
-              {households.map(h => <option key={h.id} value={h.id}>{h.display_name}</option>)}
-            </select>
+            <Label>Date (Sun / Mon / Wed / Fri)</Label>
+            <div className="grid grid-cols-2 gap-1.5 mt-1 max-h-40 overflow-y-auto pr-1">
+              {availableDates.map(d => (
+                <button key={d.str} type="button"
+                  onClick={() => setForm(f => ({...f, scheduled_date: d.str, slot: ''}))}
+                  className={`px-2 py-1.5 rounded-lg border text-xs text-left transition-colors ${
+                    form.scheduled_date === d.str
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'border-border hover:bg-muted'
+                  }`}>{d.label}</button>
+              ))}
+            </div>
           </div>
+          {form.scheduled_date && (
+            <div>
+              <Label>Time Slot</Label>
+              {['Morning','Afternoon'].map(win => (
+                <div key={win} className="mt-2">
+                  <p className="text-xs text-muted-foreground mb-1">{win}</p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {MAG_SLOTS.filter(s => s.window === win).map(slot => {
+                      const avail = availableSlots.includes(slot.id);
+                      return (
+                        <button key={slot.id} type="button" disabled={!avail}
+                          onClick={() => avail && setForm(f => ({...f, slot: slot.id}))}
+                          className={`px-2 py-1.5 rounded-lg border text-xs transition-colors ${
+                            !avail ? 'opacity-40 cursor-not-allowed bg-gray-50' :
+                            form.slot === slot.id ? 'bg-primary text-primary-foreground border-primary' :
+                            'border-border hover:bg-muted'
+                          }`}>{slot.label}{!avail && ' ✗'}</button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           <div>
-            <Label>Scheduled Date & Time</Label>
-            <Input type="datetime-local" value={form.scheduled_at}
-              onChange={e => setForm(f => ({...f, scheduled_at: e.target.value}))} className="mt-1" />
+            <Label>Planned Stay Dates (Optional)</Label>
+            <div className="grid grid-cols-2 gap-2 mt-1">
+              <Input type="date" placeholder="Check-in" value={form.stay_start}
+                onChange={e => setForm(f => ({...f, stay_start: e.target.value}))} />
+              <Input type="date" placeholder="Check-out" value={form.stay_end}
+                onChange={e => setForm(f => ({...f, stay_end: e.target.value}))} />
+            </div>
           </div>
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3 pt-1">
             <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
-            <Button className="flex-1" onClick={handleSubmit} disabled={submitting}>
-              {submitting ? 'Scheduling...' : 'Schedule'}
+            <Button className="flex-1" onClick={handleSubmit} disabled={submitting || !form.scheduled_date || !form.slot}>
+              {submitting ? 'Scheduling...' : 'Schedule M&G'}
             </Button>
           </div>
         </div>
