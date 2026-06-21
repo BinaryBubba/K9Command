@@ -2,7 +2,7 @@
 Meet and Greet API
 Handles scheduling, outcome recording, and eligibility updates.
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime, timezone
