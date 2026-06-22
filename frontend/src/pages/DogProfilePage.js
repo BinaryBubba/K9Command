@@ -402,14 +402,71 @@ const VaccinationsTab = ({ dogId, vaccinations, onRefresh, isStaff }) => {
                   v.verification_status === 'rejected' ? 'bg-red-100 text-red-700' :
                   'bg-amber-100 text-amber-700'
                 }>{v.verification_status}</Badge>
-                {isStaff && v.verification_status === 'pending' && (
-                  <div className="flex gap-1">
-                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs text-green-600" onClick={() => handleVerify(v.id)}>Verify</Button>
-                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs text-red-600" onClick={() => handleReject(v.id)}>Reject</Button>
+                {isStaff && (
+                  <div className="flex gap-1 flex-wrap justify-end">
+                    {v.verification_status === 'pending' && <>
+                      <Button size="sm" variant="outline" className="h-6 px-2 text-xs text-green-600" onClick={() => handleVerify(v.id)}>Verify</Button>
+                      <Button size="sm" variant="outline" className="h-6 px-2 text-xs text-red-600" onClick={() => handleReject(v.id)}>Reject</Button>
+                    </>}
+                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs"
+                      onClick={() => {
+                        setEditingId(editingId === v.id ? null : v.id);
+                        setEditForm({
+                          vaccination_type: v.vaccination_type,
+                          administration_date: v.administration_date ? v.administration_date.split('T')[0] : '',
+                          expiration_date: v.expiration_date ? v.expiration_date.split('T')[0] : '',
+                          provider: v.provider || '',
+                        });
+                      }}>
+                      {editingId === v.id ? 'Cancel' : 'Edit'}
+                    </Button>
                   </div>
                 )}
               </div>
             </div>
+            {editingId === v.id && (
+              <div className="mt-3 pt-3 border-t space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">Type</Label>
+                    <select className="w-full mt-0.5 border rounded px-2 py-1 text-xs bg-background"
+                      value={editForm.vaccination_type} onChange={e => setEditForm(f=>({...f,vaccination_type:e.target.value}))}>
+                      <option value="Rabies">Rabies</option>
+                      <option value="Distemper">Distemper (DHPP)</option>
+                      <option value="Bordetella">Bordetella</option>
+                      <option value="Leptospirosis">Leptospirosis</option>
+                      <option value="Lyme">Lyme</option>
+                      <option value="Influenza">Influenza</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Provider</Label>
+                    <Input value={editForm.provider} onChange={e => setEditForm(f=>({...f,provider:e.target.value}))} className="mt-0.5 h-7 text-xs" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">Admin Date</Label>
+                    <Input type="date" value={editForm.administration_date} onChange={e => setEditForm(f=>({...f,administration_date:e.target.value}))} className="mt-0.5 h-7 text-xs" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Expiry Date</Label>
+                    <Input type="date" value={editForm.expiration_date} onChange={e => setEditForm(f=>({...f,expiration_date:e.target.value}))} className="mt-0.5 h-7 text-xs" />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" className="h-7 text-xs" onClick={async () => {
+                    try {
+                      await api.patch(`/vaccinations/${v.id}`, editForm);
+                      toast.success('Updated');
+                      setEditingId(null);
+                      onRefresh();
+                    } catch { toast.error('Failed'); }
+                  }}>Save</Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       ))}
@@ -440,6 +497,10 @@ const DogNotesTab = ({ dogId, notes, onRefresh }) => {
       formData.append('file', file);
       const res = await api.post('/uploads/dog-photo', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       setImageKeys(prev => [...prev, res.data.key]);
+      // Save first photo as dog's main photo
+      if (!dog.photo_url) {
+        await api.patch(`/dogs/${dogId}`, { photo_url: res.data.url, avatar_key: res.data.key });
+      }
       toast.success('Image uploaded');
     } catch {
       toast.error('Upload failed');
