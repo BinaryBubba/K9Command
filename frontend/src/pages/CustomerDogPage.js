@@ -14,6 +14,37 @@ const CustomerDogPage = () => {
   const { dogId } = useParams();
   const [dog, setDog] = useState(null);
   const photoRef = React.useRef();
+  const vaxRef = React.useRef();
+  const [showVaxForm, setShowVaxForm] = useState(false);
+  const [vaxForm, setVaxForm] = useState({ vaccination_type: '', administration_date: '', expiration_date: '', provider: '' });
+  const [vaxUploading, setVaxUploading] = useState(false);
+  const [vaxDocKey, setVaxDocKey] = useState('');
+
+  const handleVaxFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setVaxUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await api.post('/uploads/vaccination', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setVaxDocKey(res.data.key);
+      toast.success('Document uploaded');
+    } catch { toast.error('Upload failed'); }
+    finally { setVaxUploading(false); }
+  };
+
+  const handleAddVax = async () => {
+    if (!vaxForm.vaccination_type) { toast.error('Vaccine type required'); return; }
+    try {
+      await api.post(`/vaccinations/dog/${dogId}`, { ...vaxForm, document_path: vaxDocKey || undefined });
+      toast.success('Vaccination record submitted for review');
+      setShowVaxForm(false);
+      setVaxForm({ vaccination_type: '', administration_date: '', expiration_date: '', provider: '' });
+      setVaxDocKey('');
+      fetchDog();
+    } catch (err) { toast.error(err.response?.data?.detail || 'Failed'); }
+  };
   const [vaccinations, setVaccinations] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -104,12 +135,42 @@ const CustomerDogPage = () => {
           <CardHeader className="pb-2 pt-4 px-4">
             <CardTitle className="text-sm flex items-center justify-between">
               Vaccinations
-              <Button size="sm" variant="outline" className="h-7 text-xs">
-                <PlusIcon size={12} className="mr-1" /> Upload Record
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowVaxForm(!showVaxForm)}>
+                <PlusIcon size={12} className="mr-1" /> {showVaxForm ? 'Cancel' : 'Upload Record'}
               </Button>
             </CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4">
+            {showVaxForm && (
+              <div className="mb-3 p-3 border border-primary/30 rounded-lg bg-primary/5 space-y-2">
+                <select className="w-full border rounded-md px-3 py-2 text-sm bg-background"
+                  value={vaxForm.vaccination_type} onChange={e => setVaxForm(f=>({...f,vaccination_type:e.target.value}))}>
+                  <option value="">Select vaccine type...</option>
+                  <option value="Rabies">Rabies</option>
+                  <option value="Distemper">Distemper (DHPP)</option>
+                  <option value="Bordetella">Bordetella</option>
+                  <option value="Leptospirosis">Leptospirosis</option>
+                  <option value="Lyme">Lyme</option>
+                  <option value="Influenza">Influenza</option>
+                  <option value="Other">Other</option>
+                </select>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input type="date" placeholder="Date given" value={vaxForm.administration_date}
+                    onChange={e => setVaxForm(f=>({...f,administration_date:e.target.value}))} />
+                  <Input type="date" placeholder="Expiry date" value={vaxForm.expiration_date}
+                    onChange={e => setVaxForm(f=>({...f,expiration_date:e.target.value}))} />
+                </div>
+                <Input placeholder="Veterinarian/Provider" value={vaxForm.provider}
+                  onChange={e => setVaxForm(f=>({...f,provider:e.target.value}))} />
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => vaxRef.current?.click()} disabled={vaxUploading}>
+                    {vaxUploading ? 'Uploading...' : vaxDocKey ? '✓ Doc uploaded' : 'Attach Document'}
+                  </Button>
+                  <input ref={vaxRef} type="file" accept=".pdf,image/*" className="hidden" onChange={handleVaxFileUpload} />
+                </div>
+                <Button size="sm" className="w-full" onClick={handleAddVax}>Submit Record</Button>
+              </div>
+            )}
             {vaccinations.length === 0 ? (
               <p className="text-sm text-amber-600">No vaccination records on file</p>
             ) : vaccinations.map(v => {

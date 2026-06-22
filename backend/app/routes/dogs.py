@@ -161,7 +161,7 @@ async def create_dog(
 async def update_dog(
     dog_id: str,
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(get_current_user),  # customers can update their own dogs
     db: AsyncSession = Depends(get_db),
 ):
     dog = await _get_dog_or_404(dog_id, current_user.organization_id, db)
@@ -172,7 +172,7 @@ async def update_dog(
         "meal_routine", "medication_requirements", "allergies",
         "behavioral_notes", "internal_notes", "escape_risk",
         "medical_alert", "boarding_eligible", "daycare_eligible",
-        "meet_and_greet_status",
+        "meet_and_greet_status", "photo_url", "avatar_key",
     ]
     for field in allowed:
         if field in data:
