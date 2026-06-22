@@ -455,7 +455,27 @@ const VaccinationsTab = ({ dogId, vaccinations, onRefresh, isStaff }) => {
                     <Input type="date" value={editForm.expiration_date} onChange={e => setEditForm(f=>({...f,expiration_date:e.target.value}))} className="mt-0.5 h-7 text-xs" />
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="outline" className="h-7 text-xs"
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = '.pdf,image/*';
+                      input.onchange = async (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        const fd = new FormData();
+                        fd.append('file', file);
+                        try {
+                          const res = await api.post('/uploads/vaccination', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+                          setEditForm(f => ({...f, document_path: res.data.key}));
+                          toast.success('Document uploaded');
+                        } catch { toast.error('Upload failed'); }
+                      };
+                      input.click();
+                    }}>
+                    {editForm.document_path ? '✓ Doc' : 'Attach Doc'}
+                  </Button>
                   <Button size="sm" className="h-7 text-xs" onClick={async () => {
                     try {
                       await api.patch(`/vaccinations/${v.id}`, editForm);
