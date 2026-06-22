@@ -13,6 +13,7 @@ const CustomerDogPage = () => {
   const navigate = useNavigate();
   const { dogId } = useParams();
   const [dog, setDog] = useState(null);
+  const photoRef = React.useRef();
   const [vaccinations, setVaccinations] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -55,8 +56,6 @@ const CustomerDogPage = () => {
       fetchDog();
     } catch { toast.error('Upload failed'); }
   };
-
-  const photoRef = React.useRef();
 
   return (
     <div className="min-h-screen bg-[#F9F7F2]">
