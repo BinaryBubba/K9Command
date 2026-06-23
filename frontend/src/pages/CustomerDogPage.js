@@ -179,25 +179,27 @@ const CustomerDogPage = () => {
               const isExpiring = expiry && expiry > today && expiry <= in30;
               const isExpired = expiry && expiry < today;
               return (
-                <div key={v.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                  <div>
-                    <p className="text-sm font-medium">{v.vaccination_type || v.vaccine_type}</p>
-                    {expiry && (
-                      <p className={`text-xs ${isExpired ? 'text-red-600' : isExpiring ? 'text-amber-600' : 'text-muted-foreground'}`}>
-                        {isExpired ? '⚠️ Expired' : isExpiring ? '⚠️ Expiring soon'  : 'Expires'} {expiry.toLocaleDateString()}
-                      </p>
-                    )}
+                <div key={v.id} className="py-2 border-b last:border-0">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm font-medium">{v.vaccination_type || v.vaccine_type}</p>
+                      {expiry && (
+                        <p className={`text-xs ${isExpired ? 'text-red-600' : isExpiring ? 'text-amber-600' : 'text-muted-foreground'}`}>
+                          {isExpired ? '⚠️ Expired' : isExpiring ? '⚠️ Expiring soon' : 'Expires'} {expiry.toLocaleDateString()}
+                        </p>
+                      )}
+                      {v.document_url && (
+                        <a href={v.document_url} target="_blank" rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:underline mt-0.5 block">
+                          📄 View document
+                        </a>
+                      )}
+                    </div>
+                    <Badge className={`text-xs ${
+                      (v.verification_status || v.status) === 'verified' ? 'bg-green-100 text-green-700' :
+                      (v.verification_status || v.status) === 'rejected' ? 'bg-red-100 text-red-700' :
+                      'bg-amber-100 text-amber-700'}`}>{v.verification_status || v.status}</Badge>
                   </div>
-                  {v.document_url && (
-                    <a href={v.document_url} target="_blank" rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:underline block mt-0.5">
-                      📄 View document
-                    </a>
-                  )}
-                  <Badge className={`text-xs ${
-                    (v.verification_status || v.status) === 'verified' ? 'bg-green-100 text-green-700' :
-                    v.status === 'pending' ? 'bg-amber-100 text-amber-700' :
-                    'bg-red-100 text-red-700'}`}>{v.status}</Badge>
                 </div>
               );
             })}
