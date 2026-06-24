@@ -311,6 +311,7 @@ def _dog_summary(d: DogORM) -> dict:
         "escape_risk": d.escape_risk,
         "medical_alert": d.medical_alert,
         "photo_url": getattr(d, "photo_url", None),
+        "photo_url": getattr(d, "photo_url", None),
     }
 
 def _dog_detail(d: DogORM) -> dict:
