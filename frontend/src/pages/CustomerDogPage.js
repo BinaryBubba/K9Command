@@ -83,10 +83,11 @@ const CustomerDogPage = () => {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('dog_id', dogId);
-      await api.post('/uploads/dog-photo', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-      toast.success('Photo uploaded!');
+      const res = await api.post('/uploads/dog-photo', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      await api.patch(`/dogs/${dogId}`, { photo_url: res.data.url, avatar_key: res.data.key });
+      toast.success('Photo saved!');
       fetchDog();
-    } catch { toast.error('Upload failed'); }
+    } catch (err) { toast.error(err.response?.data?.detail || 'Upload failed'); }
   };
 
   return (
