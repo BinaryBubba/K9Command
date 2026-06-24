@@ -183,6 +183,25 @@ async def update_dog(
     return _dog_detail(dog)
 
 
+@router.patch("/{dog_id}/photo")
+async def update_dog_photo(
+    dog_id: str,
+    data: dict,
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update dog photo - accessible by customers who own the dog."""
+    from sqlalchemy import text
+    photo_url = data.get("photo_url")
+    avatar_key = data.get("avatar_key")
+    await db.execute(text("""
+        UPDATE dogs SET photo_url = :url
+        WHERE id = :dog_id AND organization_id = :org_id
+    """), {"url": photo_url, "dog_id": dog_id, "org_id": current_user.organization_id})
+    await db.commit()
+    return {"updated": True}
+
+
 # ── Update behavior profile ──────────────────────────────────────────────────
 
 @router.patch("/{dog_id}/behavior")
