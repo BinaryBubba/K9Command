@@ -68,6 +68,13 @@ const CustomerBookingRequestPage = () => {
       toast.error('Check-out must be after check-in');
       return;
     }
+    // Check if any selected dog needs M&G
+    const dogNeedingMag = dogs.find(d => form.dog_ids.includes(d.id) && d.meet_and_greet_status !== 'completed');
+    if (dogNeedingMag) {
+      setMagDog(dogNeedingMag);
+      setShowMagPrompt(true);
+      return;
+    }
     setSubmitting(true);
     try {
       // Get household_id
