@@ -86,8 +86,12 @@ const CustomerDogPage = () => {
       const res = await api.post('/uploads/dog-photo', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       await api.patch(`/dogs/${dogId}/photo`, { photo_url: res.data.url, avatar_key: res.data.key });
       toast.success('Photo saved!');
-      fetchDog();
-    } catch (err) { toast.error(err.response?.data?.detail || 'Upload failed'); }
+      fetchDog().catch(() => {});
+    } catch (err) {
+      if (err.message !== 'canceled') {
+        toast.error(err.response?.data?.detail || err.message || 'Upload failed');
+      }
+    }
   };
 
   return (
