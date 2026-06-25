@@ -119,13 +119,9 @@ async def create_booking(
 
         # Meet and greet check
         if dog.meet_and_greet_status != "completed":
-            if current_user.role != UserRole.ADMIN:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"{dog.name} has not completed a meet-and-greet. Owner override required."
-                )
             warnings.append({"type": "meet_and_greet", "dog_id": dog_id, "dog_name": dog.name,
-                            "message": f"{dog.name} has not completed a meet-and-greet"})
+                            "message": f"{dog.name} has not completed a meet-and-greet",
+                            "severity": "blocking" if str(current_user.role).lower().replace("userrole.","") == "customer" else "warning"})
 
         # Vaccination check
         vax_issues = await _check_vaccinations(dog_id, org_id, db)

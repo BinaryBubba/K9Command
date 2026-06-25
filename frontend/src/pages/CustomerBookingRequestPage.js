@@ -23,6 +23,9 @@ const CustomerBookingRequestPage = () => {
     notes: '',
   });
   const [submitting, setSubmitting] = useState(false);
+  const [meHouseholdId, setMeHouseholdId] = useState('');
+  const [showMagPrompt, setShowMagPrompt] = useState(false);
+  const [magDog, setMagDog] = useState(null);
   const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
@@ -31,6 +34,7 @@ const CustomerBookingRequestPage = () => {
       try {
         const meRes = await api.get('/users/me');
         const householdId = meRes.data.household_id;
+        setMeHouseholdId(householdId || '');
         if (householdId) {
           const dogsRes = await api.get('/dogs', { params: { household_id: householdId } });
           setDogs(dogsRes.data?.dogs || dogsRes.data || []);
@@ -85,7 +89,19 @@ const CustomerBookingRequestPage = () => {
       });
       setSubmitted(true);
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Failed to submit request');
+      const detail = err.response?.data?.detail || '';
+      if (detail.includes('meet-and-greet') || detail.includes('M&G')) {
+        // Find which dog needs M&G
+        const dogWithoutMag = dogs.find(d => form.dog_ids.includes(d.id) && d.meet_and_greet_status !== 'completed');
+        if (dogWithoutMag) {
+          setMagDog(dogWithoutMag);
+          setShowMagPrompt(true);
+        } else {
+          toast.error(detail);
+        }
+      } else {
+        toast.error(detail || 'Failed to submit request');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -195,6 +211,29 @@ const CustomerBookingRequestPage = () => {
           Requests are subject to availability and staff confirmation.
         </p>
       </main>
+
+      {showMagPrompt && magDog && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-lg font-bold">Meet & Greet Required</h2>
+            <p className="text-sm text-muted-foreground">
+              <strong>{magDog.name}</strong> needs to complete a Meet & Greet before their first boarding stay.
+              Would you like to schedule one now?
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setShowMagPrompt(false)}>
+                Cancel
+              </Button>
+              <Button className="flex-1" onClick={() => {
+                setShowMagPrompt(false);
+                navigate(`/customer/mag-request?dog_id=${magDog.id}&household_id=${meHouseholdId}&dog_name=${encodeURIComponent(magDog.name)}`);
+              }}>
+                Schedule M&G →
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
