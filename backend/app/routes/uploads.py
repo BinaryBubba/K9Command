@@ -4,7 +4,7 @@ File upload API - handles vaccination PDFs, dog photos, incident images.
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from auth import get_current_user
 from db_models import User as UserORM
-from app.storage import upload_file, get_presigned_url, BUCKET_VACCINATIONS, BUCKET_DOGS, BUCKET_INCIDENTS, BUCKET_MAG
+from app.storage import upload_file, get_presigned_url, get_public_url, BUCKET_VACCINATIONS, BUCKET_DOGS, BUCKET_INCIDENTS, BUCKET_MAG
 import uuid
 
 router = APIRouter(prefix="/api/uploads", tags=["uploads"])
@@ -40,7 +40,7 @@ async def upload_dog_photo(
     if len(data) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File too large (max 10MB)")
     key = upload_file(BUCKET_DOGS, data, file.filename or "photo", file.content_type)
-    url = get_presigned_url(BUCKET_DOGS, key, expires_in=86400)
+    url = get_public_url(BUCKET_DOGS, key)
     return {"key": key, "url": url}
 
 
