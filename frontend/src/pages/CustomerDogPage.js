@@ -43,7 +43,7 @@ const CustomerDogPage = () => {
       setShowVaxForm(false);
       setVaxForm({ vaccination_type: '', administration_date: '', expiration_date: '', provider: '' });
       setVaxDocKey('');
-      fetchDog();
+      fetchData();
     } catch (err) { toast.error(err.response?.data?.detail || 'Failed'); }
   };
   const [vaccinations, setVaccinations] = useState([]);
@@ -86,7 +86,7 @@ const CustomerDogPage = () => {
       const res = await api.post('/uploads/dog-photo', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       await api.patch(`/dogs/${dogId}/photo`, { photo_url: res.data.url, avatar_key: res.data.key });
       toast.success('Photo saved!');
-      fetchDog().catch(() => {});
+      fetchData().catch(() => {});
     } catch (err) {
       if (err.message !== 'canceled') {
         toast.error(err.response?.data?.detail || err.message || 'Upload failed');
