@@ -204,15 +204,27 @@ async def request_mag(
 
 @router.get("/upcoming")
 async def get_upcoming_mags(
+    household_id: str = Query(None),
     current_user: UserORM = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get upcoming M&G requests for admin/manager dashboard."""
+    """Get upcoming M&G requests for admin/manager dashboard or customer."""
     from sqlalchemy import text
-    result = await db.execute(text("""
+    # Customers can only see their own household's M&Gs
+    role = str(current_user.role).lower().replace("userrole.", "")
+    if role == "customer" and not household_id:
+        household_id = current_user.household_id
+
+    where_extra = "AND m.household_id = :hh_id" if household_id else ""
+    params = {"org_id": current_user.organization_id}
+    if household_id:
+        params["hh_id"] = household_id
+
+    result = await db.execute(text(f"""
         SELECT m.id, m.scheduled_at, m.slot, m.status,
                d.name as dog_name, h.display_name as household_name,
-               m.requested_stay_start, m.requested_stay_end
+               m.requested_stay_start, m.requested_stay_end,
+               m.household_id
         FROM meet_and_greets m
         JOIN dogs d ON d.id = m.dog_id
         JOIN households h ON h.id = m.household_id
@@ -220,9 +232,10 @@ async def get_upcoming_mags(
         AND m.scheduled_at >= NOW()
         AND m.status NOT IN ('completed', 'cancelled')
         AND m.outcome IS NULL
+        {where_extra}
         ORDER BY m.scheduled_at ASC
-        LIMIT 10
-    """), {"org_id": current_user.organization_id})
+        LIMIT 20
+    """), params)
     rows = result.fetchall()
     return [{
         "id": r.id,
@@ -231,6 +244,7 @@ async def get_upcoming_mags(
         "status": r.status,
         "dog_name": r.dog_name,
         "household_name": r.household_name,
+        "household_id": r.household_id,
         "requested_stay_start": r.requested_stay_start.isoformat() if r.requested_stay_start else None,
         "requested_stay_end": r.requested_stay_end.isoformat() if r.requested_stay_end else None,
     } for r in rows]

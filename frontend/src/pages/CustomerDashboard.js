@@ -25,6 +25,7 @@ const CustomerDashboard = () => {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [bookings, setBookings] = useState([]);
+  const [magRequests, setMagRequests] = useState([]);
   const [dogs, setDogs] = useState([]);
   const [forms, setForms] = useState([]);
   const [orgSettings, setOrgSettings] = useState(null);
@@ -35,8 +36,9 @@ const CustomerDashboard = () => {
       const meRes = await api.get('/users/me');
       const householdId = meRes.data.household_id;
 
-      const [bookRes, dogsRes, formsRes, orgRes] = await Promise.all([
+      const [bookRes, dogsRes, formsRes, orgRes, magsRes] = await Promise.all([
         householdId ? api.get('/bookings', { params: { household_id: householdId, limit: 30 } }) : Promise.resolve({ data: [] }),
+        api.get('/meet-and-greets/upcoming').catch(() => ({ data: [] })),
         householdId
           ? api.get('/dogs', { params: { household_id: householdId, limit: 50 } })
           : Promise.resolve({ data: [] }),
@@ -50,6 +52,7 @@ const CustomerDashboard = () => {
       setDogs(dogList);
       setForms(formsRes.data || []);
       setOrgSettings(orgRes.data);
+      setMagRequests(magsRes.data || []);
     } catch (err) {
       toast.error('Failed to load data');
     } finally {
@@ -107,6 +110,36 @@ const CustomerDashboard = () => {
 
           {/* Bookings/Stays tab */}
           <TabsContent value="bookings" className="space-y-4">
+            {/* Meet & Greet Appointments */}
+            {magRequests.length > 0 && (
+              <div>
+                <h3 className="text-xs font-medium text-blue-700 mb-2 flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-blue-400 inline-block"></span>
+                  Meet & Greet ({magRequests.length})
+                </h3>
+                {magRequests.map(m => (
+                  <div key={m.id} className="p-3 rounded-lg border border-blue-200 bg-blue-50 mb-2">
+                    <p className="text-sm font-medium">{m.dog_name} — Meet & Greet</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {new Date(m.scheduled_at).toLocaleDateString([], {weekday:'long',month:'short',day:'numeric'})}
+                      {' · '}
+                      {m.slot === '10:00-10:30' ? '10:00–10:30 AM' :
+                       m.slot === '10:30-11:00' ? '10:30–11:00 AM' :
+                       m.slot === '11:00-11:30' ? '11:00–11:30 AM' :
+                       m.slot === '11:30-12:00' ? '11:30 AM–12:00 PM' :
+                       m.slot === '14:00-14:30' ? '2:00–2:30 PM' :
+                       m.slot === '14:30-15:00' ? '2:30–3:00 PM' :
+                       m.slot === '15:00-15:30' ? '3:00–3:30 PM' :
+                       m.slot === '15:30-16:00' ? '3:30–4:00 PM' : m.slot}
+                    </p>
+                    <span className={`text-xs px-2 py-0.5 rounded-full mt-1 inline-block ${
+                      m.status === 'confirmed' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                    }`}>{m.status === 'confirmed' ? 'Confirmed' : 'Pending Confirmation'}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Pending requests */}
             {pendingStays.length > 0 && (
               <div>
