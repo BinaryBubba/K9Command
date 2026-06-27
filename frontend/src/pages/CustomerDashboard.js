@@ -38,12 +38,12 @@ const CustomerDashboard = () => {
 
       const [bookRes, dogsRes, formsRes, orgRes, magsRes] = await Promise.all([
         householdId ? api.get('/bookings', { params: { household_id: householdId, limit: 30 } }) : Promise.resolve({ data: [] }),
-        api.get('/meet-and-greets/upcoming').catch(() => ({ data: [] })),
         householdId
           ? api.get('/dogs', { params: { household_id: householdId, limit: 50 } })
           : Promise.resolve({ data: [] }),
         api.get('/forms').catch(() => ({ data: [] })),
         api.get('/users/org/settings').catch(() => ({ data: {} })),
+        api.get('/meet-and-greets/upcoming').catch(() => ({ data: [] })),
       ]);
 
       setBookings(bookRes.data || []);
