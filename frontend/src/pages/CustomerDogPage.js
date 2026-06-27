@@ -120,11 +120,14 @@ const CustomerDogPage = () => {
               <div>
                 <h2 className="text-lg font-bold">{dog.name}</h2>
                 <p className="text-sm text-muted-foreground">
-                  {[dog.breed, dog.age ? `${dog.age} yrs` : null, dog.weight ? `${dog.weight} lbs` : null].filter(Boolean).join(' · ')}
+                  {[dog.breed, dog.age ? `${dog.age} yrs` : null, dog.weight ? `${dog.weight} lbs` : null, dog.color].filter(Boolean).join(' · ')}
                 </p>
                 <div className="flex gap-1 mt-1 flex-wrap">
                   {dog.meet_and_greet_status === 'completed' && <Badge className="text-xs bg-green-100 text-green-700">M&G ✓</Badge>}
-                  {dog.is_neutered && <Badge variant="outline" className="text-xs">Fixed</Badge>}
+                  {dog.spay_neuter_status && <Badge variant="outline" className="text-xs">{dog.spay_neuter_status}</Badge>}
+                  {dog.boarding_eligible && <Badge className="text-xs bg-green-100 text-green-700">✓ Boarding</Badge>}
+                  {dog.escape_risk && <Badge className="text-xs bg-red-100 text-red-700">⚠️ Escape Risk</Badge>}
+                  {dog.medical_alert && <Badge className="text-xs bg-red-100 text-red-700">🏥 Medical Alert</Badge>}
                 </div>
                 <button type="button" className="text-xs text-primary hover:underline mt-1"
                   onClick={() => photoRef.current?.click()}>
@@ -133,6 +136,42 @@ const CustomerDogPage = () => {
                 <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Dog Details */}
+        <Card>
+          <CardHeader className="pb-2 pt-4 px-4"><CardTitle className="text-sm">Details</CardTitle></CardHeader>
+          <CardContent className="px-4 pb-4 space-y-2 text-sm">
+            {dog.microchip_number && <div className="flex justify-between"><span className="text-muted-foreground">Microchip</span><span>{dog.microchip_number}</span></div>}
+            {dog.gender && <div className="flex justify-between"><span className="text-muted-foreground">Gender</span><span className="capitalize">{dog.gender}</span></div>}
+            {dog.meal_routine && (
+              <div>
+                <p className="text-muted-foreground text-xs mb-1">Feeding Routine</p>
+                <p className="text-sm">{dog.meal_routine}</p>
+              </div>
+            )}
+            {dog.allergies && (
+              <div className="p-2 bg-amber-50 rounded border border-amber-100">
+                <p className="text-xs font-medium text-amber-800">⚠️ Allergies</p>
+                <p className="text-xs text-amber-700 mt-0.5">{dog.allergies}</p>
+              </div>
+            )}
+            {dog.medication_requirements && (
+              <div>
+                <p className="text-muted-foreground text-xs mb-1">Medication Notes</p>
+                <p className="text-sm">{dog.medication_requirements}</p>
+              </div>
+            )}
+            {dog.behavioral_notes && (
+              <div>
+                <p className="text-muted-foreground text-xs mb-1">Behavioral Notes</p>
+                <p className="text-sm">{dog.behavioral_notes}</p>
+              </div>
+            )}
+            {!dog.microchip_number && !dog.gender && !dog.meal_routine && !dog.allergies && !dog.medication_requirements && !dog.behavioral_notes && (
+              <p className="text-muted-foreground text-xs">No additional details on file</p>
+            )}
           </CardContent>
         </Card>
 
