@@ -4,6 +4,7 @@ import useAuthStore from '../store/authStore';
 import api from '../utils/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { ArrowLeftIcon, DogIcon, PlusIcon } from 'lucide-react';
@@ -139,41 +140,8 @@ const CustomerDogPage = () => {
           </CardContent>
         </Card>
 
-        {/* Dog Details */}
-        <Card>
-          <CardHeader className="pb-2 pt-4 px-4"><CardTitle className="text-sm">Details</CardTitle></CardHeader>
-          <CardContent className="px-4 pb-4 space-y-2 text-sm">
-            {dog.microchip_number && <div className="flex justify-between"><span className="text-muted-foreground">Microchip</span><span>{dog.microchip_number}</span></div>}
-            {dog.gender && <div className="flex justify-between"><span className="text-muted-foreground">Gender</span><span className="capitalize">{dog.gender}</span></div>}
-            {dog.meal_routine && (
-              <div>
-                <p className="text-muted-foreground text-xs mb-1">Feeding Routine</p>
-                <p className="text-sm">{dog.meal_routine}</p>
-              </div>
-            )}
-            {dog.allergies && (
-              <div className="p-2 bg-amber-50 rounded border border-amber-100">
-                <p className="text-xs font-medium text-amber-800">⚠️ Allergies</p>
-                <p className="text-xs text-amber-700 mt-0.5">{dog.allergies}</p>
-              </div>
-            )}
-            {dog.medication_requirements && (
-              <div>
-                <p className="text-muted-foreground text-xs mb-1">Medication Notes</p>
-                <p className="text-sm">{dog.medication_requirements}</p>
-              </div>
-            )}
-            {dog.behavioral_notes && (
-              <div>
-                <p className="text-muted-foreground text-xs mb-1">Behavioral Notes</p>
-                <p className="text-sm">{dog.behavioral_notes}</p>
-              </div>
-            )}
-            {!dog.microchip_number && !dog.gender && !dog.meal_routine && !dog.allergies && !dog.medication_requirements && !dog.behavioral_notes && (
-              <p className="text-muted-foreground text-xs">No additional details on file</p>
-            )}
-          </CardContent>
-        </Card>
+        {/* Dog Details - Editable */}
+        <DogDetailsEditor dog={dog} dogId={dogId} onSaved={fetchData} />
 
         {/* Vaccinations */}
         <Card>
@@ -267,6 +235,108 @@ const CustomerDogPage = () => {
         )}
       </main>
     </div>
+  );
+};
+
+const DogDetailsEditor = ({ dog, dogId, onSaved }) => {
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  React.useEffect(() => {
+    setForm({
+      gender: dog.gender || '',
+      color: dog.color || '',
+      microchip_number: dog.microchip_number || '',
+      meal_routine: dog.meal_routine || '',
+      allergies: dog.allergies || '',
+      medication_requirements: dog.medication_requirements || '',
+      behavioral_notes: dog.behavioral_notes || '',
+    });
+  }, [dog]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await api.patch(`/dogs/${dogId}`, form);
+      toast.success('Details updated');
+      setEditing(false);
+      onSaved();
+    } catch { toast.error('Failed to save'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-2 pt-4 px-4">
+        <CardTitle className="text-sm flex items-center justify-between">
+          Details
+          {editing ? (
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditing(false)}>Cancel</Button>
+              <Button size="sm" className="h-7 text-xs" onClick={handleSave} disabled={saving}>
+                {saving ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+          ) : (
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditing(true)}>Edit</Button>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-4 pb-4 space-y-3">
+        {editing ? (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <div><Label className="text-xs">Gender</Label>
+                <select className="w-full mt-0.5 border rounded px-2 py-1.5 text-sm bg-background"
+                  value={form.gender} onChange={e => setForm(f=>({...f,gender:e.target.value}))}>
+                  <option value="">Select...</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                </select>
+              </div>
+              <div><Label className="text-xs">Color</Label>
+                <Input value={form.color} onChange={e => setForm(f=>({...f,color:e.target.value}))} className="mt-0.5 h-8 text-sm" />
+              </div>
+            </div>
+            <div><Label className="text-xs">Microchip Number</Label>
+              <Input value={form.microchip_number} onChange={e => setForm(f=>({...f,microchip_number:e.target.value}))} className="mt-0.5 h-8 text-sm" placeholder="Leave blank if unknown" />
+            </div>
+            <div><Label className="text-xs">Feeding Routine</Label>
+              <textarea className="w-full mt-0.5 border rounded px-2 py-1.5 text-sm bg-background resize-none" rows={2}
+                value={form.meal_routine} onChange={e => setForm(f=>({...f,meal_routine:e.target.value}))}
+                placeholder="e.g. 1 cup morning and evening" />
+            </div>
+            <div><Label className="text-xs">Allergies</Label>
+              <Input value={form.allergies} onChange={e => setForm(f=>({...f,allergies:e.target.value}))} className="mt-0.5 h-8 text-sm" placeholder="Food, environmental, medications..." />
+            </div>
+            <div><Label className="text-xs">Medication Notes</Label>
+              <textarea className="w-full mt-0.5 border rounded px-2 py-1.5 text-sm bg-background resize-none" rows={2}
+                value={form.medication_requirements} onChange={e => setForm(f=>({...f,medication_requirements:e.target.value}))}
+                placeholder="Any medications or medical needs..." />
+            </div>
+            <div><Label className="text-xs">Behavioral Notes</Label>
+              <textarea className="w-full mt-0.5 border rounded px-2 py-1.5 text-sm bg-background resize-none" rows={2}
+                value={form.behavioral_notes} onChange={e => setForm(f=>({...f,behavioral_notes:e.target.value}))}
+                placeholder="Temperament, triggers, things we should know..." />
+            </div>
+          </>
+        ) : (
+          <div className="space-y-2 text-sm">
+            {form.gender && <div className="flex justify-between"><span className="text-muted-foreground">Gender</span><span className="capitalize">{form.gender}</span></div>}
+            {form.color && <div className="flex justify-between"><span className="text-muted-foreground">Color</span><span>{form.color}</span></div>}
+            {form.microchip_number && <div className="flex justify-between"><span className="text-muted-foreground">Microchip</span><span>{form.microchip_number}</span></div>}
+            {form.meal_routine && <div><p className="text-muted-foreground text-xs">Feeding Routine</p><p className="mt-0.5">{form.meal_routine}</p></div>}
+            {form.allergies && <div className="p-2 bg-amber-50 rounded border border-amber-100"><p className="text-xs font-medium text-amber-800">⚠️ Allergies</p><p className="text-xs text-amber-700 mt-0.5">{form.allergies}</p></div>}
+            {form.medication_requirements && <div><p className="text-muted-foreground text-xs">Medication Notes</p><p className="mt-0.5">{form.medication_requirements}</p></div>}
+            {form.behavioral_notes && <div><p className="text-muted-foreground text-xs">Behavioral Notes</p><p className="mt-0.5">{form.behavioral_notes}</p></div>}
+            {!form.gender && !form.color && !form.microchip_number && !form.meal_routine && !form.allergies && !form.medication_requirements && !form.behavioral_notes && (
+              <p className="text-muted-foreground text-xs">Click Edit to add details about your dog</p>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
