@@ -244,6 +244,7 @@ const DogDetailsEditor = ({ dog, dogId, onSaved }) => {
   const [saving, setSaving] = useState(false);
 
   React.useEffect(() => {
+    const bp = dog.behavior_profile || {};
     setForm({
       gender: dog.gender || '',
       color: dog.color || '',
@@ -252,13 +253,32 @@ const DogDetailsEditor = ({ dog, dogId, onSaved }) => {
       allergies: dog.allergies || '',
       medication_requirements: dog.medication_requirements || '',
       behavioral_notes: dog.behavioral_notes || '',
+      energy_level: bp.energy_level || 3,
+      anxiety_level: bp.anxiety_level || 1,
+      play_style: bp.play_style || '',
+      known_triggers: bp.known_triggers || '',
     });
   }, [dog]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await api.patch(`/dogs/${dogId}`, form);
+      await api.patch(`/dogs/${dogId}`, {
+        gender: form.gender,
+        color: form.color,
+        microchip_number: form.microchip_number,
+        meal_routine: form.meal_routine,
+        allergies: form.allergies,
+        medication_requirements: form.medication_requirements,
+        behavioral_notes: form.behavioral_notes,
+      });
+      // Save behavior profile separately
+      await api.patch(`/dogs/${dogId}/behavior`, {
+        energy_level: form.energy_level,
+        anxiety_level: form.anxiety_level,
+        play_style: form.play_style,
+        known_triggers: form.known_triggers,
+      }).catch(() => {});
       toast.success('Details updated');
       setEditing(false);
       onSaved();
@@ -320,6 +340,22 @@ const DogDetailsEditor = ({ dog, dogId, onSaved }) => {
                 value={form.behavioral_notes} onChange={e => setForm(f=>({...f,behavioral_notes:e.target.value}))}
                 placeholder="Temperament, triggers, things we should know..." />
             </div>
+            <div>
+              <Label className="text-xs">Energy Level: {'⚡'.repeat(form.energy_level)} ({form.energy_level}/5)</Label>
+              <input type="range" min="1" max="5" value={form.energy_level}
+                onChange={e => setForm(f=>({...f,energy_level:parseInt(e.target.value)}))} className="w-full mt-1" />
+            </div>
+            <div>
+              <Label className="text-xs">Anxiety Level: {'😰'.repeat(form.anxiety_level)} ({form.anxiety_level}/5)</Label>
+              <input type="range" min="1" max="5" value={form.anxiety_level}
+                onChange={e => setForm(f=>({...f,anxiety_level:parseInt(e.target.value)}))} className="w-full mt-1" />
+            </div>
+            <div><Label className="text-xs">Play Style</Label>
+              <Input value={form.play_style} onChange={e => setForm(f=>({...f,play_style:e.target.value}))} className="mt-0.5 h-8 text-sm" placeholder="e.g. Fetch, wrestling, independent..." />
+            </div>
+            <div><Label className="text-xs">Known Triggers</Label>
+              <Input value={form.known_triggers} onChange={e => setForm(f=>({...f,known_triggers:e.target.value}))} className="mt-0.5 h-8 text-sm" placeholder="e.g. Bikes, skateboards, intact dogs..." />
+            </div>
           </>
         ) : (
           <div className="space-y-2 text-sm">
@@ -330,6 +366,10 @@ const DogDetailsEditor = ({ dog, dogId, onSaved }) => {
             {form.allergies && <div className="p-2 bg-amber-50 rounded border border-amber-100"><p className="text-xs font-medium text-amber-800">⚠️ Allergies</p><p className="text-xs text-amber-700 mt-0.5">{form.allergies}</p></div>}
             {form.medication_requirements && <div><p className="text-muted-foreground text-xs">Medication Notes</p><p className="mt-0.5">{form.medication_requirements}</p></div>}
             {form.behavioral_notes && <div><p className="text-muted-foreground text-xs">Behavioral Notes</p><p className="mt-0.5">{form.behavioral_notes}</p></div>}
+            {form.energy_level && <div className="flex justify-between"><span className="text-muted-foreground">Energy</span><span>{'⚡'.repeat(form.energy_level)} {form.energy_level}/5</span></div>}
+            {form.anxiety_level && <div className="flex justify-between"><span className="text-muted-foreground">Anxiety</span><span>{'😰'.repeat(form.anxiety_level)} {form.anxiety_level}/5</span></div>}
+            {form.play_style && <div><p className="text-muted-foreground text-xs">Play Style</p><p className="mt-0.5">{form.play_style}</p></div>}
+            {form.known_triggers && <div><p className="text-muted-foreground text-xs">Known Triggers</p><p className="mt-0.5">{form.known_triggers}</p></div>}
             {!form.gender && !form.color && !form.microchip_number && !form.meal_routine && !form.allergies && !form.medication_requirements && !form.behavioral_notes && (
               <p className="text-muted-foreground text-xs">Click Edit to add details about your dog</p>
             )}
