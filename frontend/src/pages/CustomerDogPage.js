@@ -431,3 +431,4 @@ const DogDetailsEditor = ({ dog, dogId, onSaved }) => {
   );
 };
 
+export default CustomerDogPage;
