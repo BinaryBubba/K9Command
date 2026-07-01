@@ -243,6 +243,8 @@ const DogDetailsEditor = ({ dog, dogId, onSaved }) => {
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
 
+  const PLAY_STYLES = ['Fetch', 'Wrestling', 'Chase', 'Tug', 'Independent', 'Social', 'Gentle', 'Rough'];
+
   React.useEffect(() => {
     const bp = dog.behavior_profile || {};
     setForm({
@@ -256,7 +258,13 @@ const DogDetailsEditor = ({ dog, dogId, onSaved }) => {
       energy_level: bp.energy_level || 3,
       anxiety_level: bp.anxiety_level || 1,
       play_style: bp.play_style || '',
+      handling_restrictions: bp.handling_restrictions || '',
       known_triggers: bp.known_triggers || '',
+      bite_history: bp.bite_history || false,
+      food_guarding: bp.food_guarding || false,
+      toy_guarding: bp.toy_guarding || false,
+      is_humper: bp.is_humper || false,
+      barrier_reactivity: bp.barrier_reactivity || false,
     });
   }, [dog]);
 
@@ -264,21 +272,25 @@ const DogDetailsEditor = ({ dog, dogId, onSaved }) => {
     setSaving(true);
     try {
       await api.patch(`/dogs/${dogId}`, {
-        gender: form.gender,
-        color: form.color,
+        gender: form.gender, color: form.color,
         microchip_number: form.microchip_number,
         meal_routine: form.meal_routine,
         allergies: form.allergies,
         medication_requirements: form.medication_requirements,
         behavioral_notes: form.behavioral_notes,
       });
-      // Save behavior profile separately
       await api.patch(`/dogs/${dogId}/behavior`, {
         energy_level: form.energy_level,
         anxiety_level: form.anxiety_level,
         play_style: form.play_style,
+        handling_restrictions: form.handling_restrictions,
         known_triggers: form.known_triggers,
-      }).catch(() => {});
+        bite_history: form.bite_history,
+        food_guarding: form.food_guarding,
+        toy_guarding: form.toy_guarding,
+        is_humper: form.is_humper,
+        barrier_reactivity: form.barrier_reactivity,
+      });
       toast.success('Details updated');
       setEditing(false);
       onSaved();
@@ -286,11 +298,20 @@ const DogDetailsEditor = ({ dog, dogId, onSaved }) => {
     finally { setSaving(false); }
   };
 
+  const bp = dog.behavior_profile || {};
+  const flags = [
+    { key: 'bite_history', label: '🦷 Bite History' },
+    { key: 'food_guarding', label: '🍖 Food Guarding' },
+    { key: 'toy_guarding', label: '🧸 Toy Guarding' },
+    { key: 'is_humper', label: '🐕 Mounter' },
+    { key: 'barrier_reactivity', label: '🚧 Barrier Reactivity' },
+  ];
+
   return (
     <Card>
       <CardHeader className="pb-2 pt-4 px-4">
         <CardTitle className="text-sm flex items-center justify-between">
-          Details
+          Details & Behavior
           {editing ? (
             <div className="flex gap-2">
               <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditing(false)}>Cancel</Button>
@@ -338,7 +359,7 @@ const DogDetailsEditor = ({ dog, dogId, onSaved }) => {
             <div><Label className="text-xs">Behavioral Notes</Label>
               <textarea className="w-full mt-0.5 border rounded px-2 py-1.5 text-sm bg-background resize-none" rows={2}
                 value={form.behavioral_notes} onChange={e => setForm(f=>({...f,behavioral_notes:e.target.value}))}
-                placeholder="Temperament, triggers, things we should know..." />
+                placeholder="Temperament, things we should know..." />
             </div>
             <div>
               <Label className="text-xs">Energy Level: {'⚡'.repeat(form.energy_level)} ({form.energy_level}/5)</Label>
@@ -351,10 +372,29 @@ const DogDetailsEditor = ({ dog, dogId, onSaved }) => {
                 onChange={e => setForm(f=>({...f,anxiety_level:parseInt(e.target.value)}))} className="w-full mt-1" />
             </div>
             <div><Label className="text-xs">Play Style</Label>
-              <Input value={form.play_style} onChange={e => setForm(f=>({...f,play_style:e.target.value}))} className="mt-0.5 h-8 text-sm" placeholder="e.g. Fetch, wrestling, independent..." />
+              <select className="w-full mt-0.5 border rounded px-2 py-1.5 text-sm bg-background"
+                value={form.play_style} onChange={e => setForm(f=>({...f,play_style:e.target.value}))}>
+                <option value="">Select...</option>
+                {PLAY_STYLES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div><Label className="text-xs">Handling Restrictions</Label>
+              <Input value={form.handling_restrictions} onChange={e => setForm(f=>({...f,handling_restrictions:e.target.value}))} className="mt-0.5 h-8 text-sm" placeholder="e.g. No children, no intact dogs..." />
             </div>
             <div><Label className="text-xs">Known Triggers</Label>
-              <Input value={form.known_triggers} onChange={e => setForm(f=>({...f,known_triggers:e.target.value}))} className="mt-0.5 h-8 text-sm" placeholder="e.g. Bikes, skateboards, intact dogs..." />
+              <Input value={form.known_triggers} onChange={e => setForm(f=>({...f,known_triggers:e.target.value}))} className="mt-0.5 h-8 text-sm" placeholder="e.g. Bikes, skateboards..." />
+            </div>
+            <div>
+              <Label className="text-xs">Behavior Flags</Label>
+              <div className="grid grid-cols-2 gap-1 mt-1">
+                {flags.map(f => (
+                  <label key={f.key} className={`flex items-center gap-2 text-xs p-1.5 rounded border cursor-pointer ${form[f.key] ? 'bg-red-50 border-red-200 text-red-700' : 'border-border'}`}>
+                    <input type="checkbox" checked={form[f.key] || false}
+                      onChange={e => setForm(frm=>({...frm,[f.key]:e.target.checked}))} />
+                    {f.label}
+                  </label>
+                ))}
+              </div>
             </div>
           </>
         ) : (
@@ -362,15 +402,26 @@ const DogDetailsEditor = ({ dog, dogId, onSaved }) => {
             {form.gender && <div className="flex justify-between"><span className="text-muted-foreground">Gender</span><span className="capitalize">{form.gender}</span></div>}
             {form.color && <div className="flex justify-between"><span className="text-muted-foreground">Color</span><span>{form.color}</span></div>}
             {form.microchip_number && <div className="flex justify-between"><span className="text-muted-foreground">Microchip</span><span>{form.microchip_number}</span></div>}
+            {form.energy_level && <div className="flex justify-between"><span className="text-muted-foreground">Energy</span><span>{'⚡'.repeat(form.energy_level)} {form.energy_level}/5</span></div>}
+            {form.anxiety_level && <div className="flex justify-between"><span className="text-muted-foreground">Anxiety</span><span>{'😰'.repeat(form.anxiety_level)} {form.anxiety_level}/5</span></div>}
+            {form.play_style && <div className="flex justify-between"><span className="text-muted-foreground">Play Style</span><span>{form.play_style}</span></div>}
             {form.meal_routine && <div><p className="text-muted-foreground text-xs">Feeding Routine</p><p className="mt-0.5">{form.meal_routine}</p></div>}
             {form.allergies && <div className="p-2 bg-amber-50 rounded border border-amber-100"><p className="text-xs font-medium text-amber-800">⚠️ Allergies</p><p className="text-xs text-amber-700 mt-0.5">{form.allergies}</p></div>}
             {form.medication_requirements && <div><p className="text-muted-foreground text-xs">Medication Notes</p><p className="mt-0.5">{form.medication_requirements}</p></div>}
             {form.behavioral_notes && <div><p className="text-muted-foreground text-xs">Behavioral Notes</p><p className="mt-0.5">{form.behavioral_notes}</p></div>}
-            {form.energy_level && <div className="flex justify-between"><span className="text-muted-foreground">Energy</span><span>{'⚡'.repeat(form.energy_level)} {form.energy_level}/5</span></div>}
-            {form.anxiety_level && <div className="flex justify-between"><span className="text-muted-foreground">Anxiety</span><span>{'😰'.repeat(form.anxiety_level)} {form.anxiety_level}/5</span></div>}
-            {form.play_style && <div><p className="text-muted-foreground text-xs">Play Style</p><p className="mt-0.5">{form.play_style}</p></div>}
+            {form.handling_restrictions && <div><p className="text-muted-foreground text-xs">Handling Restrictions</p><p className="mt-0.5 text-orange-700">{form.handling_restrictions}</p></div>}
             {form.known_triggers && <div><p className="text-muted-foreground text-xs">Known Triggers</p><p className="mt-0.5">{form.known_triggers}</p></div>}
-            {!form.gender && !form.color && !form.microchip_number && !form.meal_routine && !form.allergies && !form.medication_requirements && !form.behavioral_notes && (
+            {flags.some(f => form[f.key]) && (
+              <div>
+                <p className="text-muted-foreground text-xs mb-1">Behavior Flags</p>
+                <div className="flex flex-wrap gap-1">
+                  {flags.filter(f => form[f.key]).map(f => (
+                    <span key={f.key} className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">{f.label}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {!form.gender && !form.color && !form.meal_routine && !form.energy_level && (
               <p className="text-muted-foreground text-xs">Click Edit to add details about your dog</p>
             )}
           </div>
@@ -380,4 +431,3 @@ const DogDetailsEditor = ({ dog, dogId, onSaved }) => {
   );
 };
 
-export default CustomerDogPage;

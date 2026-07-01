@@ -208,7 +208,7 @@ async def update_dog_photo(
 async def update_behavior(
     dog_id: str,
     data: dict,
-    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF)),
+    current_user: UserORM = Depends(get_current_user),  # customers can update their dog's behavior
     db: AsyncSession = Depends(get_db),
 ):
     await _get_dog_or_404(dog_id, current_user.organization_id, db)
