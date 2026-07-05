@@ -23,7 +23,7 @@ async def list_tasks(
     dog_id: Optional[str] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     org_id = current_user.organization_id
@@ -61,7 +61,7 @@ async def list_tasks(
 @router.post("")
 async def create_task(
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     org_id = current_user.organization_id
@@ -93,7 +93,7 @@ async def create_task(
 
 @router.get("/my")
 async def get_my_tasks(
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     from sqlalchemy import text
@@ -117,7 +117,7 @@ async def list_completed_tasks(
     assigned_to: Optional[str] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     from sqlalchemy import text
@@ -150,7 +150,7 @@ async def list_completed_tasks(
 @router.get("/{task_id}")
 async def get_task(
     task_id: str,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     task = await _get_task_or_404(task_id, current_user.organization_id, db)
@@ -161,7 +161,7 @@ async def get_task(
 async def update_task(
     task_id: str,
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     task = await _get_task_or_404(task_id, current_user.organization_id, db)
@@ -185,7 +185,7 @@ async def update_task(
 @router.post("/{task_id}/complete")
 async def complete_task(
     task_id: str,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     task = await _get_task_or_404(task_id, current_user.organization_id, db)
@@ -200,7 +200,7 @@ async def complete_task(
 @router.post("/{task_id}/cancel")
 async def cancel_task(
     task_id: str,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     task = await _get_task_or_404(task_id, current_user.organization_id, db)
@@ -214,7 +214,7 @@ async def cancel_task(
 async def update_checklist(
     task_id: str,
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     task = await _get_task_or_404(task_id, current_user.organization_id, db)
