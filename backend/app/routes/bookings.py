@@ -39,7 +39,9 @@ async def list_bookings(
 
     if status:
         q = q.where(Booking.status == status)
-    if household_id:
+    if current_user.role == UserRole.CUSTOMER:
+        q = q.where(Booking.household_id == current_user.household_id)
+    elif household_id:
         q = q.where(Booking.household_id == household_id)
     if start_date:
         q = q.where(Booking.check_out_date >= _parse_date(start_date))
@@ -70,7 +72,7 @@ async def get_booking(
     current_user: UserORM = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    booking = await _get_booking_or_404(booking_id, current_user.organization_id, db)
+    booking = await _get_booking_or_404(booking_id, current_user.organization_id, db, current_user)
     bd = await _get_booking_dogs(booking_id, db)
     conflicts = await _check_conflicts(booking, db)
     result = _booking_dict(booking, bd)
@@ -91,6 +93,9 @@ async def create_booking(
     dog_ids = data.get("dog_ids", [])
     check_in_date = _parse_date(data.get("check_in_date"))
     check_out_date = _parse_date(data.get("check_out_date"))
+
+    if current_user.role == UserRole.CUSTOMER:
+        household_id = current_user.household_id or ""
 
     if not household_id:
         raise HTTPException(status_code=400, detail="household_id is required")
@@ -116,6 +121,8 @@ async def create_booking(
         )).scalar_one_or_none()
         if not dog:
             raise HTTPException(status_code=404, detail=f"Dog {dog_id} not found")
+        if current_user.role == UserRole.CUSTOMER and dog.household_id != current_user.household_id:
+            raise HTTPException(status_code=403, detail=f"{dog.name} does not belong to your household")
 
         # Meet and greet check
         if dog.meet_and_greet_status != "completed":
@@ -184,10 +191,10 @@ async def create_booking(
 async def update_booking_status(
     booking_id: str,
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
-    booking = await _get_booking_or_404(booking_id, current_user.organization_id, db)
+    booking = await _get_booking_or_404(booking_id, current_user.organization_id, db, current_user)
     new_status = data.get("status")
     if not new_status:
         raise HTTPException(status_code=400, detail="status is required")
@@ -254,7 +261,7 @@ async def cancel_booking(
     current_user: UserORM = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    booking = await _get_booking_or_404(booking_id, current_user.organization_id, db)
+    booking = await _get_booking_or_404(booking_id, current_user.organization_id, db, current_user)
 
     if booking.status in [BookingStatus.CHECKED_IN, BookingStatus.CHECKED_OUT]:
         raise HTTPException(status_code=400, detail="Cannot cancel a booking that is checked in or completed")
@@ -398,13 +405,16 @@ async def check_conflicts(
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-async def _get_booking_or_404(booking_id: str, org_id: str, db: AsyncSession) -> Booking:
+async def _get_booking_or_404(booking_id: str, org_id: str, db: AsyncSession, current_user: UserORM = None) -> Booking:
     result = await db.execute(
         select(Booking).where(Booking.id == booking_id, Booking.organization_id == org_id)
     )
     b = result.scalar_one_or_none()
     if not b:
         raise HTTPException(status_code=404, detail="Booking not found")
+    if current_user is not None and current_user.role == UserRole.CUSTOMER:
+        if b.household_id != current_user.household_id:
+            raise HTTPException(status_code=404, detail="Booking not found")
     return b
 
 async def _get_booking_dogs(booking_id: str, db: AsyncSession) -> list:
@@ -588,6 +598,8 @@ async def get_booking_notes(
     current_user: UserORM = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    await _get_booking_or_404(booking_id, current_user.organization_id, db, current_user)
+
     from sqlalchemy import text
     result = await db.execute(text("""
         SELECT bn.id, bn.note_text, bn.created_at, u.full_name as created_by_name
@@ -609,6 +621,8 @@ async def add_booking_note(
     current_user: UserORM = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    await _get_booking_or_404(booking_id, current_user.organization_id, db, current_user)
+
     from sqlalchemy import text
     import uuid
     note_text = data.get("note_text", "").strip()
