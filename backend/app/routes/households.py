@@ -282,9 +282,16 @@ async def import_customers_csv(
     current_user: UserORM = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
-    """Import customers from CSV file."""
-    import csv, io, uuid
+    """Import customers (and optionally their dogs) from CSV file.
+
+    Recognized columns: display_name, email, first_name, last_name, phone,
+    dogs (optional -- one or more dog names separated by ';', e.g. "Rex;Bella").
+    """
+    import csv, io, uuid, logging
     from sqlalchemy import text
+    from sqlalchemy.exc import IntegrityError
+
+    logger = logging.getLogger("k9cmd.import")
 
     content_bytes = await file.read()
     content_str = content_bytes.decode('utf-8-sig')
@@ -293,55 +300,91 @@ async def import_customers_csv(
     created = 0
     skipped = 0
     errors = 0
+    dogs_created = 0
+    error_details = []
 
-    for row in reader:
+    for row_num, row in enumerate(reader, start=2):
         try:
-            display_name = row.get('display_name', '').strip()
-            email = row.get('email', '').strip().lower()
-            first_name = row.get('first_name', '').strip()
-            last_name = row.get('last_name', '').strip()
-            phone = row.get('phone', '').strip()
+            async with db.begin_nested():
+                display_name = row.get('display_name', '').strip()
+                email = row.get('email', '').strip().lower()
+                first_name = row.get('first_name', '').strip()
+                last_name = row.get('last_name', '').strip()
+                phone = row.get('phone', '').strip()
+                dogs_raw = row.get('dogs', '').strip()
 
-            if not display_name:
-                display_name = f"{first_name} {last_name}".strip() or email
+                if not display_name:
+                    display_name = f"{first_name} {last_name}".strip() or email
 
-            if not display_name:
-                errors += 1
-                continue
+                if not display_name:
+                    errors += 1
+                    error_details.append({"row": row_num, "error": "missing display_name/first_name+last_name/email"})
+                    continue
 
-            # Check if household with same name exists
-            existing = await db.execute(text(
-                "SELECT id FROM households WHERE organization_id = :org_id AND LOWER(display_name) = LOWER(:name)"
-            ), {"org_id": current_user.organization_id, "name": display_name})
-            if existing.fetchone():
-                skipped += 1
-                continue
+                existing = await db.execute(text(
+                    "SELECT id FROM households WHERE organization_id = :org_id AND LOWER(display_name) = LOWER(:name)"
+                ), {"org_id": current_user.organization_id, "name": display_name})
+                if existing.fetchone():
+                    skipped += 1
+                    continue
 
-            hh_id = str(uuid.uuid4())
-            await db.execute(text("""
-                INSERT INTO households (id, organization_id, display_name, status)
-                VALUES (:id, :org_id, :name, 'ACTIVE')
-            """), {"id": hh_id, "org_id": current_user.organization_id, "name": display_name})
-
-            if first_name or email:
+                hh_id = str(uuid.uuid4())
                 await db.execute(text("""
-                    INSERT INTO contacts (id, organization_id, household_id, first_name, last_name, email, phone, is_primary, contact_type)
-                    VALUES (:id, :org_id, :hh_id, :fn, :ln, :email, :phone, TRUE, 'primary')
-                """), {
-                    "id": str(uuid.uuid4()),
-                    "org_id": current_user.organization_id,
-                    "hh_id": hh_id,
-                    "fn": first_name or display_name,
-                    "ln": last_name or '',
-                    "email": email or None,
-                    "phone": phone or None,
-                })
-            created += 1
+                    INSERT INTO households (id, organization_id, display_name, status)
+                    VALUES (:id, :org_id, :name, 'ACTIVE')
+                """), {"id": hh_id, "org_id": current_user.organization_id, "name": display_name})
+
+                if first_name or email:
+                    await db.execute(text("""
+                        INSERT INTO contacts (id, organization_id, household_id, first_name, last_name, email, phone, is_primary, contact_type)
+                        VALUES (:id, :org_id, :hh_id, :fn, :ln, :email, :phone, TRUE, 'PRIMARY')
+                    """), {
+                        "id": str(uuid.uuid4()),
+                        "org_id": current_user.organization_id,
+                        "hh_id": hh_id,
+                        "fn": first_name or display_name,
+                        "ln": last_name or '',
+                        "email": email or None,
+                        "phone": phone or None,
+                    })
+
+                if dogs_raw:
+                    dog_names = [d.strip() for d in dogs_raw.split(';') if d.strip()]
+                    for dog_name in dog_names:
+                        dog_id = str(uuid.uuid4())
+                        await db.execute(text("""
+                            INSERT INTO dogs (id, organization_id, household_id, name, breed, meet_and_greet_status, boarding_eligible, daycare_eligible)
+                            VALUES (:id, :org_id, :hh_id, :name, 'Unknown', 'required', FALSE, FALSE)
+                        """), {
+                            "id": dog_id, "org_id": current_user.organization_id,
+                            "hh_id": hh_id, "name": dog_name,
+                        })
+                        await db.execute(text("""
+                            INSERT INTO behavior_profiles (id, organization_id, dog_id, handlers_required)
+                            VALUES (:id, :org_id, :dog_id, 1)
+                        """), {
+                            "id": str(uuid.uuid4()), "org_id": current_user.organization_id, "dog_id": dog_id,
+                        })
+                        dogs_created += 1
+
+                created += 1
+        except IntegrityError as e:
+            errors += 1
+            error_details.append({"row": row_num, "error": f"database constraint violation: {e.orig}"})
+            logger.warning("CSV import row %s failed: %s", row_num, e)
         except Exception as e:
             errors += 1
+            error_details.append({"row": row_num, "error": str(e)})
+            logger.warning("CSV import row %s failed: %s", row_num, e)
 
     await db.commit()
-    return {"created": created, "skipped": skipped, "errors": errors}
+    return {
+        "created": created,
+        "dogs_created": dogs_created,
+        "skipped": skipped,
+        "errors": errors,
+        "error_details": error_details,
+    }
 
 
 @router.get("/{household_id}/notes")
