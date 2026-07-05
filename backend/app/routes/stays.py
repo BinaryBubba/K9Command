@@ -25,7 +25,7 @@ router = APIRouter(prefix="/api/stays", tags=["stays"])
 
 @router.get("/on-site")
 async def get_on_site(
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     org_id = current_user.organization_id
@@ -60,7 +60,7 @@ async def get_on_site(
 
 @router.get("/arrivals/today")
 async def get_todays_arrivals(
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     org_id = current_user.organization_id
@@ -106,7 +106,7 @@ async def get_todays_arrivals(
 
 @router.get("/departures/today")
 async def get_todays_departures(
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     org_id = current_user.organization_id
@@ -144,7 +144,7 @@ async def get_todays_departures(
 @router.post("/check-in")
 async def check_in(
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     org_id = current_user.organization_id
@@ -239,7 +239,7 @@ async def check_in(
 async def check_out(
     stay_id: str,
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     stay = await _get_stay_or_404(stay_id, current_user.organization_id, db)
@@ -319,7 +319,7 @@ async def check_out(
 @router.get("/{stay_id}/alerts")
 async def get_alerts(
     stay_id: str,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     await _get_stay_or_404(stay_id, current_user.organization_id, db)
@@ -331,7 +331,7 @@ async def get_alerts(
 async def add_alert(
     stay_id: str,
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     stay = await _get_stay_or_404(stay_id, current_user.organization_id, db)
@@ -367,7 +367,7 @@ async def clear_alert(
     stay_id: str,
     alert_id: str,
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     await _get_stay_or_404(stay_id, current_user.organization_id, db)
@@ -391,7 +391,7 @@ async def clear_alert(
 @router.get("/{stay_id}/feeding-overrides")
 async def get_feeding_overrides(
     stay_id: str,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     await _get_stay_or_404(stay_id, current_user.organization_id, db)
@@ -534,7 +534,7 @@ def _feeding_override_dict(f: StayFeedingOverride) -> dict:
 async def transfer_room(
     stay_id: str,
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     """Move a dog to a different room during their stay."""
