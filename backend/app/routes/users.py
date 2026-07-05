@@ -307,6 +307,7 @@ async def create_portal_account(
 ):
     """Create a customer portal account and link to a household."""
     from sqlalchemy import text
+    from sqlalchemy.exc import IntegrityError
     import uuid, secrets, string
     from passlib.context import CryptContext
 
@@ -317,28 +318,33 @@ async def create_portal_account(
     if not email or not household_id:
         raise HTTPException(status_code=400, detail="email and household_id required")
 
-    # Check if email already exists
     existing = await db.execute(text("SELECT id FROM users WHERE email = :email"), {"email": email})
     if existing.fetchone():
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    # Generate temp password
     alphabet = string.ascii_letters + string.digits
     temp_password = ''.join(secrets.choice(alphabet) for _ in range(10)) + "!"
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     hashed = pwd_context.hash(temp_password)
 
     user_id = str(uuid.uuid4())
-    await db.execute(text("""
-        INSERT INTO users (id, organization_id, email, hashed_password, full_name, role, household_id, is_active)
-        VALUES (:id, :org_id, :email, :hashed, :full_name, 'CUSTOMER', :hh_id, TRUE)
-    """), {
-        "id": user_id, "org_id": current_user.organization_id,
-        "email": email, "hashed": hashed,
-        "full_name": full_name or email.split("@")[0],
-        "hh_id": household_id
-    })
-    await db.commit()
+    try:
+        await db.execute(text("""
+            INSERT INTO users (id, organization_id, email, hashed_password, full_name, role, household_id, is_active)
+            VALUES (:id, :org_id, :email, :hashed, :full_name, 'CUSTOMER', :hh_id, TRUE)
+        """), {
+            "id": user_id, "org_id": current_user.organization_id,
+            "email": email, "hashed": hashed,
+            "full_name": full_name or email.split("@")[0],
+            "hh_id": household_id
+        })
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="This household already has a portal account linked.",
+        )
     return {"user_id": user_id, "temp_password": temp_password, "email": email}
 
 
@@ -351,72 +357,18 @@ async def link_user_household(
 ):
     """Link a customer user to a household."""
     from sqlalchemy import text
+    from sqlalchemy.exc import IntegrityError
     household_id = data.get("household_id")
-    await db.execute(text("""
-        UPDATE users SET household_id = :hh_id WHERE id = :user_id AND organization_id = :org_id
-    """), {"hh_id": household_id, "user_id": user_id, "org_id": current_user.organization_id})
-    await db.commit()
+    try:
+        await db.execute(text("""
+            UPDATE users SET household_id = :hh_id WHERE id = :user_id AND organization_id = :org_id
+        """), {"hh_id": household_id, "user_id": user_id, "org_id": current_user.organization_id})
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="Another user is already linked to this household.")
     return {"linked": True}
 
-
-@router.post("/create-portal-account")
-async def create_portal_account(
-    data: dict,
-    current_user: UserORM = Depends(require_role(UserRole.ADMIN)),
-    db: AsyncSession = Depends(get_db),
-):
-    """Create a customer portal account and link to a household."""
-    from sqlalchemy import text
-    import uuid, secrets, string
-    from passlib.context import CryptContext
-
-    email = data.get("email", "").strip().lower()
-    household_id = data.get("household_id", "").strip()
-    full_name = data.get("full_name", "").strip()
-
-    if not email or not household_id:
-        raise HTTPException(status_code=400, detail="email and household_id required")
-
-    # Check if email already exists
-    existing = await db.execute(text("SELECT id FROM users WHERE email = :email"), {"email": email})
-    if existing.fetchone():
-        raise HTTPException(status_code=400, detail="Email already registered")
-
-    # Generate temp password
-    alphabet = string.ascii_letters + string.digits
-    temp_password = ''.join(secrets.choice(alphabet) for _ in range(10)) + "!"
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    hashed = pwd_context.hash(temp_password)
-
-    user_id = str(uuid.uuid4())
-    await db.execute(text("""
-        INSERT INTO users (id, organization_id, email, hashed_password, full_name, role, household_id, is_active)
-        VALUES (:id, :org_id, :email, :hashed, :full_name, 'CUSTOMER', :hh_id, TRUE)
-    """), {
-        "id": user_id, "org_id": current_user.organization_id,
-        "email": email, "hashed": hashed,
-        "full_name": full_name or email.split("@")[0],
-        "hh_id": household_id
-    })
-    await db.commit()
-    return {"user_id": user_id, "temp_password": temp_password, "email": email}
-
-
-@router.patch("/{user_id}/household")
-async def link_user_household(
-    user_id: str,
-    data: dict,
-    current_user: UserORM = Depends(require_role(UserRole.ADMIN)),
-    db: AsyncSession = Depends(get_db),
-):
-    """Link a customer user to a household."""
-    from sqlalchemy import text
-    household_id = data.get("household_id")
-    await db.execute(text("""
-        UPDATE users SET household_id = :hh_id WHERE id = :user_id AND organization_id = :org_id
-    """), {"hh_id": household_id, "user_id": user_id, "org_id": current_user.organization_id})
-    await db.commit()
-    return {"linked": True}
 
 
 @router.get("/org/settings")
