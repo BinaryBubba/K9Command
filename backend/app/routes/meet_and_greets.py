@@ -254,28 +254,11 @@ async def get_upcoming_mags(
 async def update_mag_status(
     mag_id: str,
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
-    from sqlalchemy import text
-    status = data.get("status", "").lower()
-    if status not in ["pending", "confirmed", "cancelled"]:
-        raise HTTPException(status_code=400, detail="Invalid status")
-    await db.execute(text("""
-        UPDATE meet_and_greets SET status = :status
-        WHERE id = :id AND organization_id = :org_id
-    """), {"status": status, "id": mag_id, "org_id": current_user.organization_id})
-    await db.commit()
-    return {"updated": True}
-
-
-@router.patch("/{mag_id}/status")
-async def update_mag_status(
-    mag_id: str,
-    data: dict,
-    current_user: UserORM = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
+    """Staff/admin/manager only -- meet-and-greet scheduling status is a
+    staff decision, not something a customer can flip on their own record."""
     from sqlalchemy import text
     status = data.get("status", "").lower()
     if status not in ["pending", "confirmed", "cancelled"]:
