@@ -35,8 +35,11 @@ async def list_dogs(
 
     q = select(DogORM).where(DogORM.organization_id == org_id)
 
-    if household_id:
+    if current_user.role == UserRole.CUSTOMER:
+        q = q.where(DogORM.household_id == current_user.household_id)
+    elif household_id:
         q = q.where(DogORM.household_id == household_id)
+
     if search:
         q = q.where(DogORM.name.ilike(f"%{search}%"))
 
@@ -54,7 +57,7 @@ async def get_dog(
     current_user: UserORM = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    dog = await _get_dog_or_404(dog_id, current_user.organization_id, db)
+    dog = await _get_dog_or_404(dog_id, current_user.organization_id, db, current_user)
 
     # Load behavior profile
     bp_result = await db.execute(
@@ -164,7 +167,7 @@ async def update_dog(
     current_user: UserORM = Depends(get_current_user),  # customers can update their own dogs
     db: AsyncSession = Depends(get_db),
 ):
-    dog = await _get_dog_or_404(dog_id, current_user.organization_id, db)
+    dog = await _get_dog_or_404(dog_id, current_user.organization_id, db, current_user)
 
     allowed = [
         "name", "breed", "age", "weight", "gender", "color",
@@ -191,9 +194,10 @@ async def update_dog_photo(
     db: AsyncSession = Depends(get_db),
 ):
     """Update dog photo - accessible by customers who own the dog."""
+    await _get_dog_or_404(dog_id, current_user.organization_id, db, current_user)
+
     from sqlalchemy import text
     photo_url = data.get("photo_url")
-    avatar_key = data.get("avatar_key")
     await db.execute(text("""
         UPDATE dogs SET photo_url = :url
         WHERE id = :dog_id AND organization_id = :org_id
@@ -211,7 +215,7 @@ async def update_behavior(
     current_user: UserORM = Depends(get_current_user),  # customers can update their dog's behavior
     db: AsyncSession = Depends(get_db),
 ):
-    await _get_dog_or_404(dog_id, current_user.organization_id, db)
+    await _get_dog_or_404(dog_id, current_user.organization_id, db, current_user)
 
     bp_result = await db.execute(
         select(BehaviorProfile).where(BehaviorProfile.dog_id == dog_id)
@@ -220,16 +224,23 @@ async def update_behavior(
     if not bp:
         raise HTTPException(status_code=404, detail="Behavior profile not found")
 
-    allowed = [
-        "handling_restrictions", "known_triggers", "dog_compatibility",
-        "human_compatibility", "food_guarding", "toy_guarding",
-        "barrier_reactivity", "leash_behavior", "escape_behavior",
+    staff_only_fields = [
         "bite_history", "bite_history_detail", "muzzle_required",
-        "handlers_required", "approved_playgroups", "prohibited_pairings",
-        "active_safety_alert", "safety_alert_detail",
-        "energy_level", "anxiety_level", "play_style",
-        "is_humper", "is_wrestler", "intact_female",
+        "active_safety_alert", "safety_alert_detail", "handlers_required",
+        "prohibited_pairings", "human_compatibility", "leash_behavior",
+        "escape_behavior",
     ]
+    customer_editable_fields = [
+        "handling_restrictions", "known_triggers", "dog_compatibility",
+        "food_guarding", "toy_guarding", "barrier_reactivity",
+        "approved_playgroups", "energy_level", "anxiety_level",
+        "play_style", "is_humper", "is_wrestler", "intact_female",
+    ]
+
+    is_staff = current_user.role != UserRole.CUSTOMER
+    allowed = customer_editable_fields + staff_only_fields if is_staff else customer_editable_fields
+    ignored = [f for f in staff_only_fields if f in data] if not is_staff else []
+
     for field in allowed:
         if field in data:
             setattr(bp, field, data[field])
@@ -240,7 +251,10 @@ async def update_behavior(
 
     await db.commit()
     await db.refresh(bp)
-    return _behavior_dict(bp)
+    result = _behavior_dict(bp)
+    if ignored:
+        result["_ignored_fields"] = ignored
+    return result
 
 
 # ── Get safety summary (for check-in / dog card) ─────────────────────────────
@@ -251,7 +265,7 @@ async def get_safety_summary(
     current_user: UserORM = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    dog = await _get_dog_or_404(dog_id, current_user.organization_id, db)
+    dog = await _get_dog_or_404(dog_id, current_user.organization_id, db, current_user)
     bp_result = await db.execute(
         select(BehaviorProfile).where(BehaviorProfile.dog_id == dog_id)
     )
@@ -287,13 +301,16 @@ async def get_safety_summary(
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-async def _get_dog_or_404(dog_id: str, org_id: str, db: AsyncSession) -> DogORM:
+async def _get_dog_or_404(dog_id: str, org_id: str, db: AsyncSession, current_user: UserORM = None) -> DogORM:
     result = await db.execute(
         select(DogORM).where(DogORM.id == dog_id, DogORM.organization_id == org_id)
     )
     dog = result.scalar_one_or_none()
     if not dog:
         raise HTTPException(status_code=404, detail="Dog not found")
+    if current_user is not None and current_user.role == UserRole.CUSTOMER:
+        if dog.household_id != current_user.household_id:
+            raise HTTPException(status_code=404, detail="Dog not found")
     return dog
 
 def _dog_summary(d: DogORM) -> dict:
@@ -389,7 +406,7 @@ async def get_dog_notes(
     current_user: UserORM = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await _get_dog_or_404(dog_id, current_user.organization_id, db)
+    await _get_dog_or_404(dog_id, current_user.organization_id, db, current_user)
     result = await db.execute(
         select(DogNote).where(
             DogNote.dog_id == dog_id,
@@ -415,7 +432,7 @@ async def add_dog_note(
     current_user: UserORM = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await _get_dog_or_404(dog_id, current_user.organization_id, db)
+    await _get_dog_or_404(dog_id, current_user.organization_id, db, current_user)
     note_text = data.get("note_text", "").strip()
     if not note_text:
         raise HTTPException(status_code=400, detail="note_text is required")
