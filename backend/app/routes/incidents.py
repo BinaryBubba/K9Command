@@ -21,7 +21,7 @@ async def list_incidents(
     dog_id: Optional[str] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     org_id = current_user.organization_id
@@ -56,7 +56,7 @@ async def list_incidents(
 
 @router.get("/unacknowledged")
 async def get_unacknowledged(
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -78,7 +78,7 @@ async def get_unacknowledged(
 @router.post("")
 async def create_incident(
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     org_id = current_user.organization_id
@@ -124,7 +124,7 @@ async def create_incident(
 @router.get("/{incident_id}")
 async def get_incident(
     incident_id: str,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     incident = await _get_incident_or_404(incident_id, current_user.organization_id, db)
@@ -135,7 +135,7 @@ async def get_incident(
 async def update_incident(
     incident_id: str,
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     incident = await _get_incident_or_404(incident_id, current_user.organization_id, db)
@@ -170,7 +170,7 @@ async def acknowledge_incident(
 async def resolve_incident(
     incident_id: str,
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     incident = await _get_incident_or_404(incident_id, current_user.organization_id, db)
@@ -249,7 +249,7 @@ def _incident_dict(i: Incident) -> dict:
 @router.get("/{incident_id}/notes")
 async def get_incident_notes(
     incident_id: str,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     from sqlalchemy import text
@@ -282,7 +282,7 @@ async def get_incident_notes(
 async def add_incident_note(
     incident_id: str,
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     import uuid, json
