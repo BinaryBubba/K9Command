@@ -56,7 +56,7 @@ async def list_users(
     role: Optional[str] = Query(None),
     is_active: Optional[bool] = Query(None),
     limit: int = Query(100),
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     q = select(UserORM).where(UserORM.organization_id == current_user.organization_id)
@@ -77,7 +77,7 @@ async def get_me(current_user: UserORM = Depends(get_current_user)):
 @router.get("/{user_id}")
 async def get_user(
     user_id: str,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     user = await _get_user_or_404(user_id, current_user.organization_id, db)
