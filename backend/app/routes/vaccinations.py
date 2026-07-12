@@ -28,7 +28,7 @@ async def list_dog_vaccinations(
     current_user: UserORM = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await _verify_dog_access(dog_id, current_user.organization_id, db)
+    await _verify_dog_access(dog_id, current_user.organization_id, db, current_user)
     result = await db.execute(
         select(VaccinationRecord)
         .where(VaccinationRecord.dog_id == dog_id)
@@ -47,7 +47,7 @@ async def add_vaccination(
     current_user: UserORM = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await _verify_dog_access(dog_id, current_user.organization_id, db)
+    await _verify_dog_access(dog_id, current_user.organization_id, db, current_user)
 
     vax_type = data.get("vaccination_type", "").strip()
     if not vax_type:
@@ -86,7 +86,7 @@ async def verify_vaccination(
     current_user: UserORM = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
-    record = await _get_record_or_404(record_id, current_user.organization_id, db)
+    record = await _get_record_or_404(record_id, current_user.organization_id, db, current_user)
 
     if record.verification_status == VaccinationStatus.VERIFIED:
         raise HTTPException(status_code=400, detail="Already verified")
@@ -110,7 +110,7 @@ async def reject_vaccination(
     current_user: UserORM = Depends(require_role(UserRole.ADMIN)),
     db: AsyncSession = Depends(get_db),
 ):
-    record = await _get_record_or_404(record_id, current_user.organization_id, db)
+    record = await _get_record_or_404(record_id, current_user.organization_id, db, current_user)
 
     reason = data.get("reason", "").strip()
     if not reason:
@@ -135,7 +135,7 @@ async def update_vaccination(
     current_user: UserORM = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    record = await _get_record_or_404(record_id, current_user.organization_id, db)
+    record = await _get_record_or_404(record_id, current_user.organization_id, db, current_user)
     for field in ['vaccination_type', 'administration_date', 'expiration_date', 'provider', 'notes']:
         if field in data and data[field] is not None:
             if field in ['administration_date', 'expiration_date']:
@@ -153,7 +153,7 @@ async def get_vaccination_status(
     current_user: UserORM = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await _verify_dog_access(dog_id, current_user.organization_id, db)
+    await _verify_dog_access(dog_id, current_user.organization_id, db, current_user)
 
     result = await db.execute(
         select(VaccinationRecord).where(VaccinationRecord.dog_id == dog_id)
@@ -189,14 +189,18 @@ async def get_vaccination_status(
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-async def _verify_dog_access(dog_id: str, org_id: str, db: AsyncSession):
+async def _verify_dog_access(dog_id: str, org_id: str, db: AsyncSession, current_user: UserORM = None):
     result = await db.execute(
         select(DogORM).where(DogORM.id == dog_id, DogORM.organization_id == org_id)
     )
-    if not result.scalar_one_or_none():
+    dog = result.scalar_one_or_none()
+    if not dog:
         raise HTTPException(status_code=404, detail="Dog not found")
+    if current_user is not None and current_user.role == UserRole.CUSTOMER:
+        if dog.household_id != current_user.household_id:
+            raise HTTPException(status_code=404, detail="Dog not found")
 
-async def _get_record_or_404(record_id: str, org_id: str, db: AsyncSession) -> VaccinationRecord:
+async def _get_record_or_404(record_id: str, org_id: str, db: AsyncSession, current_user: UserORM = None) -> VaccinationRecord:
     result = await db.execute(
         select(VaccinationRecord).where(
             VaccinationRecord.id == record_id,
@@ -206,6 +210,11 @@ async def _get_record_or_404(record_id: str, org_id: str, db: AsyncSession) -> V
     r = result.scalar_one_or_none()
     if not r:
         raise HTTPException(status_code=404, detail="Vaccination record not found")
+    if current_user is not None and current_user.role == UserRole.CUSTOMER:
+        dog_result = await db.execute(select(DogORM).where(DogORM.id == r.dog_id))
+        dog = dog_result.scalar_one_or_none()
+        if not dog or dog.household_id != current_user.household_id:
+            raise HTTPException(status_code=404, detail="Vaccination record not found")
     return r
 
 def _parse_date(value) -> Optional[datetime]:
