@@ -23,7 +23,7 @@ async def list_dog_mags(
     current_user: UserORM = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await _verify_dog_access(dog_id, current_user.organization_id, db)
+    await _verify_dog_access(dog_id, current_user.organization_id, db, current_user)
     result = await db.execute(
         select(MeetAndGreet).where(MeetAndGreet.dog_id == dog_id)
         .order_by(MeetAndGreet.created_at.desc())
@@ -41,10 +41,15 @@ async def schedule_mag(
     dog_id = data.get("dog_id", "").strip()
     household_id = data.get("household_id", "").strip()
 
+    if current_user.role == UserRole.CUSTOMER:
+        household_id = current_user.household_id or ""
+
     if not dog_id or not household_id:
         raise HTTPException(status_code=400, detail="dog_id and household_id are required")
 
-    await _verify_dog_access(dog_id, org_id, db)
+    dog = await _verify_dog_access(dog_id, org_id, db, current_user)
+    if current_user.role == UserRole.CUSTOMER and dog.household_id != household_id:
+        raise HTTPException(status_code=403, detail="Dog does not belong to your household")
 
     mag = MeetAndGreet(
         id=str(uuid.uuid4()),
@@ -275,7 +280,7 @@ async def update_mag_status(
 async def record_outcome(
     mag_id: str,
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     mag = await _get_mag_or_404(mag_id, current_user.organization_id, db)
@@ -352,12 +357,17 @@ async def record_outcome(
     return _mag_dict(mag)
 
 
-async def _verify_dog_access(dog_id: str, org_id: str, db: AsyncSession):
+async def _verify_dog_access(dog_id: str, org_id: str, db: AsyncSession, current_user: UserORM = None):
     result = await db.execute(
         select(DogORM).where(DogORM.id == dog_id, DogORM.organization_id == org_id)
     )
-    if not result.scalar_one_or_none():
+    dog = result.scalar_one_or_none()
+    if not dog:
         raise HTTPException(status_code=404, detail="Dog not found")
+    if current_user is not None and current_user.role == UserRole.CUSTOMER:
+        if dog.household_id != current_user.household_id:
+            raise HTTPException(status_code=404, detail="Dog not found")
+    return dog
 
 async def _get_mag_or_404(mag_id: str, org_id: str, db: AsyncSession) -> MeetAndGreet:
     result = await db.execute(
