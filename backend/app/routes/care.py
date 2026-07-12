@@ -20,6 +20,76 @@ import uuid
 
 router = APIRouter(prefix="/api/care", tags=["care"])
 
+def _parse_date(value):
+    if not value:
+        return None
+    try:
+        if isinstance(value, datetime):
+            return value
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
+def _plan_dict(p) -> dict:
+    return {
+        "id": p.id, "dog_id": p.dog_id, "food_name": p.food_name,
+        "amount": p.amount, "frequency": p.frequency,
+        "scheduled_times": p.scheduled_times or [],
+        "preparation_instructions": p.preparation_instructions,
+        "supplements": p.supplements,
+        "food_supplied_by_owner": p.food_supplied_by_owner,
+        "is_active": p.is_active, "notes": p.notes,
+        "created_at": p.created_at.isoformat() if p.created_at else None,
+        "updated_at": p.updated_at.isoformat() if p.updated_at else None,
+    }
+
+
+def _feeding_event_dict(e) -> dict:
+    return {
+        "id": e.id, "stay_id": e.stay_id, "dog_id": e.dog_id,
+        "scheduled_time": e.scheduled_time.isoformat() if e.scheduled_time else None,
+        "completed_time": e.completed_time.isoformat() if e.completed_time else None,
+        "completed_by": e.completed_by,
+        "amount_offered": e.amount_offered, "amount_eaten": e.amount_eaten,
+        "appetite_rating": e.appetite_rating.value if e.appetite_rating else None,
+        "refusal_reason": e.refusal_reason, "notes": e.notes,
+        "created_at": e.created_at.isoformat() if e.created_at else None,
+    }
+
+
+def _medication_dict(m) -> dict:
+    return {
+        "id": m.id, "dog_id": m.dog_id, "name": m.name, "dose": m.dose,
+        "route": m.route, "frequency": m.frequency,
+        "scheduled_times": m.scheduled_times or [],
+        "start_date": m.start_date.isoformat() if m.start_date else None,
+        "end_date": m.end_date.isoformat() if m.end_date else None,
+        "as_needed": m.as_needed,
+        "storage_instructions": m.storage_instructions,
+        "administration_instructions": m.administration_instructions,
+        "prescriber": m.prescriber, "is_active": m.is_active, "notes": m.notes,
+        "created_at": m.created_at.isoformat() if m.created_at else None,
+        "updated_at": m.updated_at.isoformat() if m.updated_at else None,
+    }
+
+
+def _admin_dict(a) -> dict:
+    return {
+        "id": a.id, "stay_id": a.stay_id, "dog_id": a.dog_id,
+        "medication_id": a.medication_id,
+        "scheduled_time": a.scheduled_time.isoformat() if a.scheduled_time else None,
+        "administered_time": a.administered_time.isoformat() if a.administered_time else None,
+        "administered_by": a.administered_by,
+        "status": a.status.value if a.status else None,
+        "dose_administered": a.dose_administered,
+        "exception_reason": a.exception_reason, "notes": a.notes,
+        "reviewed_by": a.reviewed_by,
+        "reviewed_at": a.reviewed_at.isoformat() if a.reviewed_at else None,
+        "created_at": a.created_at.isoformat() if a.created_at else None,
+        "updated_at": a.updated_at.isoformat() if a.updated_at else None,
+    }
+
 
 # ══════════════════════════════════════════════════════════════
 # FEEDING PLANS
@@ -28,7 +98,7 @@ router = APIRouter(prefix="/api/care", tags=["care"])
 @router.get("/feeding-plans/dog/{dog_id}")
 async def get_feeding_plans(
     dog_id: str,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -45,7 +115,7 @@ async def get_feeding_plans(
 async def create_feeding_plan(
     dog_id: str,
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     plan = FeedingPlan(
@@ -76,7 +146,7 @@ async def create_feeding_plan(
 @router.get("/feeding-events/stay/{stay_id}")
 async def get_stay_feeding_events(
     stay_id: str,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -92,7 +162,7 @@ async def get_stay_feeding_events(
 async def log_feeding(
     stay_id: str,
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     # Verify stay belongs to org
@@ -139,7 +209,7 @@ async def log_feeding(
 
 @router.get("/medications")
 async def get_all_active_medications(
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     """Get all active medications for dogs currently on site."""
@@ -165,7 +235,7 @@ async def get_all_active_medications(
 async def get_dog_medications(
     dog_id: str,
     active_only: bool = Query(True),
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     q = select(Medication).where(
@@ -182,7 +252,7 @@ async def get_dog_medications(
 async def add_medication(
     dog_id: str,
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     name = data.get("name", "").strip()
@@ -217,7 +287,7 @@ async def add_medication(
 @router.get("/medication-administrations/stay/{stay_id}")
 async def get_stay_administrations(
     stay_id: str,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
@@ -233,7 +303,7 @@ async def get_stay_administrations(
 async def log_administration(
     stay_id: str,
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     stay = (await db.execute(
@@ -313,7 +383,7 @@ async def review_administration(
 @router.get("/handoffs")
 async def list_handoffs(
     limit: int = Query(10),
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     from sqlalchemy import text
@@ -362,7 +432,7 @@ async def list_handoffs(
 @router.post("/handoffs")
 async def create_handoff(
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     from sqlalchemy import text
@@ -451,7 +521,7 @@ async def create_handoff(
 @router.post("/handoffs/{handoff_id}/acknowledge")
 async def acknowledge_handoff(
     handoff_id: str,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     from sqlalchemy import text
