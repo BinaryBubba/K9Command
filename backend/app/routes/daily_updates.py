@@ -4,8 +4,8 @@ from sqlalchemy import select
 from uuid import UUID
 
 from database import get_db
-from db_models import DailyUpdate
-from auth import get_current_user
+from db_models import DailyUpdate, UserRole
+from auth import get_current_user, require_role
 
 router = APIRouter(prefix="/daily-updates", tags=["Daily Updates"])
 
@@ -38,7 +38,7 @@ async def create_daily_update(
 async def approve_daily_update(
     update_id: UUID,
     db: AsyncSession = Depends(get_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
 ):
     result = await db.execute(
         select(DailyUpdate).where(DailyUpdate.id == update_id)

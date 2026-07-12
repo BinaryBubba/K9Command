@@ -107,6 +107,25 @@ async def get_form(
     row = result.fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Form not found")
+
+    role = str(current_user.role).lower().replace("userrole.", "")
+    role_types = {
+        "admin": ["intake","boarding_agreement","checklist","onboarding","vaccination","custom"],
+        "manager": ["intake","boarding_agreement","checklist","onboarding","vaccination","custom"],
+        "staff": ["intake","boarding_agreement","checklist","onboarding","vaccination"],
+    }
+    allowed_types = role_types.get(role, ["intake","boarding_agreement","vaccination"])
+
+    if row.form_type not in allowed_types:
+        access_result = await db.execute(text("""
+            SELECT access_type FROM form_access
+            WHERE form_id = :form_id AND user_id = :user_id
+            ORDER BY access_type DESC LIMIT 1
+        """), {"form_id": form_id, "user_id": current_user.id})
+        access_row = access_result.fetchone()
+        if not access_row or access_row.access_type != "granted":
+            raise HTTPException(status_code=404, detail="Form not found")
+
     return _form_dict(row)
 
 

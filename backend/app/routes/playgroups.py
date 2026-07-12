@@ -8,8 +8,8 @@ from sqlalchemy import select, text
 from typing import Optional, List
 from datetime import datetime, timezone, date
 from database import get_db
-from auth import get_current_user
-from db_models import User as UserORM
+from auth import get_current_user, require_role
+from db_models import User as UserORM, UserRole
 import uuid
 
 router = APIRouter(prefix="/api/playgroups", tags=["playgroups"])
@@ -370,7 +370,7 @@ async def assign_groups(
 async def move_dog(
     playgroup_id: str,
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     """Move a dog from one group to another, with change tracking."""
