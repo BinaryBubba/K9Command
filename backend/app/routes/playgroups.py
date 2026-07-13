@@ -223,7 +223,7 @@ def suggest_groups(dogs: list, history: list) -> list:
 @router.get("/today")
 async def get_today_groups(
     target_date: Optional[str] = Query(None),
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     org_id = current_user.organization_id
@@ -277,7 +277,7 @@ async def get_today_groups(
 @router.post("/suggest")
 async def suggest_groups_endpoint(
     data: dict = {},
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     org_id = current_user.organization_id
@@ -311,7 +311,7 @@ async def suggest_groups_endpoint(
 @router.post("/assign")
 async def assign_groups(
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     """Save suggested or manually arranged groups for today."""
@@ -425,7 +425,7 @@ async def move_dog(
 async def get_group_history(
     dog_id: Optional[str] = Query(None),
     limit: int = Query(50),
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     """Get history of group changes for learning and audit."""
@@ -458,7 +458,7 @@ async def get_group_history(
 
 @router.get("/unassigned")
 async def get_unassigned_dogs(
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     """Get dogs on site that haven't been assigned to a group today."""
