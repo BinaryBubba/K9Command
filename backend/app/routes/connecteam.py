@@ -50,7 +50,7 @@ async def connecteam_status(
 
 @router.get("/shifts/active")
 async def get_active_shifts(
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -104,9 +104,23 @@ async def connecteam_webhook(
 ):
     """
     Receive clock in/out webhooks from Connecteam.
-    Configure in Connecteam: Settings → Integrations → Webhooks
+    Configure in Connecteam: Settings -> Integrations -> Webhooks
     URL: https://k9cmd.maniacranch.com/api/connecteam/webhook
+
+    SECURITY NOTE: x_connecteam_signature is accepted but NOT verified.
+    This endpoint is unauthenticated by necessity (webhooks can't send a
+    bearer token), so it MUST verify a signature before trusting payload
+    contents once this integration is actually turned on -- otherwise
+    anyone who learns/guesses a staff connecteam_user_id can toggle their
+    shift status. Consult Connecteam's webhook docs for their exact HMAC
+    scheme and implement verification here before setting
+    CONNECTEAM_API_KEY in production. Until then, this handler no-ops
+    unless the integration is explicitly configured, closing the gap
+    where it could be hit while dormant.
     """
+    if not CONNECTEAM_API_KEY:
+        return {"received": False, "reason": "Connecteam integration not configured"}
+
     event_type = payload.get("eventType", "")
     user_id = str(payload.get("userId", ""))
     timestamp = payload.get("timestamp")
