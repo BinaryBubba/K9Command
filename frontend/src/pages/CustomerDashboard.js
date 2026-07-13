@@ -30,6 +30,7 @@ const CustomerDashboard = () => {
   const [forms, setForms] = useState([]);
   const [orgSettings, setOrgSettings] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showWelcome, setShowWelcome] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -65,6 +66,10 @@ const CustomerDashboard = () => {
     fetchData();
   }, [user, navigate, fetchData]);
 
+  useEffect(() => {
+    if (!loading && dogs.length === 0) setShowWelcome(true);
+  }, [loading, dogs]);
+
   const handleLogout = () => { logout(); navigate('/'); };
 
   const currentStay = bookings.find(b => ['checked_in','on_site','CHECKED_IN','ON_SITE'].includes(b.status));
@@ -87,6 +92,23 @@ const CustomerDashboard = () => {
 
   return (
     <div className="min-h-screen bg-[#F9F7F2]">
+      {showWelcome && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl p-6 max-w-sm w-full space-y-3 text-center">
+            <DogIcon size={40} className="mx-auto text-primary" />
+            <h2 className="text-lg font-bold">Welcome to K9 Country Club, {user?.full_name?.split(' ')[0] || 'there'}!</h2>
+            <p className="text-sm text-muted-foreground">
+              Let's get your first dog set up on your account so you can schedule a Meet & Greet and book a stay.
+            </p>
+            <Button className="w-full" onClick={() => { setShowWelcome(false); navigate('/customer/add-dog'); }}>
+              Add Your First Dog →
+            </Button>
+            <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => setShowWelcome(false)}>
+              Maybe Later
+            </Button>
+          </div>
+        </div>
+      )}
       <header className="bg-white border-b shadow-sm sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-3 flex justify-between items-center">
           <div>
