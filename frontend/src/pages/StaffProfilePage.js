@@ -376,6 +376,32 @@ const EditForm = ({ staff, isAdmin, onSave, onCancel }) => {
             <Label>Emergency Contact Phone</Label>
             <Input value={form.emergency_contact_phone} onChange={e => setForm(f=>({...f,emergency_contact_phone:e.target.value}))} className="mt-1" />
           </div>
+          <div>
+            <Label>Manager PIN (4 digits)</Label>
+            <Input
+              value={form.manager_pin}
+              onChange={e => {
+                const digits = e.target.value.replace(/\D/g, '').slice(0, 4);
+                setForm(f => ({...f, manager_pin: digits}));
+              }}
+              maxLength={4}
+              inputMode="numeric"
+              placeholder="e.g. 1234"
+              className="mt-1"
+            />
+            <p className="text-xs text-muted-foreground mt-1">Used for manager-override approvals elsewhere in the app. Only takes effect if this account's role is Manager or Admin.</p>
+          </div>
+          {isAdmin && (
+            <div>
+              <Label>Connecteam User ID</Label>
+              <Input
+                value={form.connecteam_user_id}
+                onChange={e => setForm(f=>({...f,connecteam_user_id:e.target.value}))}
+                placeholder="Connecteam staff ID"
+                className="mt-1"
+              />
+            </div>
+          )}
           {isAdmin && (
             <div className="col-span-2">
               <Label>Admin Notes</Label>
