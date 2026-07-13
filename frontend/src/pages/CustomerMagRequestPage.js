@@ -6,7 +6,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { ArrowLeftIcon, CheckCircleIcon, CalendarIcon, ClockIcon } from 'lucide-react';
+import { ArrowLeftIcon, CheckCircleIcon, CalendarIcon, ClockIcon, DogIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ALLOWED_DAYS = [0, 1, 3, 5]; // Sun=0, Mon=1, Wed=3, Fri=5 (JS getDay())
@@ -38,6 +38,12 @@ const CustomerMagRequestPage = () => {
   const [stayEnd, setStayEnd] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [dogCount, setDogCount] = useState(1);
+
+  // Other household dogs that could join this same appointment slot.
+  const [otherDogs, setOtherDogs] = useState([]);
+  const [selectedOtherDogIds, setSelectedOtherDogIds] = useState([]);
+  const [loadingOtherDogs, setLoadingOtherDogs] = useState(true);
 
   const isAllowedDay = (dateStr) => {
     if (!dateStr) return false;
@@ -54,17 +60,45 @@ const CustomerMagRequestPage = () => {
     }
   }, [selectedDate]);
 
+  // Load other dogs in the household that haven't been cleared yet, so the
+  // customer can bring them to the same appointment instead of scheduling
+  // a separate visit for each dog.
+  useEffect(() => {
+    if (!householdId) { setLoadingOtherDogs(false); return; }
+    api.get('/dogs', { params: { household_id: householdId, limit: 50 } })
+      .then(r => {
+        const list = r.data?.dogs || r.data || [];
+        const others = list.filter(d =>
+          d.id !== dogId &&
+          d.meet_and_greet_status !== 'completed' &&
+          d.meet_and_greet_status !== 'waived'
+        );
+        setOtherDogs(others);
+        setSelectedOtherDogIds(others.map(d => d.id));
+      })
+      .catch(() => {})
+      .finally(() => setLoadingOtherDogs(false));
+  }, [householdId, dogId]);
+
+  const toggleOtherDog = (id) => {
+    setSelectedOtherDogIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      await api.post('/meet-and-greets/request', {
-        dog_id: dogId,
+      const allDogIds = [dogId, ...selectedOtherDogIds].filter(Boolean);
+      const res = await api.post('/meet-and-greets/request', {
+        dog_ids: allDogIds,
         household_id: householdId,
         scheduled_date: selectedDate,
         slot: selectedSlot,
         stay_start: stayStart || undefined,
         stay_end: stayEnd || undefined,
       });
+      setDogCount(res.data?.dog_count || allDogIds.length);
       setSubmitted(true);
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Failed to submit request');
@@ -92,8 +126,10 @@ const CustomerMagRequestPage = () => {
         <CheckCircleIcon size={48} className="mx-auto text-green-500" />
         <h2 className="text-xl font-bold">Request Submitted!</h2>
         <p className="text-sm text-muted-foreground">
-          Your Meet & Greet request for {dogName} has been sent.
-          Our staff will confirm your appointment shortly.
+          {dogCount > 1
+            ? `Your Meet & Greet request for ${dogCount} dogs has been sent.`
+            : `Your Meet & Greet request for ${dogName} has been sent.`}
+          {' '}Our staff will confirm your appointment shortly.
           {stayStart && ` Your stay request has also been submitted.`}
         </p>
         <Button className="w-full" onClick={() => navigate('/customer/dashboard')}>Back to Dashboard</Button>
@@ -116,7 +152,31 @@ const CustomerMagRequestPage = () => {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
-        {/* Step 1: Date & Time */}
+        {!loadingOtherDogs && otherDogs.length > 0 && (
+          <Card>
+            <CardHeader className="pb-2 pt-4">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <DogIcon size={14} /> Bring Other Dogs Too?
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 space-y-2">
+              <p className="text-xs text-muted-foreground mb-2">
+                These dogs in your household haven't been cleared yet — add them to this same appointment instead of scheduling separately.
+              </p>
+              {otherDogs.map(dog => (
+                <label key={dog.id} className="flex items-center gap-2 p-2 rounded-lg border border-border cursor-pointer hover:bg-muted">
+                  <input
+                    type="checkbox"
+                    checked={selectedOtherDogIds.includes(dog.id)}
+                    onChange={() => toggleOtherDog(dog.id)}
+                  />
+                  <span className="text-sm">{dog.name}</span>
+                </label>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader className="pb-2 pt-4">
             <CardTitle className="text-sm flex items-center gap-2">
@@ -179,7 +239,6 @@ const CustomerMagRequestPage = () => {
           </Card>
         )}
 
-        {/* Step 2: Stay Dates */}
         {selectedDate && selectedSlot && (
           <Card>
             <CardHeader className="pb-2 pt-4">
@@ -210,7 +269,9 @@ const CustomerMagRequestPage = () => {
         {selectedDate && selectedSlot && (
           <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 space-y-1">
             <p className="text-sm font-medium">Your Request Summary</p>
-            <p className="text-xs text-muted-foreground">Dog: {dogName}</p>
+            <p className="text-xs text-muted-foreground">
+              Dog{selectedOtherDogIds.length > 0 ? 's' : ''}: {[dogName, ...otherDogs.filter(d => selectedOtherDogIds.includes(d.id)).map(d => d.name)].join(', ')}
+            </p>
             <p className="text-xs text-muted-foreground">
               Date: {new Date(selectedDate + 'T12:00:00').toLocaleDateString([], {weekday:'long',month:'long',day:'numeric'})}
             </p>
