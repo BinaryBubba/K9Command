@@ -1,7 +1,7 @@
 """
 SQLAlchemy ORM Models for PostgreSQL
 """
-from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, Text, ForeignKey, Enum, JSON, text
+from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, Date, Text, ForeignKey, Enum, JSON, text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
@@ -694,6 +694,14 @@ class MeetAndGreet(Base):
     created_by = Column(String, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    # These columns were added directly via psql (AUTO_INIT_DB=false) and
+    # were never reflected here, so any ORM (not raw-SQL) access to them
+    # silently raised AttributeError.
+    status = Column(String, default="pending")
+    slot = Column(String, nullable=True)
+    requested_stay_start = Column(Date, nullable=True)
+    requested_stay_end = Column(Date, nullable=True)
+    requested_by = Column(String, ForeignKey("users.id"), nullable=True)
 
 
 # ==================== ROOMS ====================

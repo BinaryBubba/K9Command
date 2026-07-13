@@ -129,11 +129,19 @@ async def request_mag(
     current_user: UserORM = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Customer requests a M&G slot."""
+    """Customer requests a M&G slot for one or more dogs at once.
+
+    Accepts either `dog_ids` (list) or the legacy single `dog_id` for
+    backward compatibility. All dogs share the same scheduled_at/slot --
+    one appointment slot per household, one meet_and_greets row per dog.
+    """
     from sqlalchemy import text
     import uuid
 
-    dog_id = data.get("dog_id")
+    dog_ids = data.get("dog_ids")
+    if not dog_ids:
+        single = data.get("dog_id")
+        dog_ids = [single] if single else []
     household_id = data.get("household_id")
     scheduled_date = data.get("scheduled_date")
     slot = data.get("slot")
@@ -143,10 +151,22 @@ async def request_mag(
     stay_start = _date2.fromisoformat(stay_start_str) if stay_start_str else None
     stay_end = _date2.fromisoformat(stay_end_str) if stay_end_str else None
 
-    if not all([dog_id, household_id, scheduled_date, slot]):
-        raise HTTPException(status_code=400, detail="dog_id, household_id, scheduled_date, slot required")
+    if not dog_ids or not household_id or not scheduled_date or not slot:
+        raise HTTPException(status_code=400, detail="dog_ids, household_id, scheduled_date, slot required")
 
-    # Check slot not taken
+    if current_user.role == UserRole.CUSTOMER and household_id != current_user.household_id:
+        raise HTTPException(status_code=403, detail="You can only schedule for your own household")
+
+    for dog_id in dog_ids:
+        dog_result = await db.execute(
+            select(DogORM).where(DogORM.id == dog_id, DogORM.organization_id == current_user.organization_id)
+        )
+        dog = dog_result.scalar_one_or_none()
+        if not dog:
+            raise HTTPException(status_code=404, detail=f"Dog {dog_id} not found")
+        if current_user.role == UserRole.CUSTOMER and dog.household_id != current_user.household_id:
+            raise HTTPException(status_code=403, detail=f"{dog.name} does not belong to your household")
+
     from datetime import date as _date
     try:
         parsed_date = _date.fromisoformat(scheduled_date)
@@ -158,37 +178,39 @@ async def request_mag(
         AND DATE(scheduled_at) = :date
         AND slot = :slot
         AND status NOT IN ('cancelled', 'completed')
-    """), {"org_id": current_user.organization_id, "date": parsed_date, "slot": slot})
+        AND household_id != :hh_id
+    """), {"org_id": current_user.organization_id, "date": parsed_date, "slot": slot, "hh_id": household_id})
     if taken.fetchone():
         raise HTTPException(status_code=409, detail="This slot is already booked. Please choose another.")
 
-    # Parse scheduled_at from date + slot start time
     from datetime import datetime as _dt
     slot_start = slot.split("-")[0]
     scheduled_at = _dt.fromisoformat(f"{scheduled_date}T{slot_start}:00")
 
-    mag_id = str(uuid.uuid4())
-    await db.execute(text("""
-        INSERT INTO meet_and_greets 
-          (id, organization_id, dog_id, household_id, scheduled_at, slot, status, requested_stay_start, requested_stay_end, requested_by)
-        VALUES (:id, :org_id, :dog_id, :hh_id, :scheduled_at, :slot, 'pending', :stay_start, :stay_end, :user_id)
-    """), {
-        "id": mag_id,
-        "org_id": current_user.organization_id,
-        "dog_id": dog_id,
-        "hh_id": household_id,
-        "scheduled_at": scheduled_at,
-        "slot": slot,
-        "stay_start": stay_start or None,
-        "stay_end": stay_end or None,
-        "user_id": current_user.id
-    })
+    mag_ids = []
+    for dog_id in dog_ids:
+        mag_id = str(uuid.uuid4())
+        mag_ids.append(mag_id)
+        await db.execute(text("""
+            INSERT INTO meet_and_greets 
+              (id, organization_id, dog_id, household_id, scheduled_at, slot, status, requested_stay_start, requested_stay_end, requested_by)
+            VALUES (:id, :org_id, :dog_id, :hh_id, :scheduled_at, :slot, 'pending', :stay_start, :stay_end, :user_id)
+        """), {
+            "id": mag_id,
+            "org_id": current_user.organization_id,
+            "dog_id": dog_id,
+            "hh_id": household_id,
+            "scheduled_at": scheduled_at,
+            "slot": slot,
+            "stay_start": stay_start or None,
+            "stay_end": stay_end or None,
+            "user_id": current_user.id
+        })
 
-    # Create pending booking if stay dates provided
+    booking_id = None
     if stay_start and stay_end:
         import uuid as _uuid
         booking_id = str(_uuid.uuid4())
-        # Get dog_ids for this household
         await db.execute(text("""
             INSERT INTO bookings (id, organization_id, household_id, check_in_date, check_out_date, status, notes)
             VALUES (:id, :org_id, :hh_id, :start, :end, 'PENDING', 'Pending M&G completion')
@@ -199,12 +221,92 @@ async def request_mag(
             "start": stay_start,
             "end": stay_end
         })
-        await db.execute(text("""
-            INSERT INTO booking_dogs (booking_id, dog_id) VALUES (:bid, :did)
-        """), {"bid": booking_id, "did": dog_id})
+        for dog_id in dog_ids:
+            await db.execute(text("""
+                INSERT INTO booking_dogs (booking_id, dog_id) VALUES (:bid, :did)
+            """), {"bid": booking_id, "did": dog_id})
 
     await db.commit()
-    return {"id": mag_id, "status": "pending", "scheduled_at": scheduled_at, "slot": slot}
+    return {
+        "ids": mag_ids,
+        "id": mag_ids[0],
+        "status": "pending",
+        "scheduled_at": scheduled_at,
+        "slot": slot,
+        "booking_id": booking_id,
+        "dog_count": len(dog_ids),
+    }
+
+
+@router.post("/join-existing")
+async def join_existing_mag(
+    data: dict,
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Add another dog to a household's already-scheduled M&G slot."""
+    from sqlalchemy import text
+    import uuid
+
+    dog_id = data.get("dog_id")
+    join_mag_id = data.get("join_mag_id")
+    if not dog_id or not join_mag_id:
+        raise HTTPException(status_code=400, detail="dog_id and join_mag_id are required")
+
+    existing = await db.execute(
+        select(MeetAndGreet).where(
+            MeetAndGreet.id == join_mag_id,
+            MeetAndGreet.organization_id == current_user.organization_id,
+        )
+    )
+    existing_mag = existing.scalar_one_or_none()
+    if not existing_mag:
+        raise HTTPException(status_code=404, detail="Meet & greet not found")
+    if existing_mag.status in ("cancelled", "completed"):
+        raise HTTPException(status_code=400, detail="That meet & greet is no longer upcoming")
+
+    dog_result = await db.execute(
+        select(DogORM).where(DogORM.id == dog_id, DogORM.organization_id == current_user.organization_id)
+    )
+    dog = dog_result.scalar_one_or_none()
+    if not dog:
+        raise HTTPException(status_code=404, detail="Dog not found")
+    if dog.household_id != existing_mag.household_id:
+        raise HTTPException(status_code=403, detail="Dog does not belong to this household meet & greet")
+    if current_user.role == UserRole.CUSTOMER and current_user.household_id != existing_mag.household_id:
+        raise HTTPException(status_code=403, detail="You can only join your own household meet & greet")
+
+    dup = await db.execute(
+        select(MeetAndGreet).where(
+            MeetAndGreet.dog_id == dog_id,
+            MeetAndGreet.scheduled_at == existing_mag.scheduled_at,
+            MeetAndGreet.slot == existing_mag.slot,
+        )
+    )
+    if dup.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="This dog is already on that meet & greet")
+
+    mag_id = str(uuid.uuid4())
+    await db.execute(text("""
+        INSERT INTO meet_and_greets
+          (id, organization_id, dog_id, household_id, scheduled_at, slot, status, requested_by)
+        VALUES (:id, :org_id, :dog_id, :hh_id, :scheduled_at, :slot, 'pending', :user_id)
+    """), {
+        "id": mag_id,
+        "org_id": current_user.organization_id,
+        "dog_id": dog_id,
+        "hh_id": existing_mag.household_id,
+        "scheduled_at": existing_mag.scheduled_at,
+        "slot": existing_mag.slot,
+        "user_id": current_user.id,
+    })
+    await db.commit()
+    return {
+        "id": mag_id,
+        "status": "pending",
+        "scheduled_at": existing_mag.scheduled_at.isoformat() if existing_mag.scheduled_at else None,
+        "slot": existing_mag.slot,
+    }
 
 
 @router.get("/upcoming")
