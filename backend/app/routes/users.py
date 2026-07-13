@@ -440,7 +440,7 @@ async def clock_out(
 
 @router.get("/shift/active")
 async def get_active_staff(
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     """Get all staff currently on shift."""
