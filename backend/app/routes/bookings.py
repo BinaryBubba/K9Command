@@ -75,7 +75,12 @@ async def get_booking(
     booking = await _get_booking_or_404(booking_id, current_user.organization_id, db, current_user)
     bd = await _get_booking_dogs(booking_id, db)
     conflicts = await _check_conflicts(booking, db)
-    result = _booking_dict(booking, bd)
+    hh = (await db.execute(select(Household).where(Household.id == booking.household_id))).scalar_one_or_none()
+    dog_names = []
+    for booking_dog in bd:
+        dog = (await db.execute(select(DogORM).where(DogORM.id == booking_dog.dog_id))).scalar_one_or_none()
+        if dog: dog_names.append(dog.name)
+    result = _booking_dict(booking, bd, household_name=hh.display_name if hh else None, dog_names=dog_names)
     result["conflicts"] = conflicts
     return result
 
