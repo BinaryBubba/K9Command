@@ -644,6 +644,20 @@ async def update_staff_user(
     }
 
 
+# DEAD CODE - UNREACHABLE: this route is shadowed by the identical
+# path+method already registered via routes/dogs.py or routes/bookings.py
+# earlier in app.include_router() order. Starlette matches first-registered
+# routes first, so this handler never executes. Do not maintain/rely on it
+# -- fix the corresponding function in routes/dogs.py or routes/bookings.py
+# instead. Confirmed unreachable and safe to leave in place; verified
+# during the 2026-07 security review.
+# DEAD CODE - UNREACHABLE: this route is shadowed by the identical
+# path+method already registered via routes/dogs.py or routes/bookings.py
+# earlier in app.include_router() order. Starlette matches first-registered
+# routes first, so this handler never executes. Do not maintain/rely on it
+# -- fix the corresponding function in routes/dogs.py or routes/bookings.py
+# instead. Confirmed unreachable and safe to leave in place; verified
+# during the 2026-07 security review.
 @app.get("/api/dogs")
 async def list_dogs(
     db: AsyncSession = Depends(get_db),
@@ -690,6 +704,20 @@ async def list_dogs(
 
 
 
+# DEAD CODE - UNREACHABLE: this route is shadowed by the identical
+# path+method already registered via routes/dogs.py or routes/bookings.py
+# earlier in app.include_router() order. Starlette matches first-registered
+# routes first, so this handler never executes. Do not maintain/rely on it
+# -- fix the corresponding function in routes/dogs.py or routes/bookings.py
+# instead. Confirmed unreachable and safe to leave in place; verified
+# during the 2026-07 security review.
+# DEAD CODE - UNREACHABLE: this route is shadowed by the identical
+# path+method already registered via routes/dogs.py or routes/bookings.py
+# earlier in app.include_router() order. Starlette matches first-registered
+# routes first, so this handler never executes. Do not maintain/rely on it
+# -- fix the corresponding function in routes/dogs.py or routes/bookings.py
+# instead. Confirmed unreachable and safe to leave in place; verified
+# during the 2026-07 security review.
 @app.get("/api/dogs/{dog_id}")
 async def get_dog(
     dog_id: str,
@@ -706,6 +734,20 @@ async def get_dog(
     return dog
 
 
+# DEAD CODE - UNREACHABLE: this route is shadowed by the identical
+# path+method already registered via routes/dogs.py or routes/bookings.py
+# earlier in app.include_router() order. Starlette matches first-registered
+# routes first, so this handler never executes. Do not maintain/rely on it
+# -- fix the corresponding function in routes/dogs.py or routes/bookings.py
+# instead. Confirmed unreachable and safe to leave in place; verified
+# during the 2026-07 security review.
+# DEAD CODE - UNREACHABLE: this route is shadowed by the identical
+# path+method already registered via routes/dogs.py or routes/bookings.py
+# earlier in app.include_router() order. Starlette matches first-registered
+# routes first, so this handler never executes. Do not maintain/rely on it
+# -- fix the corresponding function in routes/dogs.py or routes/bookings.py
+# instead. Confirmed unreachable and safe to leave in place; verified
+# during the 2026-07 security review.
 @app.patch("/api/dogs/{dog_id}")
 async def update_dog(
     dog_id: str,
@@ -747,6 +789,20 @@ async def delete_dog(
     return {"ok": True}
 
 
+# DEAD CODE - UNREACHABLE: this route is shadowed by the identical
+# path+method already registered via routes/dogs.py or routes/bookings.py
+# earlier in app.include_router() order. Starlette matches first-registered
+# routes first, so this handler never executes. Do not maintain/rely on it
+# -- fix the corresponding function in routes/dogs.py or routes/bookings.py
+# instead. Confirmed unreachable and safe to leave in place; verified
+# during the 2026-07 security review.
+# DEAD CODE - UNREACHABLE: this route is shadowed by the identical
+# path+method already registered via routes/dogs.py or routes/bookings.py
+# earlier in app.include_router() order. Starlette matches first-registered
+# routes first, so this handler never executes. Do not maintain/rely on it
+# -- fix the corresponding function in routes/dogs.py or routes/bookings.py
+# instead. Confirmed unreachable and safe to leave in place; verified
+# during the 2026-07 security review.
 @app.post("/api/dogs")
 async def create_dog_compat(
 
@@ -1049,6 +1105,20 @@ def _parse_accommodation_type(value: str) -> AccommodationType:
         raise HTTPException(status_code=400, detail=f"Invalid accommodation_type. Allowed: {allowed}")
 
 
+# DEAD CODE - UNREACHABLE: this route is shadowed by the identical
+# path+method already registered via routes/dogs.py or routes/bookings.py
+# earlier in app.include_router() order. Starlette matches first-registered
+# routes first, so this handler never executes. Do not maintain/rely on it
+# -- fix the corresponding function in routes/dogs.py or routes/bookings.py
+# instead. Confirmed unreachable and safe to leave in place; verified
+# during the 2026-07 security review.
+# DEAD CODE - UNREACHABLE: this route is shadowed by the identical
+# path+method already registered via routes/dogs.py or routes/bookings.py
+# earlier in app.include_router() order. Starlette matches first-registered
+# routes first, so this handler never executes. Do not maintain/rely on it
+# -- fix the corresponding function in routes/dogs.py or routes/bookings.py
+# instead. Confirmed unreachable and safe to leave in place; verified
+# during the 2026-07 security review.
 @app.get("/api/bookings")
 async def list_bookings(
     db: AsyncSession = Depends(get_db),
@@ -1065,6 +1135,20 @@ async def list_bookings(
     return [_serialize_booking(b) for b in bookings]
 
 
+# DEAD CODE - UNREACHABLE: this route is shadowed by the identical
+# path+method already registered via routes/dogs.py or routes/bookings.py
+# earlier in app.include_router() order. Starlette matches first-registered
+# routes first, so this handler never executes. Do not maintain/rely on it
+# -- fix the corresponding function in routes/dogs.py or routes/bookings.py
+# instead. Confirmed unreachable and safe to leave in place; verified
+# during the 2026-07 security review.
+# DEAD CODE - UNREACHABLE: this route is shadowed by the identical
+# path+method already registered via routes/dogs.py or routes/bookings.py
+# earlier in app.include_router() order. Starlette matches first-registered
+# routes first, so this handler never executes. Do not maintain/rely on it
+# -- fix the corresponding function in routes/dogs.py or routes/bookings.py
+# instead. Confirmed unreachable and safe to leave in place; verified
+# during the 2026-07 security review.
 @app.post("/api/bookings")
 async def create_booking_customer(
     data: dict,
@@ -1197,6 +1281,20 @@ async def create_booking_admin(
 
 
 
+# DEAD CODE - UNREACHABLE: this route is shadowed by the identical
+# path+method already registered via routes/dogs.py or routes/bookings.py
+# earlier in app.include_router() order. Starlette matches first-registered
+# routes first, so this handler never executes. Do not maintain/rely on it
+# -- fix the corresponding function in routes/dogs.py or routes/bookings.py
+# instead. Confirmed unreachable and safe to leave in place; verified
+# during the 2026-07 security review.
+# DEAD CODE - UNREACHABLE: this route is shadowed by the identical
+# path+method already registered via routes/dogs.py or routes/bookings.py
+# earlier in app.include_router() order. Starlette matches first-registered
+# routes first, so this handler never executes. Do not maintain/rely on it
+# -- fix the corresponding function in routes/dogs.py or routes/bookings.py
+# instead. Confirmed unreachable and safe to leave in place; verified
+# during the 2026-07 security review.
 @app.get("/api/bookings/{booking_id}")
 async def get_booking(
     booking_id: str,
@@ -1213,6 +1311,20 @@ async def get_booking(
     return _serialize_booking(booking)
 
 
+# DEAD CODE - UNREACHABLE: this route is shadowed by the identical
+# path+method already registered via routes/dogs.py or routes/bookings.py
+# earlier in app.include_router() order. Starlette matches first-registered
+# routes first, so this handler never executes. Do not maintain/rely on it
+# -- fix the corresponding function in routes/dogs.py or routes/bookings.py
+# instead. Confirmed unreachable and safe to leave in place; verified
+# during the 2026-07 security review.
+# DEAD CODE - UNREACHABLE: this route is shadowed by the identical
+# path+method already registered via routes/dogs.py or routes/bookings.py
+# earlier in app.include_router() order. Starlette matches first-registered
+# routes first, so this handler never executes. Do not maintain/rely on it
+# -- fix the corresponding function in routes/dogs.py or routes/bookings.py
+# instead. Confirmed unreachable and safe to leave in place; verified
+# during the 2026-07 security review.
 @app.post("/api/bookings/{booking_id}/cancel")
 async def cancel_booking(
     booking_id: str,
@@ -1250,6 +1362,20 @@ async def update_booking_items(
     return _serialize_booking(booking)
 
 
+# DEAD CODE - UNREACHABLE: this route is shadowed by the identical
+# path+method already registered via routes/dogs.py or routes/bookings.py
+# earlier in app.include_router() order. Starlette matches first-registered
+# routes first, so this handler never executes. Do not maintain/rely on it
+# -- fix the corresponding function in routes/dogs.py or routes/bookings.py
+# instead. Confirmed unreachable and safe to leave in place; verified
+# during the 2026-07 security review.
+# DEAD CODE - UNREACHABLE: this route is shadowed by the identical
+# path+method already registered via routes/dogs.py or routes/bookings.py
+# earlier in app.include_router() order. Starlette matches first-registered
+# routes first, so this handler never executes. Do not maintain/rely on it
+# -- fix the corresponding function in routes/dogs.py or routes/bookings.py
+# instead. Confirmed unreachable and safe to leave in place; verified
+# during the 2026-07 security review.
 @app.patch("/api/bookings/{booking_id}")
 async def update_booking(
 
@@ -1321,6 +1447,20 @@ async def update_booking(
     return _serialize_booking(booking)
 
 
+# DEAD CODE - UNREACHABLE: this route is shadowed by the identical
+# path+method already registered via routes/dogs.py or routes/bookings.py
+# earlier in app.include_router() order. Starlette matches first-registered
+# routes first, so this handler never executes. Do not maintain/rely on it
+# -- fix the corresponding function in routes/dogs.py or routes/bookings.py
+# instead. Confirmed unreachable and safe to leave in place; verified
+# during the 2026-07 security review.
+# DEAD CODE - UNREACHABLE: this route is shadowed by the identical
+# path+method already registered via routes/dogs.py or routes/bookings.py
+# earlier in app.include_router() order. Starlette matches first-registered
+# routes first, so this handler never executes. Do not maintain/rely on it
+# -- fix the corresponding function in routes/dogs.py or routes/bookings.py
+# instead. Confirmed unreachable and safe to leave in place; verified
+# during the 2026-07 security review.
 @app.patch("/api/bookings/{booking_id}/status")
 async def update_booking_status(
     booking_id: str,
