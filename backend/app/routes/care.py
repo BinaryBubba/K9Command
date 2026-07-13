@@ -451,14 +451,14 @@ async def create_handoff(
 
     # Auto-populate active medications
     meds_result = await db.execute(text("""
-        SELECT d.name as dog_name, m.name as med_name, m.dosage, m.frequency
+        SELECT d.name as dog_name, m.name as med_name, m.dose, m.frequency
         FROM medications m JOIN dogs d ON m.dog_id = d.id
         JOIN stays s ON s.dog_id = d.id
         WHERE s.organization_id = :org_id
         AND s.status::text IN ('CHECKED_IN','ON_SITE','on_site','checked_in')
         AND m.is_active = TRUE
     """), {"org_id": current_user.organization_id})
-    meds = [{"dog": r.dog_name, "medication": r.med_name, "dosage": r.dosage, "frequency": r.frequency} for r in meds_result.fetchall()]
+    meds = [{"dog": r.dog_name, "medication": r.med_name, "dosage": r.dose, "frequency": r.frequency} for r in meds_result.fetchall()]
 
     # Auto-populate open incidents
     inc_result = await db.execute(text("""

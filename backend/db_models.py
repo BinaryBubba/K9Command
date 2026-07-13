@@ -101,7 +101,7 @@ class User(Base):
     avatar_key = Column(String, nullable=True)
     first_name = Column(String, nullable=True)
     last_name = Column(String, nullable=True)
-    household_id = Column(String, nullable=True, index=True, unique=True)
+    household_id = Column(String, nullable=True, index=True)  # NOT unique: a household can have >1 portal account
     reset_token = Column(String, nullable=True)
     reset_token_expiry = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
