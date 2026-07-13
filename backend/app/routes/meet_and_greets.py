@@ -210,21 +210,52 @@ async def request_mag(
     booking_id = None
     if stay_start and stay_end:
         import uuid as _uuid
+        import json as _json
+        from db_models import Location as LocationORM
+
+        loc_result = await db.execute(
+            select(LocationORM).where(LocationORM.organization_id == current_user.organization_id).limit(1)
+        )
+        loc = loc_result.scalar_one_or_none()
+        if not loc:
+            loc = LocationORM(
+                id=str(_uuid.uuid4()),
+                organization_id=current_user.organization_id,
+                name="K9 Country Club",
+                address="Elk River, MN",
+                capacity=24,
+                contact_email="",
+                contact_phone="",
+            )
+            db.add(loc)
+            await db.flush()
+
         booking_id = str(_uuid.uuid4())
         await db.execute(text("""
-            INSERT INTO bookings (id, organization_id, household_id, check_in_date, check_out_date, status, notes)
-            VALUES (:id, :org_id, :hh_id, :start, :end, 'PENDING', 'Pending M&G completion')
+            INSERT INTO bookings (id, organization_id, household_id, location_id, check_in_date, check_out_date, status, total_price, notes, dog_ids)
+            VALUES (:id, :org_id, :hh_id, :loc_id, :start, :end, 'PENDING', 0.0, 'Pending M&G completion', :dog_ids)
         """), {
             "id": booking_id,
             "org_id": current_user.organization_id,
             "hh_id": household_id,
+            "loc_id": loc.id,
             "start": stay_start,
-            "end": stay_end
+            "end": stay_end,
+            "dog_ids": _json.dumps(dog_ids),
         })
+        # booking_dogs_v2 is the real association table the rest of the app
+        # reads from (routes/bookings.py's BookingDog ORM) -- plain
+        # "booking_dogs" is legacy/superseded and nothing reads it.
         for dog_id in dog_ids:
             await db.execute(text("""
-                INSERT INTO booking_dogs (booking_id, dog_id) VALUES (:bid, :did)
-            """), {"bid": booking_id, "did": dog_id})
+                INSERT INTO booking_dogs_v2 (id, organization_id, booking_id, dog_id)
+                VALUES (:id, :org_id, :bid, :did)
+            """), {
+                "id": str(_uuid.uuid4()),
+                "org_id": current_user.organization_id,
+                "bid": booking_id,
+                "did": dog_id,
+            })
 
     await db.commit()
     return {
