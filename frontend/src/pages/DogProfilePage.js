@@ -111,7 +111,7 @@ const DogProfilePage = () => {
           <TabsList className="w-full">
             <TabsTrigger value="care" className="flex-1">Care</TabsTrigger>
             <TabsTrigger value="vaccinations" className="flex-1">
-              Vaccines {vaccinations.some(v => v.verification_status !== 'verified') ? '⚠️' : '✓'}
+              Vaccines {vaccinations.some(v => getVaxStatus(v) !== 'verified') ? '⚠️' : '✓'}
             </TabsTrigger>
             <TabsTrigger value="behavior" className="flex-1">Behavior</TabsTrigger>
             <TabsTrigger value="notes" className="flex-1">
