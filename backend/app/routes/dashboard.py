@@ -113,26 +113,38 @@ async def get_dashboard(
             })
 
     # ── Vaccination warnings for on-site dogs ─────────────────────────────────
+    # Flags both unverified records (pending/rejected) AND verified records
+    # that have actually expired or are expiring soon -- previously only
+    # pending/rejected were checked, so a fully "verified" vaccine that
+    # lapsed months ago never triggered any warning at all.
+    vax_expiry_threshold = now + timedelta(days=30)
     vax_warnings = []
     for stay in on_site_stays:
         vax_result = await db.execute(
             select(VaccinationRecord).where(
                 VaccinationRecord.dog_id == stay.dog_id,
                 VaccinationRecord.organization_id == org_id,
-                VaccinationRecord.verification_status.in_([
-                    VaccinationStatus.PENDING,
-                    VaccinationStatus.REJECTED,
-                ])
             )
         )
         for vax in vax_result.scalars().all():
-            dog = (await db.execute(select(DogORM).where(DogORM.id == stay.dog_id))).scalar_one_or_none()
-            vax_warnings.append({
-                "dog_id": stay.dog_id,
-                "dog_name": dog.name if dog else None,
-                "vaccination_type": vax.vaccination_type,
-                "status": vax.verification_status.value,
-            })
+            status = None
+            if vax.verification_status in (VaccinationStatus.PENDING, VaccinationStatus.REJECTED):
+                status = vax.verification_status.value
+            elif vax.verification_status == VaccinationStatus.VERIFIED and vax.expiration_date:
+                if vax.expiration_date < now:
+                    status = "expired"
+                elif vax.expiration_date < vax_expiry_threshold:
+                    status = "expiring_soon"
+
+            if status:
+                dog = (await db.execute(select(DogORM).where(DogORM.id == stay.dog_id))).scalar_one_or_none()
+                vax_warnings.append({
+                    "dog_id": stay.dog_id,
+                    "dog_name": dog.name if dog else None,
+                    "vaccination_type": vax.vaccination_type,
+                    "status": status,
+                    "expiration_date": vax.expiration_date.isoformat() if vax.expiration_date else None,
+                })
 
     # ── Room occupancy summary ────────────────────────────────────────────────
     rooms_result = await db.execute(
