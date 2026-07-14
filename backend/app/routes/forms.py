@@ -211,9 +211,13 @@ async def list_submissions(
     form_id: str,
     household_id: Optional[str] = Query(None),
     dog_id: Optional[str] = Query(None),
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
+    """Reads from customer_form_submissions -- a dedicated table for
+    customer-facing form submissions (intake, boarding agreements, etc).
+    Not to be confused with form_submissions/form_templates, which is a
+    separate, unrelated staff field-report subsystem."""
     conditions = ["fs.organization_id = :org_id", "fs.form_id = :form_id"]
     params = {"org_id": current_user.organization_id, "form_id": form_id}
     if household_id:
@@ -228,7 +232,7 @@ async def list_submissions(
         SELECT fs.id, fs.form_id, fs.submitted_by, fs.dog_id, fs.household_id,
                fs.data, fs.signed_name, fs.signed_at, fs.created_at,
                u.full_name as submitted_by_name
-        FROM form_submissions fs
+        FROM customer_form_submissions fs
         LEFT JOIN users u ON fs.submitted_by = u.id
         WHERE {where}
         ORDER BY fs.created_at DESC
@@ -254,12 +258,13 @@ async def submit_form(
     current_user: UserORM = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """Writes to customer_form_submissions -- see list_submissions docstring."""
     submission_id = str(uuid.uuid4())
     signed_name = data.get("signed_name")
     signed_at = datetime.now(timezone.utc) if signed_name else None
 
     await db.execute(text("""
-        INSERT INTO form_submissions
+        INSERT INTO customer_form_submissions
             (id, organization_id, form_id, submitted_by, dog_id, household_id, stay_id, task_id, data, signed_name, signed_at)
         VALUES
             (:id, :org_id, :form_id, :submitted_by, :dog_id, :household_id, :stay_id, :task_id, :data, :signed_name, :signed_at)
