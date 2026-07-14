@@ -1,37 +1,24 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { API } from '../utils/api';
+import api from '../utils/api';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { Card, CardContent } from './ui/card';
 import { toast } from 'sonner';
-import { ArrowLeftIcon } from 'lucide-react';
+import { ArrowLeftIcon, CheckCircleIcon } from 'lucide-react';
 
 const ForgotPasswordForm = () => {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1); // 1: Email, 2: Token & New Password
   const [email, setEmail] = useState('');
-  const [resetToken, setResetToken] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   const handleRequestReset = async (e) => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      const response = await axios.post(`${API}/auth/forgot-password?email=${encodeURIComponent(email)}`);
-      toast.success('Reset token generated!');
-      
-      // Show token (in production, this would be sent via email)
-      if (response.data.reset_token) {
-        setResetToken(response.data.reset_token);
-      }
-      
-      setStep(2);
+      await api.post('/auth/forgot-password', { email });
+      setSubmitted(true);
     } catch (error) {
       const errorMsg = error.response?.data?.detail || 'Failed to request reset';
       toast.error(typeof errorMsg === 'string' ? errorMsg : 'Failed to request reset');
@@ -40,162 +27,61 @@ const ForgotPasswordForm = () => {
     }
   };
 
-  const handleResetPassword = async (e) => {
-    e.preventDefault();
-
-    if (newPassword !== confirmPassword) {
-      toast.error('Passwords do not match');
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      toast.error('Password must be at least 6 characters');
-      return;
-    }
-
-    // Trim whitespace from token
-    const cleanToken = resetToken.trim();
-    
-    if (!cleanToken) {
-      toast.error('Please enter the reset token');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      await axios.post(`${API}/auth/reset-password`, {
-        reset_token: cleanToken,
-        new_password: newPassword,
-      });
-      toast.success('Password reset successful! You can now login.');
-      navigate('/auth');
-    } catch (error) {
-      console.error('Reset error:', error.response?.data);
-      
-      // Handle different error formats
-      let errorMessage = 'Failed to reset password';
-      
-      if (error.response?.data?.detail) {
-        if (typeof error.response.data.detail === 'string') {
-          errorMessage = error.response.data.detail;
-        } else if (Array.isArray(error.response.data.detail)) {
-          // Pydantic validation errors
-          errorMessage = error.response.data.detail.map(err => err.msg).join(', ');
-        }
-      }
-      
-      toast.error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (submitted) return (
+    <div className="w-full max-w-md space-y-6 text-center">
+      <CheckCircleIcon size={48} className="mx-auto text-green-500" />
+      <h2 className="text-2xl font-serif font-bold text-primary">Check your email</h2>
+      <p className="text-muted-foreground">
+        If an account exists for <strong>{email}</strong>, we've sent a password reset link.
+        It's valid for 1 hour.
+      </p>
+      <Button variant="outline" className="w-full" onClick={() => navigate('/auth')}>
+        Back to Login
+      </Button>
+    </div>
+  );
 
   return (
     <div className="w-full max-w-md space-y-6">
       <Button
         variant="ghost"
-        onClick={() => step === 1 ? navigate('/auth') : setStep(1)}
+        onClick={() => navigate('/auth')}
         className="flex items-center gap-2"
       >
         <ArrowLeftIcon size={18} />
-        {step === 1 ? 'Back to Login' : 'Back'}
+        Back to Login
       </Button>
 
       <div className="text-center">
-        <h2 className="text-3xl font-serif font-bold text-primary">
-          {step === 1 ? 'Forgot Password?' : 'Reset Password'}
-        </h2>
+        <h2 className="text-3xl font-serif font-bold text-primary">Forgot Password?</h2>
         <p className="text-muted-foreground mt-2">
-          {step === 1
-            ? "Enter your email to receive a reset token"
-            : 'Enter your reset token and new password'}
+          Enter your email and we'll send you a link to reset your password.
         </p>
       </div>
 
-      {step === 1 ? (
-        <form onSubmit={handleRequestReset} className="space-y-4">
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              data-testid="forgot-password-email-input"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="mt-1"
-            />
-          </div>
+      <form onSubmit={handleRequestReset} className="space-y-4">
+        <div>
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            data-testid="forgot-password-email-input"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="mt-1"
+          />
+        </div>
 
-          <Button
-            data-testid="request-reset-button"
-            type="submit"
-            className="w-full rounded-full py-6 text-lg font-semibold"
-            disabled={loading}
-          >
-            {loading ? 'Sending...' : 'Send Reset Token'}
-          </Button>
-        </form>
-      ) : (
-        <form onSubmit={handleResetPassword} className="space-y-4">
-          <Card className="bg-blue-50 border-blue-200">
-            <CardContent className="p-4">
-              <p className="text-sm text-blue-900">
-                <strong>Note:</strong> In production, the reset token would be sent to your email.
-                For this demo, the token is displayed above.
-              </p>
-            </CardContent>
-          </Card>
-
-          <div>
-            <Label htmlFor="resetToken">Reset Token</Label>
-            <Input
-              id="resetToken"
-              data-testid="reset-token-input"
-              value={resetToken}
-              onChange={(e) => setResetToken(e.target.value)}
-              required
-              className="mt-1"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="newPassword">New Password</Label>
-            <Input
-              id="newPassword"
-              data-testid="new-password-input"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-              className="mt-1"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
-            <Input
-              id="confirmPassword"
-              data-testid="confirm-password-input"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              className="mt-1"
-            />
-          </div>
-
-          <Button
-            data-testid="reset-password-button"
-            type="submit"
-            className="w-full rounded-full py-6 text-lg font-semibold"
-            disabled={loading}
-          >
-            {loading ? 'Resetting...' : 'Reset Password'}
-          </Button>
-        </form>
-      )}
+        <Button
+          data-testid="request-reset-button"
+          type="submit"
+          className="w-full rounded-full py-6 text-lg font-semibold"
+          disabled={loading}
+        >
+          {loading ? 'Sending...' : 'Send Reset Link'}
+        </Button>
+      </form>
     </div>
   );
 };

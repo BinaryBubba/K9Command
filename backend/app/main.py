@@ -1,6 +1,6 @@
 from uuid import uuid4
 import os
-from datetime import datetime, date, timezone
+from datetime import datetime, date, timezone, timedelta
 from typing import Optional, List
 import uuid
 
@@ -340,6 +340,98 @@ async def login(login_data: LoginRequest, db: AsyncSession = Depends(get_db)):
             created_at=user.created_at,
         ),
     )
+
+
+@app.post("/api/auth/forgot-password")
+async def forgot_password(data: dict, db: AsyncSession = Depends(get_db)):
+    """Request a password reset email. Always returns a generic success
+    message regardless of whether the email matches an account, to avoid
+    leaking which emails are registered."""
+    import secrets, hashlib
+    from email_service import send_email, is_configured
+
+    email = (data.get("email") or "").strip().lower()
+    generic_response = {"message": "If an account with that email exists, a reset link has been sent."}
+
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required")
+
+    user = (await db.execute(select(UserORM).where(UserORM.email == email))).scalar_one_or_none()
+    if not user or not user.is_active:
+        return generic_response
+
+    raw_token = secrets.token_urlsafe(32)
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+
+    await db.execute(text("""
+        INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at)
+        VALUES (:id, :user_id, :token_hash, :expires_at)
+    """), {
+        "id": str(uuid4()),
+        "user_id": user.id,
+        "token_hash": token_hash,
+        "expires_at": expires_at,
+    })
+    await db.commit()
+
+    reset_url = f"https://k9cmd.maniacranch.com/reset-password?token={raw_token}"
+    if is_configured():
+        try:
+            await send_email(
+                to_email=user.email,
+                subject="Reset your K9 Country Club password",
+                html_body=f"""
+                    <p>Hi {user.full_name or ''},</p>
+                    <p>We received a request to reset your K9 Country Club account password.
+                    This link is valid for 1 hour:</p>
+                    <p><a href="{reset_url}">{reset_url}</a></p>
+                    <p>If you didn't request this, you can safely ignore this email.</p>
+                """,
+            )
+        except Exception as e:
+            print(f"Failed to send password reset email: {e}")
+
+    return generic_response
+
+
+@app.post("/api/auth/reset-password")
+async def reset_password(data: dict, db: AsyncSession = Depends(get_db)):
+    """Complete a password reset using the token from the emailed link."""
+    import hashlib
+
+    raw_token = data.get("token")
+    new_password = data.get("new_password")
+    if not raw_token or not new_password:
+        raise HTTPException(status_code=400, detail="token and new_password are required")
+    if len(new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+    result = await db.execute(text("""
+        SELECT id, user_id, expires_at, used_at FROM password_reset_tokens
+        WHERE token_hash = :token_hash
+    """), {"token_hash": token_hash})
+    row = result.fetchone()
+
+    if not row:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset link")
+    if row.used_at is not None:
+        raise HTTPException(status_code=400, detail="This reset link has already been used")
+    if row.expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="This reset link has expired")
+
+    user = (await db.execute(select(UserORM).where(UserORM.id == row.user_id))).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset link")
+
+    user.hashed_password = hash_password(new_password)
+    await db.execute(text("""
+        UPDATE password_reset_tokens SET used_at = :now WHERE id = :id
+    """), {"now": datetime.now(timezone.utc), "id": row.id})
+    await db.commit()
+
+    return {"message": "Password updated successfully. You can now log in."}
 
 
 @app.post("/api/auth/request-staff")

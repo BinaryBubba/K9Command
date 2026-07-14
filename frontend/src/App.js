@@ -7,6 +7,7 @@ import '@/App.css';
 import LandingPage from './pages/LandingPage';
 import AuthPage from './pages/AuthPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import StaffRequestPage from './pages/StaffRequestPage';
 
 // Pages - Admin/Owner
@@ -60,7 +61,7 @@ import useAuthStore from './store/authStore';
 // Protected Route Component
 const AppLayout = ({ children }) => {
   const location = useLocation();
-  const publicPaths = ['/', '/auth', '/forgot-password', '/staff-request'];
+  const publicPaths = ['/', '/auth', '/forgot-password', '/reset-password', '/staff-request'];
   const isPublic = publicPaths.includes(location.pathname);
   return <div className={isPublic ? '' : 'md:ml-52'}>{children}</div>;
 };
@@ -91,6 +92,7 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/staff-request" element={<StaffRequestPage />} />
 
           {/* Staff Routes */}
