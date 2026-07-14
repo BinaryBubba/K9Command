@@ -236,6 +236,8 @@ async def update_booking(
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
 
+    old_status = booking.status
+
     allowed = ["check_in_date", "check_out_date", "special_request", "notes", "status"]
     for field in allowed:
         if field in data and data[field] is not None:
@@ -255,7 +257,47 @@ async def update_booking(
                 setattr(booking, field, data[field])
 
     await db.commit()
+    await db.refresh(booking)
     bd = await _get_booking_dogs(booking_id, db)
+
+    if old_status != BookingStatus.CONFIRMED and booking.status == BookingStatus.CONFIRMED:
+        try:
+            from email_service import send_email, is_configured
+            if is_configured():
+                portal_users = (await db.execute(
+                    select(UserORM).where(
+                        UserORM.household_id == booking.household_id,
+                        UserORM.role == UserRole.CUSTOMER,
+                    )
+                )).scalars().all()
+                dog_names = []
+                for bdog in bd:
+                    d = (await db.execute(select(DogORM).where(DogORM.id == bdog.dog_id))).scalar_one_or_none()
+                    if d:
+                        dog_names.append(d.name)
+                dog_list = ", ".join(dog_names) if dog_names else "your dog(s)"
+                check_in = booking.check_in_date.strftime("%A, %B %-d, %Y") if booking.check_in_date else "TBD"
+                check_out = booking.check_out_date.strftime("%A, %B %-d, %Y") if booking.check_out_date else "TBD"
+                for u in portal_users:
+                    if not u.email:
+                        continue
+                    try:
+                        await send_email(
+                            to_email=u.email,
+                            subject="Your K9 Country Club Booking is Confirmed!",
+                            html_body=f"""
+                                <p>Hi {u.full_name or ''},</p>
+                                <p>Great news -- your boarding reservation for <strong>{dog_list}</strong> is confirmed!</p>
+                                <p><strong>Check-in:</strong> {check_in}<br>
+                                <strong>Check-out:</strong> {check_out}</p>
+                                <p>We look forward to seeing you!</p>
+                            """,
+                        )
+                    except Exception as e:
+                        print(f"Failed to send booking confirmation email to {u.email}: {e}")
+        except Exception as e:
+            print(f"Booking confirmation email step failed: {e}")
+
     return _booking_dict(booking, bd)
 
 
