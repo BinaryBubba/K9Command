@@ -397,15 +397,58 @@ async def update_mag_status(
 ):
     """Staff/admin/manager only -- meet-and-greet scheduling status is a
     staff decision, not something a customer can flip on their own record."""
-    from sqlalchemy import text
     status = data.get("status", "").lower()
     if status not in ["pending", "confirmed", "cancelled"]:
         raise HTTPException(status_code=400, detail="Invalid status")
-    await db.execute(text("""
-        UPDATE meet_and_greets SET status = :status
-        WHERE id = :id AND organization_id = :org_id
-    """), {"status": status, "id": mag_id, "org_id": current_user.organization_id})
+
+    mag_result = await db.execute(
+        select(MeetAndGreet).where(
+            MeetAndGreet.id == mag_id,
+            MeetAndGreet.organization_id == current_user.organization_id,
+        )
+    )
+    mag = mag_result.scalar_one_or_none()
+    if not mag:
+        raise HTTPException(status_code=404, detail="Meet & greet not found")
+
+    old_status = mag.status
+    mag.status = status
     await db.commit()
+    await db.refresh(mag)
+
+    if old_status != "confirmed" and status == "confirmed":
+        try:
+            from email_service import send_email, is_configured
+            if is_configured():
+                dog = (await db.execute(select(DogORM).where(DogORM.id == mag.dog_id))).scalar_one_or_none()
+                portal_users = (await db.execute(
+                    select(UserORM).where(
+                        UserORM.household_id == mag.household_id,
+                        UserORM.role == UserRole.CUSTOMER,
+                    )
+                )).scalars().all()
+                dog_name = dog.name if dog else "your dog"
+                when = mag.scheduled_at.strftime("%A, %B %-d, %Y") if mag.scheduled_at else "your scheduled date"
+                slot_label = mag.slot or ""
+                for u in portal_users:
+                    if not u.email:
+                        continue
+                    try:
+                        await send_email(
+                            to_email=u.email,
+                            subject="Your Meet & Greet is Confirmed!",
+                            html_body=f"""
+                                <p>Hi {u.full_name or ''},</p>
+                                <p>Your Meet & Greet for <strong>{dog_name}</strong> is confirmed for
+                                <strong>{when}</strong>{f' ({slot_label})' if slot_label else ''}.</p>
+                                <p>We look forward to meeting you!</p>
+                            """,
+                        )
+                    except Exception as e:
+                        print(f"Failed to send M&G confirmation email to {u.email}: {e}")
+        except Exception as e:
+            print(f"M&G confirmation email step failed: {e}")
+
     return {"updated": True}
 
 
