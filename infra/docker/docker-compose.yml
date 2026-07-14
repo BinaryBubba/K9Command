@@ -54,6 +54,7 @@ services:
       - MS_GRAPH_CLIENT_ID=${MS_GRAPH_CLIENT_ID}
       - MS_GRAPH_CLIENT_SECRET=${MS_GRAPH_CLIENT_SECRET}
       - MS_GRAPH_SENDER_EMAIL=${MS_GRAPH_SENDER_EMAIL}
+      - CRON_SECRET=${CRON_SECRET}
 
     volumes:
       - ../../backend:/workspace/backend

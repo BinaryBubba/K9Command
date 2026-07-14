@@ -2,7 +2,7 @@
 Vaccination Records API
 Handles vaccination record creation, verification workflow, and expiry tracking.
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional
@@ -254,3 +254,78 @@ def _vax_dict(v: VaccinationRecord) -> dict:
     }
 
 from typing import Optional
+
+
+@router.post("/send-expiry-reminders")
+async def send_expiry_reminders(
+    x_cron_secret: Optional[str] = Header(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Meant to be called once a day by a cron job (see
+    scripts/send_vaccination_reminders.sh), not by any user-facing UI.
+    Finds verified vaccination records expiring within 14 days that
+    haven't already had a reminder sent, emails the household's portal
+    accounts, and marks reminder_sent_at so it only ever fires once per
+    record regardless of how many times the job runs."""
+    import os
+    from sqlalchemy import text
+
+    expected_secret = os.environ.get("CRON_SECRET")
+    if not expected_secret or x_cron_secret != expected_secret:
+        raise HTTPException(status_code=403, detail="Invalid or missing cron secret")
+
+    from email_service import send_email, is_configured
+    if not is_configured():
+        return {"sent": 0, "reason": "Email is not configured"}
+
+    now = datetime.now(timezone.utc)
+    window_end = now + timedelta(days=14)
+
+    result = await db.execute(text("""
+        SELECT id, dog_id, vaccination_type, expiration_date, organization_id
+        FROM vaccination_records
+        WHERE verification_status = 'VERIFIED'
+        AND reminder_sent_at IS NULL
+        AND expiration_date IS NOT NULL
+        AND expiration_date BETWEEN :now AND :window_end
+    """), {"now": now, "window_end": window_end})
+    rows = result.fetchall()
+
+    sent_count = 0
+    for row in rows:
+        dog = (await db.execute(select(DogORM).where(DogORM.id == row.dog_id))).scalar_one_or_none()
+        if not dog:
+            continue
+        portal_users = (await db.execute(
+            select(UserORM).where(
+                UserORM.household_id == dog.household_id,
+                UserORM.role == UserRole.CUSTOMER,
+            )
+        )).scalars().all()
+
+        expiry_str = row.expiration_date.strftime("%A, %B %-d, %Y")
+        for u in portal_users:
+            if not u.email:
+                continue
+            try:
+                await send_email(
+                    to_email=u.email,
+                    subject=f"{dog.name}'s {row.vaccination_type} vaccine is expiring soon",
+                    html_body=f"""
+                        <p>Hi {u.full_name or ''},</p>
+                        <p><strong>{dog.name}'s</strong> {row.vaccination_type} vaccination
+                        expires on <strong>{expiry_str}</strong>.</p>
+                        <p>Please update your dog's vaccination records with us before your next
+                        stay to avoid any delays at check-in.</p>
+                    """,
+                )
+                sent_count += 1
+            except Exception as e:
+                print(f"Failed to send vaccination reminder to {u.email}: {e}")
+
+        await db.execute(text("""
+            UPDATE vaccination_records SET reminder_sent_at = :now WHERE id = :id
+        """), {"now": now, "id": row.id})
+
+    await db.commit()
+    return {"records_processed": len(rows), "emails_sent": sent_count}
