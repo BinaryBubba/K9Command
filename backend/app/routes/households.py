@@ -25,7 +25,7 @@ async def list_households(
     status: Optional[str] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     org_id = current_user.organization_id
@@ -57,7 +57,7 @@ async def get_household(
     current_user: UserORM = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    h = await _get_household_or_404(household_id, current_user.organization_id, db)
+    h = await _get_household_or_404(household_id, current_user.organization_id, db, current_user)
     contacts = await _get_contacts(household_id, db)
     result = _household_dict(h)
     result["contacts"] = [_contact_dict(c) for c in contacts]
@@ -69,7 +69,7 @@ async def get_household(
 @router.post("")
 async def create_household(
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     org_id = current_user.organization_id
@@ -137,10 +137,10 @@ async def create_household(
 async def update_household(
     household_id: str,
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
-    h = await _get_household_or_404(household_id, current_user.organization_id, db)
+    h = await _get_household_or_404(household_id, current_user.organization_id, db, current_user)
 
     allowed = ["display_name", "preferred_contact_method", "general_notes",
                "referral_source", "status", "meet_and_greet_status"]
@@ -162,6 +162,7 @@ async def get_contacts(
     current_user: UserORM = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    await _get_household_or_404(household_id, current_user.organization_id, db, current_user)
     contacts = await _get_contacts(household_id, db)
     return [_contact_dict(c) for c in contacts]
 
@@ -170,10 +171,10 @@ async def get_contacts(
 async def add_contact(
     household_id: str,
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
-    h = await _get_household_or_404(household_id, current_user.organization_id, db)
+    h = await _get_household_or_404(household_id, current_user.organization_id, db, current_user)
 
     first_name = data.get("first_name", "").strip()
     if not first_name:
@@ -207,7 +208,7 @@ async def check_duplicates(
     name: Optional[str] = Query(None),
     email: Optional[str] = Query(None),
     phone: Optional[str] = Query(None),
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     """Check for likely duplicate households before creating a new one."""
@@ -244,7 +245,7 @@ async def check_duplicates(
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-async def _get_household_or_404(household_id: str, org_id: str, db: AsyncSession) -> Household:
+async def _get_household_or_404(household_id: str, org_id: str, db: AsyncSession, current_user: UserORM = None) -> Household:
     result = await db.execute(
         select(Household).where(
             Household.id == household_id,
@@ -254,6 +255,9 @@ async def _get_household_or_404(household_id: str, org_id: str, db: AsyncSession
     h = result.scalar_one_or_none()
     if not h:
         raise HTTPException(status_code=404, detail="Household not found")
+    if current_user is not None and current_user.role == UserRole.CUSTOMER:
+        if household_id != current_user.household_id:
+            raise HTTPException(status_code=404, detail="Household not found")
     return h
 
 async def _get_contacts(household_id: str, db: AsyncSession):
@@ -390,7 +394,7 @@ async def import_customers_csv(
 @router.get("/{household_id}/notes")
 async def get_household_notes(
     household_id: str,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     from sqlalchemy import text
@@ -411,7 +415,7 @@ async def get_household_notes(
 async def add_household_note(
     household_id: str,
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     from sqlalchemy import text
