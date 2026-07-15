@@ -2,10 +2,10 @@
 Meet and Greet API
 Handles scheduling, outcome recording, and eligibility updates.
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from database import get_db
 from auth import get_current_user, require_role
 from db_models import (
@@ -580,3 +580,78 @@ def _mag_dict(m: MeetAndGreet) -> dict:
         "completed_at": m.completed_at.isoformat() if m.completed_at else None,
         "created_at": m.created_at.isoformat() if m.created_at else None,
     }
+
+
+@router.post("/send-reminders")
+async def send_mag_reminders(
+    x_cron_secret: str = Header(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Meant to be called once a day by a cron job (see
+    scripts/send_mag_reminders.sh), not by any user-facing UI. Finds
+    pending/confirmed meet-and-greets scheduled within the next 2 days
+    that haven't already had a reminder sent, emails the household's
+    portal accounts, and marks reminder_sent_at so it only ever fires
+    once per record."""
+    import os
+    from sqlalchemy import text
+
+    expected_secret = os.environ.get("CRON_SECRET")
+    if not expected_secret or x_cron_secret != expected_secret:
+        raise HTTPException(status_code=403, detail="Invalid or missing cron secret")
+
+    from email_service import send_email, is_configured
+    if not is_configured():
+        return {"sent": 0, "reason": "Email is not configured"}
+
+    now = datetime.now(timezone.utc)
+    window_end = now + timedelta(days=2)
+
+    result = await db.execute(text("""
+        SELECT id, dog_id, household_id, scheduled_at, slot
+        FROM meet_and_greets
+        WHERE status IN ('pending', 'confirmed')
+        AND reminder_sent_at IS NULL
+        AND scheduled_at IS NOT NULL
+        AND scheduled_at BETWEEN :now AND :window_end
+    """), {"now": now, "window_end": window_end})
+    rows = result.fetchall()
+
+    sent_count = 0
+    for row in rows:
+        dog = (await db.execute(select(DogORM).where(DogORM.id == row.dog_id))).scalar_one_or_none()
+        if not dog:
+            continue
+        portal_users = (await db.execute(
+            select(UserORM).where(
+                UserORM.household_id == row.household_id,
+                UserORM.role == UserRole.CUSTOMER,
+            )
+        )).scalars().all()
+
+        when = row.scheduled_at.strftime("%A, %B %-d, %Y")
+        slot_label = row.slot or ""
+        for u in portal_users:
+            if not u.email:
+                continue
+            try:
+                await send_email(
+                    to_email=u.email,
+                    subject="Reminder: Your Meet & Greet is Coming Up!",
+                    html_body=f"""
+                        <p>Hi {u.full_name or ''},</p>
+                        <p>Just a reminder -- <strong>{dog.name}'s</strong> Meet & Greet is coming up on
+                        <strong>{when}</strong>{f' ({slot_label})' if slot_label else ''}.</p>
+                        <p>We look forward to seeing you!</p>
+                    """,
+                )
+                sent_count += 1
+            except Exception as e:
+                print(f"Failed to send M&G reminder to {u.email}: {e}")
+
+        await db.execute(text("""
+            UPDATE meet_and_greets SET reminder_sent_at = :now WHERE id = :id
+        """), {"now": now, "id": row.id})
+
+    await db.commit()
+    return {"records_processed": len(rows), "emails_sent": sent_count}

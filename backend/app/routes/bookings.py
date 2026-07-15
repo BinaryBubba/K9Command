@@ -2,7 +2,7 @@
 Bookings API
 Handles reservation creation, capacity checks, conflict detection, and calendar data.
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, func
 from typing import Optional, List
@@ -687,3 +687,78 @@ async def add_booking_note(
     })
     await db.commit()
     return {"created": True}
+
+
+@router.post("/send-reminders")
+async def send_booking_reminders(
+    x_cron_secret: str = Header(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Meant to be called once a day by a cron job (see
+    scripts/send_booking_reminders.sh), not by any user-facing UI. Finds
+    confirmed bookings checking in within the next 2 days that haven't
+    already had a reminder sent, emails the household's portal accounts,
+    and marks reminder_sent_at so it only ever fires once per booking."""
+    import os
+
+    expected_secret = os.environ.get("CRON_SECRET")
+    if not expected_secret or x_cron_secret != expected_secret:
+        raise HTTPException(status_code=403, detail="Invalid or missing cron secret")
+
+    from email_service import send_email, is_configured
+    if not is_configured():
+        return {"sent": 0, "reason": "Email is not configured"}
+
+    now = datetime.now(timezone.utc)
+    window_end = now + timedelta(days=2)
+
+    result = await db.execute(
+        select(Booking).where(
+            Booking.status == BookingStatus.CONFIRMED,
+            Booking.reminder_sent_at.is_(None),
+            Booking.check_in_date.isnot(None),
+            Booking.check_in_date.between(now, window_end),
+        )
+    )
+    bookings_to_remind = result.scalars().all()
+
+    sent_count = 0
+    for booking in bookings_to_remind:
+        bd = await _get_booking_dogs(booking.id, db)
+        dog_names = []
+        for bdog in bd:
+            d = (await db.execute(select(DogORM).where(DogORM.id == bdog.dog_id))).scalar_one_or_none()
+            if d:
+                dog_names.append(d.name)
+        dog_list = ", ".join(dog_names) if dog_names else "your dog(s)"
+
+        portal_users = (await db.execute(
+            select(UserORM).where(
+                UserORM.household_id == booking.household_id,
+                UserORM.role == UserRole.CUSTOMER,
+            )
+        )).scalars().all()
+
+        check_in = booking.check_in_date.strftime("%A, %B %-d, %Y")
+        for u in portal_users:
+            if not u.email:
+                continue
+            try:
+                await send_email(
+                    to_email=u.email,
+                    subject="Reminder: Your K9 Country Club Stay is Coming Up!",
+                    html_body=f"""
+                        <p>Hi {u.full_name or ''},</p>
+                        <p>Just a reminder -- <strong>{dog_list}'s</strong> stay with us starts on
+                        <strong>{check_in}</strong>.</p>
+                        <p>We look forward to seeing you!</p>
+                    """,
+                )
+                sent_count += 1
+            except Exception as e:
+                print(f"Failed to send booking reminder to {u.email}: {e}")
+
+        booking.reminder_sent_at = now
+
+    await db.commit()
+    return {"records_processed": len(bookings_to_remind), "emails_sent": sent_count}

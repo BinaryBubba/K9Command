@@ -211,6 +211,7 @@ class Booking(Base):
     customer_id = Column(String, ForeignKey("users.id"), nullable=True)
     created_by = Column(String, ForeignKey("users.id"), nullable=True)
     modification_reason = Column(Text, nullable=True)
+    reminder_sent_at = Column(DateTime(timezone=True), nullable=True)
     dog_ids = Column(JSON, default=list)  # Store dog IDs as JSON array
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
