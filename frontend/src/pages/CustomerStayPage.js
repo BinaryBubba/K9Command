@@ -22,6 +22,7 @@ const CustomerStayPage = () => {
   const [booking, setBooking] = useState(null);
   const [notes, setNotes] = useState([]);
   const [photos, setPhotos] = useState([]);
+  const [dailyUpdates, setDailyUpdates] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
@@ -42,6 +43,9 @@ const CustomerStayPage = () => {
         }
       }
       setPhotos(dogPhotos);
+
+      const updatesRes = await api.get('/daily-updates', { params: { booking_id: bookingId } }).catch(() => ({ data: [] }));
+      setDailyUpdates(updatesRes.data || []);
     } catch { toast.error('Failed to load stay'); }
     finally { setLoading(false); }
   }, [bookingId]);
@@ -128,6 +132,33 @@ const CustomerStayPage = () => {
           </div>
         )}
 
+        {/* Daily updates from staff -- photos and notes sent during the stay */}
+        {dailyUpdates.length > 0 && (
+          <div>
+            <h3 className="text-sm font-medium mb-2">Updates From Your Dog's Stay</h3>
+            {dailyUpdates.map(update => (
+              <Card key={update.id} className="mb-2">
+                <CardContent className="py-3 px-4 space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(update.date).toLocaleDateString([], {weekday:'long', month:'short', day:'numeric'})}
+                  </p>
+                  {update.staff_snippets?.map((note, i) => (
+                    <p key={i} className="text-sm">{note}</p>
+                  ))}
+                  {update.media_urls?.length > 0 && (
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      {update.media_urls.map((url, i) => (
+                        <div key={i} className="rounded-xl overflow-hidden aspect-square bg-muted">
+                          <img src={url} alt="Daily update" className="w-full h-full object-cover" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
         {/* Staff notes visible to customer */}
         {notes.filter(n => n.note_text).length > 0 ? (
           <div>

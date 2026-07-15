@@ -45,6 +45,7 @@ import PlaygroupHistoryPage from './pages/PlaygroupHistoryPage';
 import FormsPage from './pages/FormsPage';
 import AdminFormsPage from './pages/AdminFormsPage';
 import ShiftHandoffPage from './pages/ShiftHandoffPage';
+import StaffDailyUpdatePage from './pages/StaffDailyUpdatePage';
 import MeetAndGreetPage from './pages/MeetAndGreetPage';
 // Pages - Customer
 import CustomerDashboard from "./pages/CustomerDashboard";
@@ -353,6 +354,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['admin', 'staff', 'manager']}>
                 <ShiftHandoffPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/daily-update"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'staff', 'manager']}>
+                <StaffDailyUpdatePage />
               </ProtectedRoute>
             }
           />

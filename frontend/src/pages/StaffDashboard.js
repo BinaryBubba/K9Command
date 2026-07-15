@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge';
 import {
   DogIcon, CalendarIcon, AlertCircleIcon, LogOutIcon,
-  HomeIcon, ActivityIcon, ClipboardListIcon, RefreshCwIcon, ClockIcon} from 'lucide-react';
+  HomeIcon, ActivityIcon, ClipboardListIcon, RefreshCwIcon, ClockIcon, CameraIcon} from 'lucide-react';
 import { toast } from 'sonner';
 
 const StaffDashboard = () => {
@@ -136,6 +136,12 @@ const StaffDashboard = () => {
             label="Bookings"
             sublabel="View schedule"
             onClick={() => navigate('/staff/bookings')}
+          />
+          <ActionCard
+            icon={<CameraIcon size={22} />}
+            label="Daily Update"
+            sublabel="Send a photo/note update"
+            onClick={() => navigate('/staff/daily-update')}
           />
         </div>
 
