@@ -9,7 +9,7 @@ from typing import Optional
 from datetime import datetime, timezone
 from database import get_db
 from auth import get_current_user, require_role
-from db_models import Task, TaskStatus, TaskPriority, User as UserORM, UserRole
+from db_models import Task, TaskStatus, TaskPriority, FormSubmissionORM, User as UserORM, UserRole
 import uuid
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
@@ -84,6 +84,8 @@ async def create_task(
         checklist=data.get("checklist", []),
         tags=data.get("tags", []),
         recurrence=data.get("recurrence"),
+        form_template_id=data.get("form_template_id"),
+        require_form_completion=bool(data.get("require_form_completion", False)),
     )
     db.add(task)
     await db.commit()
@@ -167,7 +169,8 @@ async def update_task(
     task = await _get_task_or_404(task_id, current_user.organization_id, db)
 
     allowed = ["title", "description", "priority", "assigned_to",
-               "due_date", "checklist", "tags", "recurrence", "dog_id"]
+               "due_date", "checklist", "tags", "recurrence", "dog_id",
+               "form_template_id", "require_form_completion"]
     for field in allowed:
         if field in data:
             val = data[field]
@@ -175,6 +178,8 @@ async def update_task(
                 val = _parse_date(val)
             elif field == "priority":
                 val = val.upper() if val else val
+            elif field == "require_form_completion":
+                val = bool(val)
             setattr(task, field, val)
 
     await db.commit()
@@ -189,6 +194,21 @@ async def complete_task(
     db: AsyncSession = Depends(get_db),
 ):
     task = await _get_task_or_404(task_id, current_user.organization_id, db)
+
+    if task.require_form_completion and task.form_template_id:
+        submission_result = await db.execute(
+            select(FormSubmissionORM).where(
+                FormSubmissionORM.related_type == "task",
+                FormSubmissionORM.related_id == task.id,
+                FormSubmissionORM.status.in_(["submitted", "approved"]),
+            )
+        )
+        if not submission_result.scalar_one_or_none():
+            raise HTTPException(
+                status_code=400,
+                detail="This task requires a form to be submitted before it can be completed.",
+            )
+
     task.status = TaskStatus.COMPLETED
     task.completed_at = datetime.now(timezone.utc)
     task.completed_by = current_user.id
@@ -258,6 +278,8 @@ def _task_dict(t: Task) -> dict:
         "checklist": t.checklist or [],
         "tags": t.tags or [],
         "recurrence": t.recurrence,
+        "form_template_id": t.form_template_id,
+        "require_form_completion": t.require_form_completion,
         "created_at": t.created_at.isoformat() if t.created_at else None,
         "updated_at": t.updated_at.isoformat() if t.updated_at else None,
     }

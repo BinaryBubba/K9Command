@@ -30,6 +30,7 @@ from app.routes.incidents import router as incidents_router
 from app.routes.uploads import router as uploads_router
 from app.routes.users import router as users_router
 from app.routes.forms import router as forms_router
+from app.routes.task_forms import router as task_forms_router
 from app.routes.connecteam import router as connecteam_router
 from app.routes.playgroups import router as playgroups_router
 from app.routes.facility import router as facility_router
@@ -143,6 +144,7 @@ app.include_router(incidents_router)
 app.include_router(uploads_router)
 app.include_router(users_router)
 app.include_router(forms_router)
+app.include_router(task_forms_router)
 app.include_router(connecteam_router)
 app.include_router(playgroups_router)
 

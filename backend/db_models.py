@@ -1044,6 +1044,8 @@ class Task(Base):
     tags = Column(JSON, default=list)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    form_template_id = Column(String, ForeignKey("form_templates.id"), nullable=True)
+    require_form_completion = Column(Boolean, default=False)
 
 
 # ==================== INCIDENTS ====================
