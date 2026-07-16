@@ -37,6 +37,7 @@ const TaskDashboardPage = () => {
   const [editTask, setEditTask] = useState(null);
   const [staff, setStaff] = useState([]);
   const [completed, setCompleted] = useState([]);
+  const [formModalTask, setFormModalTask] = useState(null);
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -71,13 +72,17 @@ const TaskDashboardPage = () => {
   };
 
 
-  const completeTask = async (taskId) => {
+  const completeTask = async (task) => {
+    if (task.require_form_completion && task.form_template_id) {
+      setFormModalTask(task);
+      return;
+    }
     try {
-      await api.post(`/tasks/${taskId}/complete`);
+      await api.post(`/tasks/${task.id}/complete`);
       toast.success('Task completed');
       fetchTasks();
-    } catch {
-      toast.error('Failed to complete task');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to complete task');
     }
   };
 
@@ -147,6 +152,13 @@ const TaskDashboardPage = () => {
           onSuccess={() => { setShowCreate(false); fetchTasks(); }}
         />
       )}
+      {formModalTask && (
+        <TaskFormModal
+          task={formModalTask}
+          onClose={() => setFormModalTask(null)}
+          onSuccess={() => { setFormModalTask(null); fetchTasks(); }}
+        />
+      )}
     </div>
   );
 };
@@ -201,7 +213,7 @@ const TaskList = ({ tasks, onComplete, onRefresh, showAssignee, onEdit }) => {
                 )}
                 {task.status !== 'completed' && task.status !== 'cancelled' && (
                   <Button size="sm" variant="outline" className="text-green-600 border-green-200 hover:bg-green-50"
-                    onClick={() => onComplete(task.id)}>
+                    onClick={() => onComplete(task)}>
                     <CheckCircleIcon size={14} className="mr-1" /> Done
                   </Button>
                 )}
@@ -444,5 +456,108 @@ const EditTaskModal = ({ task, staff, onClose, onSuccess }) => {
     </div>
   );
 };
+
+
+
+const TaskFormModal = ({ task, onClose, onSuccess }) => {
+  const [template, setTemplate] = useState(null);
+  const [values, setValues] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    api.get(`/task-forms/templates/${task.form_template_id}`)
+      .then(res => setTemplate(res.data))
+      .catch(() => toast.error('Failed to load form'))
+      .finally(() => setLoading(false));
+  }, [task.form_template_id]);
+
+  const handleSubmit = async () => {
+    const missing = (template?.fields || []).filter(f => f.required && !values[f.key]);
+    if (missing.length > 0) {
+      toast.error(`Please fill in: ${missing.map(f => f.label).join(', ')}`);
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await api.post('/task-forms/submissions', {
+        template_id: task.form_template_id,
+        values,
+        related_type: 'task',
+        related_id: task.id,
+      });
+      await api.post(`/tasks/${task.id}/complete`);
+      toast.success('Form submitted and task completed!');
+      onSuccess();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to submit form');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl p-5 max-w-md w-full max-h-[85vh] overflow-y-auto space-y-4">
+        <div>
+          <h3 className="font-bold text-base">Complete Required Form</h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            This form must be submitted to complete "{task.title}".
+          </p>
+        </div>
+
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading form...</p>
+        ) : !template ? (
+          <p className="text-sm text-red-600">Could not load the required form template.</p>
+        ) : (
+          <div className="space-y-3">
+            {(template.fields || []).map(field => (
+              <div key={field.key}>
+                <Label>{field.label}{field.required && ' *'}</Label>
+                {field.type === 'boolean' ? (
+                  <label className="flex items-center gap-2 mt-1">
+                    <input
+                      type="checkbox"
+                      checked={!!values[field.key]}
+                      onChange={e => setValues(v => ({ ...v, [field.key]: e.target.checked }))}
+                    />
+                    <span className="text-sm">Yes</span>
+                  </label>
+                ) : field.type === 'select' ? (
+                  <select
+                    className="mt-1 w-full border border-border rounded-md h-9 px-2 text-sm"
+                    value={values[field.key] || ''}
+                    onChange={e => setValues(v => ({ ...v, [field.key]: e.target.value }))}
+                  >
+                    <option value="">Select...</option>
+                    {(field.options || []).map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <Input
+                    type={field.type === 'number' ? 'number' : 'text'}
+                    value={values[field.key] || ''}
+                    onChange={e => setValues(v => ({ ...v, [field.key]: e.target.value }))}
+                    className="mt-1"
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex gap-2 pt-1">
+          <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+          <Button className="flex-1" onClick={handleSubmit} disabled={submitting || loading || !template}>
+            {submitting ? 'Submitting...' : 'Submit & Complete'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 export default TaskDashboardPage;
