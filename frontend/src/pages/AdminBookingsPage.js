@@ -10,6 +10,7 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { ArrowLeftIcon, PlusIcon, CalendarIcon, DogIcon, AlertCircleIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { BOOKING_TIME_SLOTS } from '../utils/timeSlots';
 
 const STATUS_COLORS = {
   confirmed: 'bg-blue-100 text-blue-700',
@@ -188,7 +189,9 @@ const CreateBookingModal = ({ onClose, onSuccess }) => {
     household_id: '',
     dog_ids: [],
     check_in_date: '',
+    check_in_time: '08:00',
     check_out_date: '',
+    check_out_time: '08:00',
     notes: '',
   });
   const [conflicts, setConflicts] = useState([]);
@@ -217,8 +220,8 @@ const CreateBookingModal = ({ onClose, onSuccess }) => {
     if (!form.check_in_date || !form.check_out_date || form.dog_ids.length === 0) return;
     try {
       const res = await api.post('/bookings/check-conflicts', {
-        check_in_date: form.check_in_date,
-        check_out_date: form.check_out_date,
+        check_in_date: new Date(`${form.check_in_date}T${form.check_in_time}`).toISOString(),
+        check_out_date: new Date(`${form.check_out_date}T${form.check_out_time}`).toISOString(),
         dog_ids: form.dog_ids,
       });
       setConflicts(res.data.conflicts || []);
@@ -283,8 +286,8 @@ const CreateBookingModal = ({ onClose, onSuccess }) => {
     try {
       await api.post('/bookings', {
         ...form,
-        check_in_date: new Date(form.check_in_date).toISOString(),
-        check_out_date: new Date(form.check_out_date).toISOString(),
+        check_in_date: new Date(`${form.check_in_date}T${form.check_in_time}`).toISOString(),
+        check_out_date: new Date(`${form.check_out_date}T${form.check_out_time}`).toISOString(),
       });
       toast.success('Booking created');
       onSuccess();
@@ -432,16 +435,34 @@ const CreateBookingModal = ({ onClose, onSuccess }) => {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Check In *</Label>
-              <Input type="datetime-local" value={form.check_in_date}
+              <Label>Check In Date *</Label>
+              <Input type="date" value={form.check_in_date}
                 onChange={e => setForm(f => ({...f, check_in_date: e.target.value}))}
                 onBlur={checkConflicts} className="mt-1" />
             </div>
             <div>
-              <Label>Check Out *</Label>
-              <Input type="datetime-local" value={form.check_out_date}
+              <Label>Check In Time *</Label>
+              <select className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
+                value={form.check_in_time}
+                onChange={e => setForm(f => ({...f, check_in_time: e.target.value}))}
+                onBlur={checkConflicts}>
+                {BOOKING_TIME_SLOTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label>Check Out Date *</Label>
+              <Input type="date" value={form.check_out_date}
                 onChange={e => setForm(f => ({...f, check_out_date: e.target.value}))}
                 onBlur={checkConflicts} className="mt-1" />
+            </div>
+            <div>
+              <Label>Check Out Time *</Label>
+              <select className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
+                value={form.check_out_time}
+                onChange={e => setForm(f => ({...f, check_out_time: e.target.value}))}
+                onBlur={checkConflicts}>
+                {BOOKING_TIME_SLOTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
             </div>
           </div>
 

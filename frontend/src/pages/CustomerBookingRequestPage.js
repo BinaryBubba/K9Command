@@ -9,6 +9,7 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { ArrowLeftIcon, CheckCircleIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { BOOKING_TIME_SLOTS } from '../utils/timeSlots';
 
 const CustomerBookingRequestPage = () => {
   const { user } = useAuthStore();
@@ -17,7 +18,9 @@ const CustomerBookingRequestPage = () => {
   const [orgSettings, setOrgSettings] = useState(null);
   const [form, setForm] = useState({
     check_in_date: '',
+    check_in_time: '08:00',
     check_out_date: '',
+    check_out_time: '08:00',
     dog_ids: [],
     special_request: '',
     notes: '',
@@ -87,8 +90,8 @@ const CustomerBookingRequestPage = () => {
       await api.post('/bookings', {
         household_id: householdId,
         dog_ids: form.dog_ids,
-        check_in_date: new Date(form.check_in_date).toISOString(),
-        check_out_date: new Date(form.check_out_date).toISOString(),
+        check_in_date: new Date(`${form.check_in_date}T${form.check_in_time}`).toISOString(),
+        check_out_date: new Date(`${form.check_out_date}T${form.check_out_time}`).toISOString(),
         status: 'PENDING',
         special_request: form.special_request || undefined,
         notes: form.notes || undefined,
@@ -157,10 +160,24 @@ const CustomerBookingRequestPage = () => {
                   onChange={e => setForm(f=>({...f,check_in_date:e.target.value}))} className="mt-1" />
               </div>
               <div>
+                <Label>Check-In Time *</Label>
+                <select className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
+                  value={form.check_in_time} onChange={e => setForm(f=>({...f,check_in_time:e.target.value}))}>
+                  {BOOKING_TIME_SLOTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
+              </div>
+              <div>
                 <Label>Check-Out Date *</Label>
                 <Input type="date" value={form.check_out_date}
                   min={form.check_in_date || new Date().toISOString().split('T')[0]}
                   onChange={e => setForm(f=>({...f,check_out_date:e.target.value}))} className="mt-1" />
+              </div>
+              <div>
+                <Label>Check-Out Time *</Label>
+                <select className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
+                  value={form.check_out_time} onChange={e => setForm(f=>({...f,check_out_time:e.target.value}))}>
+                  {BOOKING_TIME_SLOTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
               </div>
             </div>
             {nights > 0 && (
