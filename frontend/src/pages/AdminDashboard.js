@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Badge } from '../components/ui/badge';
 import {
   DogIcon, CalendarIcon, AlertCircleIcon, LogOutIcon,
-  ClockIcon, ActivityIcon, HomeIcon, UsersIcon, RefreshCwIcon,
+  ClockIcon, ActivityIcon, HomeIcon, UsersIcon, RefreshCwIcon, ClipboardCheckIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -214,6 +214,7 @@ const AdminDashboard = () => {
           <QuickAction label="Bookings" icon={<CalendarIcon size={18} />} onClick={() => navigate('/admin/bookings')} />
           <QuickAction label="Customers" icon={<UsersIcon size={18} />} onClick={() => navigate('/admin/customers')} />
           <QuickAction label="Kennels" icon={<HomeIcon size={18} />} onClick={() => navigate('/admin/kennels')} />
+          <QuickAction label="Task Forms" icon={<ClipboardCheckIcon size={18} />} onClick={() => navigate('/admin/task-forms')} />
         </div>
 
 

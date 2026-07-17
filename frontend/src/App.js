@@ -45,6 +45,7 @@ import PlaygroupHistoryPage from './pages/PlaygroupHistoryPage';
 import FormsPage from './pages/FormsPage';
 import AdminFormsPage from './pages/AdminFormsPage';
 import ShiftHandoffPage from './pages/ShiftHandoffPage';
+import AdminTaskFormsPage from './pages/AdminTaskFormsPage';
 import StaffDailyUpdatePage from './pages/StaffDailyUpdatePage';
 import MeetAndGreetPage from './pages/MeetAndGreetPage';
 // Pages - Customer
@@ -354,6 +355,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['admin', 'staff', 'manager']}>
                 <ShiftHandoffPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/task-forms"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminTaskFormsPage />
               </ProtectedRoute>
             }
           />
