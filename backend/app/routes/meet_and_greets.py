@@ -187,6 +187,14 @@ async def request_mag(
     slot_start = slot.split("-")[0]
     scheduled_at = _dt.fromisoformat(f"{scheduled_date}T{slot_start}:00")
 
+    if stay_start:
+        stay_start_dt = _dt.combine(stay_start, _dt.min.time())
+        if scheduled_at + timedelta(hours=24) > stay_start_dt:
+            raise HTTPException(
+                status_code=400,
+                detail="The Meet & Greet must be scheduled at least 24 hours before your trip begins. Please choose an earlier Meet & Greet time or a later stay start date.",
+            )
+
     mag_ids = []
     for dog_id in dog_ids:
         mag_id = str(uuid.uuid4())
