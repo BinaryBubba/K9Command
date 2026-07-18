@@ -5,6 +5,8 @@ import api from '../utils/api';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import {
   LogOutIcon, DogIcon, CalendarIcon, FileTextIcon,
@@ -31,6 +33,7 @@ const CustomerDashboard = () => {
   const [orgSettings, setOrgSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [rescheduleMag, setRescheduleMag] = useState(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -109,6 +112,13 @@ const CustomerDashboard = () => {
           </div>
         </div>
       )}
+      {rescheduleMag && (
+        <RescheduleMagModal
+          mag={rescheduleMag}
+          onClose={() => setRescheduleMag(null)}
+          onSuccess={() => { setRescheduleMag(null); fetchData(); }}
+        />
+      )}
       <header className="bg-white border-b shadow-sm sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-3 flex justify-between items-center">
           <div>
@@ -157,6 +167,27 @@ const CustomerDashboard = () => {
                     <span className={`text-xs px-2 py-0.5 rounded-full mt-1 inline-block ${
                       m.status === 'confirmed' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
                     }`}>{m.status === 'confirmed' ? 'Confirmed' : 'Pending Confirmation'}</span>
+                    {['pending', 'confirmed'].includes(m.status) && (
+                      <div className="flex gap-2 mt-2">
+                        <Button size="sm" variant="outline" className="h-7 text-xs flex-1"
+                          onClick={() => setRescheduleMag(m)}>
+                          Reschedule
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-7 text-xs flex-1 text-red-600 border-red-200 hover:bg-red-50"
+                          onClick={async () => {
+                            if (!window.confirm('Cancel this Meet & Greet?')) return;
+                            try {
+                              await api.post(`/meet-and-greets/${m.id}/cancel`);
+                              toast.success('Meet & Greet cancelled');
+                              fetchData();
+                            } catch (err) {
+                              toast.error(err.response?.data?.detail || 'Failed to cancel');
+                            }
+                          }}>
+                          Cancel
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -407,6 +438,66 @@ const BookingCard = ({ booking: b, onClick }) => {
         </div>
       </CardContent>
     </Card>
+  );
+};
+
+const RescheduleMagModal = ({ mag, onClose, onSuccess }) => {
+  const [scheduledDate, setScheduledDate] = useState('');
+  const [slot, setSlot] = useState('10:00-10:30');
+  const [submitting, setSubmitting] = useState(false);
+
+  const SLOT_OPTIONS = [
+    '10:00-10:30', '10:30-11:00', '11:00-11:30', '11:30-12:00',
+    '14:00-14:30', '14:30-15:00', '15:00-15:30', '15:30-16:00',
+  ];
+
+  const handleSubmit = async () => {
+    if (!scheduledDate) { toast.error('Please pick a date'); return; }
+    setSubmitting(true);
+    try {
+      await api.patch(`/meet-and-greets/${mag.id}/reschedule`, {
+        scheduled_date: scheduledDate,
+        slot,
+      });
+      toast.success('Meet & Greet rescheduled');
+      onSuccess();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to reschedule');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl p-6 max-w-sm w-full space-y-4">
+        <div>
+          <h2 className="text-lg font-bold">Reschedule Meet & Greet</h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            Available days: Sunday, Monday, Wednesday, Friday. Must be at least 24 hours before your trip.
+          </p>
+        </div>
+        <div>
+          <Label>New Date</Label>
+          <Input type="date" value={scheduledDate}
+            min={new Date().toISOString().split('T')[0]}
+            onChange={e => setScheduledDate(e.target.value)} className="mt-1" />
+        </div>
+        <div>
+          <Label>New Time</Label>
+          <select className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
+            value={slot} onChange={e => setSlot(e.target.value)}>
+            {SLOT_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+        <div className="flex gap-2 pt-1">
+          <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+          <Button className="flex-1" onClick={handleSubmit} disabled={submitting}>
+            {submitting ? 'Saving...' : 'Reschedule'}
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 };
 

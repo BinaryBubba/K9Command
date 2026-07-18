@@ -663,3 +663,107 @@ async def send_mag_reminders(
 
     await db.commit()
     return {"records_processed": len(rows), "emails_sent": sent_count}
+
+
+@router.patch("/{mag_id}/reschedule")
+async def reschedule_mag(
+    mag_id: str,
+    data: dict,
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Customer (or staff/admin) reschedules a pending/confirmed M&G to a
+    new date/slot. Since one appointment slot covers the whole household
+    (all dogs share the same scheduled_at/slot), this moves every row
+    that shares the appointment, not just this one dog's record."""
+    from sqlalchemy import text
+    from datetime import date as _date3, datetime as _dt3
+
+    result = await db.execute(
+        select(MeetAndGreet).where(
+            MeetAndGreet.id == mag_id,
+            MeetAndGreet.organization_id == current_user.organization_id,
+        )
+    )
+    mag = result.scalar_one_or_none()
+    if not mag:
+        raise HTTPException(status_code=404, detail="Meet & greet not found")
+    if current_user.role == UserRole.CUSTOMER and mag.household_id != current_user.household_id:
+        raise HTTPException(status_code=403, detail="You can only reschedule your own household's appointments")
+    if mag.status in ("completed", "cancelled"):
+        raise HTTPException(status_code=400, detail="This meet & greet can no longer be rescheduled")
+
+    new_date = data.get("scheduled_date")
+    new_slot = data.get("slot")
+    if not new_date or not new_slot:
+        raise HTTPException(status_code=400, detail="scheduled_date and slot are required")
+
+    try:
+        parsed_date = _date3.fromisoformat(new_date)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid date format")
+
+    taken = await db.execute(text("""
+        SELECT id FROM meet_and_greets
+        WHERE organization_id = :org_id
+        AND DATE(scheduled_at) = :date
+        AND slot = :slot
+        AND status NOT IN ('cancelled', 'completed')
+        AND household_id != :hh_id
+    """), {"org_id": current_user.organization_id, "date": parsed_date, "slot": new_slot, "hh_id": mag.household_id})
+    if taken.fetchone():
+        raise HTTPException(status_code=409, detail="This slot is already booked. Please choose another.")
+
+    slot_start = new_slot.split("-")[0]
+    new_scheduled_at = _dt3.fromisoformat(f"{new_date}T{slot_start}:00")
+
+    if mag.requested_stay_start:
+        stay_start_dt = _dt3.combine(mag.requested_stay_start, _dt3.min.time())
+        if new_scheduled_at + timedelta(hours=24) > stay_start_dt:
+            raise HTTPException(
+                status_code=400,
+                detail="The Meet & Greet must be scheduled at least 24 hours before your trip begins. Please choose an earlier time or contact us to adjust your trip dates.",
+            )
+
+    await db.execute(text("""
+        UPDATE meet_and_greets
+        SET scheduled_at = :new_at, slot = :new_slot, status = 'pending'
+        WHERE household_id = :hh_id AND scheduled_at = :old_at AND slot = :old_slot
+    """), {
+        "new_at": new_scheduled_at, "new_slot": new_slot,
+        "hh_id": mag.household_id, "old_at": mag.scheduled_at, "old_slot": mag.slot,
+    })
+    await db.commit()
+    return {"updated": True, "scheduled_at": new_scheduled_at.isoformat(), "slot": new_slot, "status": "pending"}
+
+
+@router.post("/{mag_id}/cancel")
+async def cancel_mag(
+    mag_id: str,
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Customer (or staff/admin) cancels a pending/confirmed M&G. Cancels
+    every row sharing the same household appointment, not just this dog."""
+    from sqlalchemy import text
+
+    result = await db.execute(
+        select(MeetAndGreet).where(
+            MeetAndGreet.id == mag_id,
+            MeetAndGreet.organization_id == current_user.organization_id,
+        )
+    )
+    mag = result.scalar_one_or_none()
+    if not mag:
+        raise HTTPException(status_code=404, detail="Meet & greet not found")
+    if current_user.role == UserRole.CUSTOMER and mag.household_id != current_user.household_id:
+        raise HTTPException(status_code=403, detail="You can only cancel your own household's appointments")
+    if mag.status in ("completed", "cancelled"):
+        raise HTTPException(status_code=400, detail="This meet & greet can no longer be cancelled")
+
+    await db.execute(text("""
+        UPDATE meet_and_greets SET status = 'cancelled'
+        WHERE household_id = :hh_id AND scheduled_at = :old_at AND slot = :old_slot
+    """), {"hh_id": mag.household_id, "old_at": mag.scheduled_at, "old_slot": mag.slot})
+    await db.commit()
+    return {"cancelled": True}
