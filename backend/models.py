@@ -91,6 +91,7 @@ class UserResponse(BaseModel):
     emergency_contact: Optional[str] = None
     emergency_phone: Optional[str] = None
     notes: Optional[str] = None
+    email_verified: bool = False
 
 class LoginRequest(BaseModel):
     email: EmailStr

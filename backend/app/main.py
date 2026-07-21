@@ -14,7 +14,7 @@ from sqlalchemy import select, func
 from database import get_db, init_db
 from db_models import User as UserORM, Dog as DogORM, Location as LocationORM, Booking as BookingORM, Task as TaskORM, Shift as ShiftORM, AuditLog as AuditLogORM, TimeEntry as TimeEntryORM, TimeModificationRequest as TimeModificationRequestORM, UserRole, BookingStatus, AccommodationType, TaskStatus, StaffRequest, StaffRequestStatus, AuditAction, TimeModificationStatus, FormTemplateORM, FormSubmissionORM
 from models import UserCreate, LoginRequest, LoginResponse, UserResponse
-from auth import hash_password, verify_password, create_access_token, require_role
+from auth import hash_password, verify_password, create_access_token, require_role, get_current_user
 from app.routes.daily_updates import router as daily_updates_router
 from app.routes.households import router as households_router
 from app.routes.dogs import router as dogs_router
@@ -300,6 +300,37 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(user)
 
+    try:
+        import secrets, hashlib
+        from email_service import send_email, is_configured
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=48)
+        await db.execute(text("""
+            INSERT INTO email_verification_tokens (id, user_id, token_hash, expires_at)
+            VALUES (:id, :user_id, :token_hash, :expires_at)
+        """), {
+            "id": str(uuid4()),
+            "user_id": user.id,
+            "token_hash": token_hash,
+            "expires_at": expires_at,
+        })
+        await db.commit()
+        if is_configured():
+            verify_link = f"https://k9cmd.maniacranch.com/verify-email?token={raw_token}"
+            await send_email(
+                to_email=user.email,
+                subject="Please verify your email address",
+                html_body=f"""
+                    <p>Hi {user.full_name or ''},</p>
+                    <p>Welcome to K9 Country Club! Please verify your email address by clicking the link below:</p>
+                    <p><a href="{verify_link}">Verify My Email</a></p>
+                    <p>This link expires in 48 hours.</p>
+                """,
+            )
+    except Exception as e:
+        print(f"Failed to send verification email: {e}")
+
     token = create_access_token({"sub": user.id, "email": user.email, "role": user.role.value, "is_owner": user.is_owner})
     return LoginResponse(
         token=token,
@@ -312,6 +343,7 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
             is_active=user.is_active,
             household_id=user.household_id,
             created_at=user.created_at,
+            email_verified=user.email_verified,
         ),
     )
 
@@ -340,6 +372,7 @@ async def login(login_data: LoginRequest, db: AsyncSession = Depends(get_db)):
             is_active=user.is_active,
             household_id=user.household_id,
             created_at=user.created_at,
+            email_verified=user.email_verified,
         ),
     )
 
@@ -434,6 +467,79 @@ async def reset_password(data: dict, db: AsyncSession = Depends(get_db)):
     await db.commit()
 
     return {"message": "Password updated successfully. You can now log in."}
+
+
+@app.post("/api/auth/verify-email")
+async def verify_email(data: dict, db: AsyncSession = Depends(get_db)):
+    """Complete email verification using the token from the emailed link."""
+    import hashlib
+    raw_token = data.get("token")
+    if not raw_token:
+        raise HTTPException(status_code=400, detail="token is required")
+
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+    result = await db.execute(text("""
+        SELECT id, user_id, expires_at, used_at FROM email_verification_tokens
+        WHERE token_hash = :token_hash
+    """), {"token_hash": token_hash})
+    row = result.fetchone()
+
+    if not row:
+        raise HTTPException(status_code=400, detail="Invalid or expired verification link")
+    if row.used_at is not None:
+        return {"message": "Email already verified."}
+    if row.expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="This verification link has expired. Please request a new one.")
+
+    user = (await db.execute(select(UserORM).where(UserORM.id == row.user_id))).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired verification link")
+
+    user.email_verified = True
+    await db.execute(text("""
+        UPDATE email_verification_tokens SET used_at = :now WHERE id = :id
+    """), {"now": datetime.now(timezone.utc), "id": row.id})
+    await db.commit()
+    return {"message": "Email verified successfully!"}
+
+
+@app.post("/api/auth/resend-verification")
+async def resend_verification(current_user: UserORM = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Send a fresh email verification link to the logged-in user."""
+    import secrets, hashlib
+    from email_service import send_email, is_configured
+
+    if current_user.email_verified:
+        return {"message": "Your email is already verified."}
+    if not is_configured():
+        raise HTTPException(status_code=503, detail="Email is not currently configured")
+
+    raw_token = secrets.token_urlsafe(32)
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=48)
+    await db.execute(text("""
+        INSERT INTO email_verification_tokens (id, user_id, token_hash, expires_at)
+        VALUES (:id, :user_id, :token_hash, :expires_at)
+    """), {
+        "id": str(uuid4()),
+        "user_id": current_user.id,
+        "token_hash": token_hash,
+        "expires_at": expires_at,
+    })
+    await db.commit()
+
+    verify_link = f"https://k9cmd.maniacranch.com/verify-email?token={raw_token}"
+    await send_email(
+        to_email=current_user.email,
+        subject="Please verify your email address",
+        html_body=f"""
+            <p>Hi {current_user.full_name or ''},</p>
+            <p>Please verify your email address by clicking the link below:</p>
+            <p><a href="{verify_link}">Verify My Email</a></p>
+            <p>This link expires in 48 hours.</p>
+        """,
+    )
+    return {"message": "Verification email sent."}
 
 
 @app.post("/api/auth/request-staff")

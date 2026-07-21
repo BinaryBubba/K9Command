@@ -34,6 +34,7 @@ const CustomerDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showWelcome, setShowWelcome] = useState(false);
   const [rescheduleMag, setRescheduleMag] = useState(null);
+  const [resendingVerification, setResendingVerification] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -132,6 +133,32 @@ const CustomerDashboard = () => {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-4">
+        {user && user.email_verified === false && (
+          <div className="mb-4 p-3 rounded-lg border border-amber-200 bg-amber-50 flex items-center justify-between gap-3">
+            <p className="text-xs text-amber-800">
+              Please verify your email address. Check your inbox for a verification link.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs shrink-0"
+              disabled={resendingVerification}
+              onClick={async () => {
+                setResendingVerification(true);
+                try {
+                  await api.post('/auth/resend-verification');
+                  toast.success('Verification email sent!');
+                } catch (err) {
+                  toast.error(err.response?.data?.detail || 'Failed to resend');
+                } finally {
+                  setResendingVerification(false);
+                }
+              }}
+            >
+              {resendingVerification ? 'Sending...' : 'Resend Email'}
+            </Button>
+          </div>
+        )}
         <Tabs defaultValue="bookings">
           <TabsList className="w-full mb-4">
             <TabsTrigger value="bookings" className="flex-1">Stays</TabsTrigger>

@@ -48,6 +48,7 @@ def _user_dict(u: UserORM) -> dict:
         "household_id": u.household_id,
         "last_login_at": u.last_login_at.isoformat() if u.last_login_at else None,
         "created_at": u.created_at.isoformat() if u.created_at else None,
+        "email_verified": bool(u.email_verified),
     }
 
 

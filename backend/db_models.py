@@ -106,6 +106,7 @@ class User(Base):
     reset_token_expiry = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    email_verified = Column(Boolean, default=False)
 
     # Relationships
     # dogs relationship removed - dogs now linked via Household not User
