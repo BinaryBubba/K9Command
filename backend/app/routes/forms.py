@@ -8,7 +8,7 @@ from typing import Optional
 from datetime import datetime, timezone
 from database import get_db
 from auth import get_current_user, require_role
-from db_models import User as UserORM, UserRole
+from db_models import User as UserORM, UserRole, Dog as DogORM
 import uuid, json
 
 router = APIRouter(prefix="/api/forms", tags=["forms"])
@@ -282,4 +282,68 @@ async def submit_form(
         "signed_at": signed_at,
     })
     await db.commit()
+
+    # If this was the dog intake questionnaire, apply the answers directly
+    # to the dog's profile so staff don't have to re-enter everything by hand.
+    if form_id == "form-intake-001" and data.get("dog_id"):
+        try:
+            dog = (await db.execute(
+                select(DogORM).where(DogORM.id == data["dog_id"], DogORM.organization_id == current_user.organization_id)
+            )).scalar_one_or_none()
+            if dog:
+                _apply_intake_responses_to_dog(dog, data.get("responses", {}))
+                await db.commit()
+        except Exception as e:
+            print(f"Failed to apply intake responses to dog profile: {e}")
+
     return {"submission_id": submission_id, "submitted": True}
+
+
+def _apply_intake_responses_to_dog(dog: DogORM, responses: dict):
+    def yn_to_bool(val):
+        if val == "Yes":
+            return True
+        if val == "No":
+            return False
+        return None
+
+    text_fields = [
+        "breed", "color", "meal_routine", "medication_requirements",
+        "allergies", "incidents_of_aggression", "other_notes", "gender",
+        "spay_neuter_status",
+    ]
+    for field in text_fields:
+        if responses.get(field):
+            setattr(dog, field, responses[field])
+
+    if responses.get("dog_name"):
+        dog.name = responses["dog_name"]
+
+    if responses.get("weight") not in (None, ""):
+        try:
+            dog.weight = float(responses["weight"])
+        except (TypeError, ValueError):
+            pass
+
+    yes_no_fields = [
+        "friendly_with_dogs", "friendly_with_people", "friendly_to_cats",
+        "seizure_activity", "afraid_of_thunder", "afraid_of_fireworks",
+        "fence_aggression", "resource_guarding", "climbing_habits",
+        "digging_habits", "prey_drive", "no_small_dogs", "no_large_dogs",
+    ]
+    for field in yes_no_fields:
+        if field in responses:
+            setattr(dog, field, yn_to_bool(responses.get(field)))
+
+    if responses.get("crate_trained"):
+        val = responses["crate_trained"]
+        dog.crate_trained = "unable" if val == "Unable to be Crated" else val.lower()
+
+    if responses.get("birthday"):
+        try:
+            from dateutil import parser as _dateparser
+            dog.birthday = _dateparser.parse(responses["birthday"])
+        except Exception:
+            pass
+
+    dog.intake_completed_at = datetime.now(timezone.utc)

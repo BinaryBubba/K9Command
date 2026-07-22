@@ -171,6 +171,14 @@ class Dog(Base):
     incidents_of_aggression = Column(Text, nullable=True)
     other_notes = Column(Text, nullable=True)
     vaccinations = Column(JSON, default=list)  # List of vaccination records
+    friendly_with_people = Column(Boolean, nullable=True)
+    crate_trained = Column(String, nullable=True)  # "yes", "no", "unable"
+    climbing_habits = Column(Boolean, nullable=True)
+    digging_habits = Column(Boolean, nullable=True)
+    prey_drive = Column(Boolean, nullable=True)
+    no_small_dogs = Column(Boolean, nullable=True)
+    no_large_dogs = Column(Boolean, nullable=True)
+    intake_completed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
