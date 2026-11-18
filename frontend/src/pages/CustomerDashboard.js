@@ -35,6 +35,7 @@ const CustomerDashboard = () => {
   const [showWelcome, setShowWelcome] = useState(false);
   const [rescheduleMag, setRescheduleMag] = useState(null);
   const [resendingVerification, setResendingVerification] = useState(false);
+  const [dismissedNudges, setDismissedNudges] = useState({});
 
   const fetchData = useCallback(async () => {
     try {
@@ -157,6 +158,41 @@ const CustomerDashboard = () => {
             >
               {resendingVerification ? 'Sending...' : 'Resend Email'}
             </Button>
+          </div>
+        )}
+        {dogs.length > 0 && dogs.some(d => !d.intake_completed_at) && !dismissedNudges.intake && (
+          <div className="mb-4 p-3 rounded-lg border border-blue-200 bg-blue-50 flex items-center justify-between gap-3">
+            <p className="text-xs text-blue-800">
+              Please complete the intake questionnaire for {dogs.filter(d => !d.intake_completed_at).map(d => d.name).join(', ')}.
+              It helps us take the best care of your pup and fills in their profile for you.
+            </p>
+            <div className="flex gap-1 shrink-0">
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => navigate('/forms')}>
+                Fill It Out
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 text-xs"
+                onClick={() => setDismissedNudges(n => ({ ...n, intake: true }))}>
+                Later
+              </Button>
+            </div>
+          </div>
+        )}
+        {dogs.length > 0 && dogs.some(d => !d.has_vaccination_records) && !dismissedNudges.vaccines && (
+          <div className="mb-4 p-3 rounded-lg border border-amber-200 bg-amber-50 flex items-center justify-between gap-3">
+            <p className="text-xs text-amber-800">
+              We don't have vaccination records for {dogs.filter(d => !d.has_vaccination_records).map(d => d.name).join(', ')} yet.
+              Please upload them so your dog is ready for their first stay.
+            </p>
+            <div className="flex gap-1 shrink-0">
+              <Button size="sm" variant="outline" className="h-7 text-xs"
+                onClick={() => navigate(`/customer/dog/${dogs.find(d => !d.has_vaccination_records).id}`)}>
+                Upload
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 text-xs"
+                onClick={() => setDismissedNudges(n => ({ ...n, vaccines: true }))}>
+                Later
+              </Button>
+            </div>
           </div>
         )}
         <Tabs defaultValue="bookings">

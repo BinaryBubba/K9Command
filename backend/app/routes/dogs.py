@@ -46,7 +46,18 @@ async def list_dogs(
     q = q.order_by(DogORM.name).offset(skip).limit(limit)
     result = await db.execute(q)
     dogs = result.scalars().all()
-    return [_dog_summary(d) for d in dogs]
+    vax_dog_ids = set()
+    if dogs:
+        vax_result = await db.execute(
+            select(VaccinationRecord.dog_id).where(VaccinationRecord.dog_id.in_([d.id for d in dogs]))
+        )
+        vax_dog_ids = {row[0] for row in vax_result.all()}
+    summaries = []
+    for d in dogs:
+        s = _dog_summary(d)
+        s["has_vaccination_records"] = d.id in vax_dog_ids
+        summaries.append(s)
+    return summaries
 
 
 # ── Get single dog ───────────────────────────────────────────────────────────
@@ -327,6 +338,7 @@ def _dog_summary(d: DogORM) -> dict:
         "meet_and_greet_status": d.meet_and_greet_status,
         "escape_risk": d.escape_risk,
         "medical_alert": d.medical_alert,
+        "intake_completed_at": d.intake_completed_at.isoformat() if d.intake_completed_at else None,
         "photo_url": getattr(d, "photo_url", None),
         "photo_url": getattr(d, "photo_url", None),
         "photo_url": getattr(d, "photo_url", None),
@@ -345,6 +357,23 @@ def _dog_detail(d: DogORM) -> dict:
         "behavioral_notes": d.behavioral_notes,
         "internal_notes": d.internal_notes,
         "is_deceased": getattr(d, "is_deceased", False),
+        "friendly_with_dogs": d.friendly_with_dogs,
+        "friendly_with_people": d.friendly_with_people,
+        "friendly_to_cats": d.friendly_to_cats,
+        "seizure_activity": d.seizure_activity,
+        "afraid_of_thunder": d.afraid_of_thunder,
+        "afraid_of_fireworks": d.afraid_of_fireworks,
+        "fence_aggression": d.fence_aggression,
+        "resource_guarding": d.resource_guarding,
+        "climbing_habits": d.climbing_habits,
+        "digging_habits": d.digging_habits,
+        "prey_drive": d.prey_drive,
+        "no_small_dogs": d.no_small_dogs,
+        "no_large_dogs": d.no_large_dogs,
+        "crate_trained": d.crate_trained,
+        "birthday": d.birthday.isoformat() if d.birthday else None,
+        "incidents_of_aggression": d.incidents_of_aggression,
+        "other_notes": d.other_notes,
         "created_at": d.created_at.isoformat() if d.created_at else None,
         "updated_at": d.updated_at.isoformat() if d.updated_at else None,
     })

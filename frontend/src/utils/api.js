@@ -21,18 +21,20 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  let token = localStorage.getItem("token");
-
-  if (!token) {
-    try {
-      const raw = localStorage.getItem("auth-storage");
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        token = parsed?.state?.token || null;
-      }
-    } catch (e) {
-      // ignore malformed localStorage
+  // Prefer the current session saved by the auth store. A legacy "token" key
+  // left over from older versions of the app must never override it.
+  let token = null;
+  try {
+    const raw = localStorage.getItem("auth-storage");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      token = parsed?.state?.token || null;
     }
+  } catch (e) {
+    // ignore malformed localStorage
+  }
+  if (!token) {
+    token = localStorage.getItem("token");
   }
 
   if (token) {
