@@ -32,6 +32,19 @@ const StaffDashboard = () => {
   const [groups, setGroups] = useState([]);
   const [onShift, setOnShift] = useState(false);
   const [shiftLoading, setShiftLoading] = useState(false);
+  const [handoffPrompt, setHandoffPrompt] = useState(null);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    api.get('/care/handoffs', { params: { limit: 10 } })
+      .then(res => {
+        const latestFromOthers = (res.data || []).find(h => h.staff_id !== user.id);
+        if (latestFromOthers && !latestFromOthers.acknowledged_at) {
+          setHandoffPrompt(latestFromOthers);
+        }
+      })
+      .catch(() => {});
+  }, [user?.id]);
   const [loading, setLoading] = useState(true);
 
   const fetchDashboard = useCallback(async () => {
@@ -66,6 +79,14 @@ const StaffDashboard = () => {
 
   return (
     <div className="min-h-screen bg-[#F9F7F2]">
+      {handoffPrompt && (
+        <HandoffPromptModal
+          handoff={handoffPrompt}
+          onClose={() => setHandoffPrompt(null)}
+          onAcknowledged={() => setHandoffPrompt(null)}
+          onViewAll={() => navigate('/staff/handoff')}
+        />
+      )}
       <header className="bg-white border-b shadow-sm sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-3 flex justify-between items-center">
           <div>
@@ -248,5 +269,117 @@ const ActionCard = ({ icon, label, sublabel, onClick, highlight }) => (
     </p>
   </button>
 );
+
+const HandoffPromptModal = ({ handoff, onClose, onAcknowledged, onViewAll }) => {
+  const [acknowledging, setAcknowledging] = useState(false);
+
+  const itemText = (x) => {
+    if (x == null) return '';
+    if (typeof x === 'string') return x;
+    return x.title || x.description || x.text || x.note || x.item || x.summary || JSON.stringify(x);
+  };
+
+  const handleAcknowledge = async () => {
+    setAcknowledging(true);
+    try {
+      await api.post(`/care/handoffs/${handoff.id}/acknowledge`);
+      toast.success('Handoff acknowledged');
+      onAcknowledged();
+    } catch {
+      toast.error('Failed to acknowledge handoff');
+    } finally {
+      setAcknowledging(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-4">
+      <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="p-5 space-y-4">
+          <div>
+            <h2 className="text-lg font-bold">Previous Shift Handoff</h2>
+            <p className="text-xs text-muted-foreground mt-1">
+              From {handoff.staff_name}
+              {handoff.submitted_at ? ` · ${new Date(handoff.submitted_at).toLocaleString()}` : ''}
+            </p>
+          </div>
+
+          {handoff.staff_notes && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Notes</p>
+              <p className="text-sm whitespace-pre-wrap">{handoff.staff_notes}</p>
+            </div>
+          )}
+
+          {handoff.dogs_on_site_snapshot?.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Dogs on site ({handoff.dogs_on_site_snapshot.length})</p>
+              <div className="flex flex-wrap gap-1">
+                {handoff.dogs_on_site_snapshot.map((d, i) => (
+                  <Badge key={i} variant="outline" className="text-xs">{d.name}{d.room ? ` · ${d.room}` : ''}</Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {handoff.active_medications?.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-amber-700 mb-1">Medications</p>
+              {handoff.active_medications.map((m, i) => (
+                <p key={i} className="text-xs">{m.dog}: {m.medication} {m.dosage} — {m.frequency}</p>
+              ))}
+            </div>
+          )}
+
+          {handoff.active_alerts?.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-red-700 mb-1">Active Alerts</p>
+              {handoff.active_alerts.map((a, i) => (
+                <p key={i} className="text-xs">{a.dog}: {a.alert}</p>
+              ))}
+            </div>
+          )}
+
+          {handoff.open_incidents?.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-orange-700 mb-1">Open Incidents</p>
+              {handoff.open_incidents.map((inc, i) => (
+                <p key={i} className="text-xs">{itemText(inc)}</p>
+              ))}
+            </div>
+          )}
+
+          {handoff.outstanding_care?.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Outstanding Care</p>
+              {handoff.outstanding_care.map((c, i) => (
+                <p key={i} className="text-xs">{itemText(c)}</p>
+              ))}
+            </div>
+          )}
+
+          {handoff.follow_up_items?.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Follow-ups</p>
+              {handoff.follow_up_items.map((f, i) => (
+                <p key={i} className="text-xs">{itemText(f)}</p>
+              ))}
+            </div>
+          )}
+
+          <div className="space-y-2 pt-1">
+            <Button className="w-full" onClick={handleAcknowledge} disabled={acknowledging}>
+              {acknowledging ? 'Saving...' : 'Acknowledge Handoff'}
+            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1 text-xs" onClick={onViewAll}>View Full Handoff</Button>
+              <Button variant="ghost" className="flex-1 text-xs text-muted-foreground" onClick={onClose}>Not Now</Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default StaffDashboard;
