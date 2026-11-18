@@ -131,13 +131,27 @@ const FormRenderer = ({ form, user, onBack, onSubmitted }) => {
   const [responses, setResponses] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [dogs, setDogs] = useState([]);
+  const [selectedDogId, setSelectedDogId] = useState('');
   const printRef = useRef();
+
+  useEffect(() => {
+    if (form.form_type === 'intake' && user?.household_id) {
+      api.get('/dogs', { params: { household_id: user.household_id } })
+        .then(res => setDogs(res.data?.dogs || res.data || []))
+        .catch(() => {});
+    }
+  }, [form.form_type, user?.household_id]);
 
   const updateResponse = (fieldId, value) => {
     setResponses(r => ({ ...r, [fieldId]: value }));
   };
 
   const validate = () => {
+    if (form.form_type === 'intake' && !selectedDogId) {
+      toast.error('Please select which dog this is for');
+      return false;
+    }
     for (const field of form.fields) {
       if (field.required && !responses[field.id] && field.type !== 'agreement') {
         toast.error(`"${field.label}" is required`);
@@ -154,6 +168,8 @@ const FormRenderer = ({ form, user, onBack, onSubmitted }) => {
       await api.post(`/forms/${form.id}/submit`, {
         responses,
         signed_name: responses['sig'] || null,
+        dog_id: form.form_type === 'intake' ? selectedDogId : undefined,
+        household_id: user?.household_id,
       });
       setSubmitted(true);
       onSubmitted();
@@ -212,6 +228,18 @@ const FormRenderer = ({ form, user, onBack, onSubmitted }) => {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-6 space-y-4" ref={printRef}>
+        {form.form_type === 'intake' && (
+          <Card>
+            <CardContent className="py-3 px-4">
+              <label className="text-xs font-medium text-muted-foreground">Which dog is this for? *</label>
+              <select className="w-full mt-1 border rounded-md px-3 py-2 text-sm bg-background"
+                value={selectedDogId} onChange={e => setSelectedDogId(e.target.value)}>
+                <option value="">Select a dog...</option>
+                {dogs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            </CardContent>
+          </Card>
+        )}
         {form.fields.map(field => (
           <FormField
             key={field.id}
