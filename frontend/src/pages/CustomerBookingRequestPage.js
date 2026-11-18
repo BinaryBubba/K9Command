@@ -213,6 +213,34 @@ const CustomerBookingRequestPage = () => {
           </CardContent>
         </Card>
 
+        {(() => {
+          const selectedDogs = dogs.filter(d => form.dog_ids.includes(d.id));
+          const needIntake = selectedDogs.filter(d => !d.intake_completed_at);
+          const needVax = selectedDogs.filter(d => !d.has_vaccination_records);
+          if (needIntake.length === 0 && needVax.length === 0) return null;
+          return (
+            <div className="p-3 rounded-lg border border-amber-200 bg-amber-50 space-y-2">
+              <p className="text-xs font-medium text-amber-900">Before your stay</p>
+              {needIntake.length > 0 && (
+                <p className="text-xs text-amber-800">
+                  We still need the intake questionnaire for {needIntake.map(d => d.name).join(', ')}.{' '}
+                  <button type="button" className="underline font-medium" onClick={() => navigate('/forms')}>
+                    Fill it out
+                  </button>
+                </p>
+              )}
+              {needVax.length > 0 && (
+                <p className="text-xs text-amber-800">
+                  We don't have vaccination records for {needVax.map(d => d.name).join(', ')}.{' '}
+                  <button type="button" className="underline font-medium" onClick={() => navigate(`/customer/dog/${needVax[0].id}`)}>
+                    Upload them
+                  </button>
+                </p>
+              )}
+              <p className="text-xs text-amber-700">You can still submit your request now.</p>
+            </div>
+          );
+        })()}
         <Card>
           <CardHeader className="pb-2 pt-4"><CardTitle className="text-sm">Special Requests</CardTitle></CardHeader>
           <CardContent className="px-4 pb-4 space-y-3">
