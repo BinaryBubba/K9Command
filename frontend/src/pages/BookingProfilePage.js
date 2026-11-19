@@ -25,6 +25,17 @@ const BookingProfilePage = () => {
   const { bookingId } = useParams();
   const [booking, setBooking] = useState(null);
   const [dogs, setDogs] = useState([]);
+  const [ownerContact, setOwnerContact] = useState(null);
+
+  useEffect(() => {
+    if (!booking?.household_id || !user || user.role === 'customer') return;
+    api.get(`/households/${booking.household_id}`)
+      .then(res => {
+        const contacts = res.data?.contacts || [];
+        setOwnerContact(contacts.find(c => c.is_primary) || contacts[0] || null);
+      })
+      .catch(() => {});
+  }, [booking?.household_id, user]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [showAddNote, setShowAddNote] = useState(false);
@@ -105,11 +116,27 @@ const BookingProfilePage = () => {
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
           <div>
             <h1 className="text-base font-serif font-bold text-primary">
-              {booking.household_name || 'Booking'}
+              {user?.role !== 'customer' && booking.household_id ? (
+                <button type="button" className="hover:underline text-left"
+                  onClick={() => navigate(`/admin/customers/${booking.household_id}`)}>
+                  {booking.household_name || 'Booking'}
+                </button>
+              ) : (booking.household_name || 'Booking')}
             </h1>
             <p className="text-xs text-muted-foreground">
               {new Date(booking.check_in_date).toLocaleDateString()} — {new Date(booking.check_out_date).toLocaleDateString()} · {nights} night{nights !== 1 ? 's' : ''}
             </p>
+            {user?.role !== 'customer' && ownerContact && (
+              <p className="text-xs mt-0.5">
+                Owner: {[ownerContact.first_name, ownerContact.last_name].filter(Boolean).join(' ')}
+                {ownerContact.phone && (
+                  <> · <a className="text-primary underline" href={`tel:${ownerContact.phone}`}>{ownerContact.phone}</a></>
+                )}
+                {ownerContact.email && (
+                  <> · <a className="text-primary underline" href={`mailto:${ownerContact.email}`}>{ownerContact.email}</a></>
+                )}
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Badge className={`text-xs ${STATUS_COLORS[booking.status?.toLowerCase()] || STATUS_COLORS.confirmed}`}>

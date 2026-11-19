@@ -401,7 +401,7 @@ function App() {
           <Route
             path="/admin/customers/:householdId"
             element={
-              <ProtectedRoute allowedRoles={["admin", "staff"]}>
+              <ProtectedRoute allowedRoles={["admin", "staff", "manager"]}>
                 <AdminHouseholdPage />
               </ProtectedRoute>
             }
