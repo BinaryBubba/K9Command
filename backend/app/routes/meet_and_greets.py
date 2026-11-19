@@ -358,7 +358,9 @@ async def get_upcoming_mags(
     from sqlalchemy import text
     # Customers can only see their own household's M&Gs
     role = str(current_user.role).lower().replace("userrole.", "")
-    if role == "customer" and not household_id:
+    if role == "customer":
+        if not current_user.household_id:
+            return []
         household_id = current_user.household_id
 
     where_extra = "AND m.household_id = :hh_id" if household_id else ""
