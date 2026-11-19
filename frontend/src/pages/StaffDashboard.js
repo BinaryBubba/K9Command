@@ -33,6 +33,17 @@ const StaffDashboard = () => {
   const [onShift, setOnShift] = useState(false);
   const [shiftLoading, setShiftLoading] = useState(false);
   const [handoffPrompt, setHandoffPrompt] = useState(null);
+  const [careSummary, setCareSummary] = useState([]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const load = () => api.get('/care/on-site-summary')
+      .then(res => setCareSummary(res.data || []))
+      .catch(() => {});
+    load();
+    const timer = setInterval(load, 60000);
+    return () => clearInterval(timer);
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -166,6 +177,7 @@ const StaffDashboard = () => {
           />
         </div>
 
+        {careSummary.length > 0 && <OnSiteCareCard summary={careSummary} />}
         {/* Caution alerts */}
         {data?.caution_alerts?.length > 0 && (
           <Card>
@@ -268,6 +280,52 @@ const ActionCard = ({ icon, label, sublabel, onClick, highlight }) => (
       {sublabel}
     </p>
   </button>
+);
+
+const OnSiteCareCard = ({ summary }) => (
+  <Card>
+    <CardHeader className="pb-2 pt-4">
+      <CardTitle className="text-sm">Feeding & Medications ({summary.length} on site)</CardTitle>
+    </CardHeader>
+    <CardContent className="px-4 pb-4 space-y-3">
+      {summary.map(d => {
+        const hasFeeding = d.feeding_plans.length > 0 || d.meal_routine;
+        const hasMeds = d.medications.length > 0 || d.medication_requirements;
+        return (
+          <div key={d.dog_id} className="border-b last:border-0 pb-2 last:pb-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-sm font-medium">{d.dog_name}</p>
+              {d.allergies && (
+                <Badge className="text-xs bg-red-100 text-red-700">Allergies: {d.allergies}</Badge>
+              )}
+            </div>
+            {!hasFeeding && !hasMeds && (
+              <p className="text-xs text-muted-foreground mt-0.5">No feeding or medication info on file</p>
+            )}
+            {d.feeding_plans.map((p, i) => (
+              <p key={i} className="text-xs mt-0.5">
+                🍽 {p.food_name}, {p.amount}, {p.frequency}
+                {p.food_supplied_by_owner ? ' (owner supplied)' : ''}
+                {p.preparation_instructions ? ` — ${p.preparation_instructions}` : ''}
+              </p>
+            ))}
+            {d.feeding_plans.length === 0 && d.meal_routine && (
+              <p className="text-xs mt-0.5">🍽 {d.meal_routine}</p>
+            )}
+            {d.medications.map((m, i) => (
+              <p key={i} className="text-xs mt-0.5 text-amber-800">
+                💊 {m.name} {m.dose}, {m.frequency}{m.as_needed ? ' (as needed)' : ''}
+                {m.instructions ? ` — ${m.instructions}` : ''}
+              </p>
+            ))}
+            {d.medications.length === 0 && d.medication_requirements && (
+              <p className="text-xs mt-0.5 text-amber-800">💊 {d.medication_requirements}</p>
+            )}
+          </div>
+        );
+      })}
+    </CardContent>
+  </Card>
 );
 
 const HandoffPromptModal = ({ handoff, onClose, onAcknowledged, onViewAll }) => {

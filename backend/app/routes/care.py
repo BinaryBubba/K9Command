@@ -531,3 +531,91 @@ async def acknowledge_handoff(
     """), {"user_id": current_user.id, "id": handoff_id, "org_id": current_user.organization_id})
     await db.commit()
     return {"acknowledged": True}
+
+
+@router.get("/on-site-summary")
+async def on_site_feeding_medication_summary(
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Feeding and medication info for every dog currently on site: the
+    structured feeding plans and medications, plus the free-text feeding
+    routine, medication notes and allergies from the dog's intake form."""
+    from sqlalchemy import text, bindparam
+    import json as _json
+
+    def parse_json(v):
+        if v is None:
+            return []
+        if isinstance(v, str):
+            try:
+                return _json.loads(v)
+            except Exception:
+                return []
+        return v
+
+    dogs_result = await db.execute(text("""
+        SELECT DISTINCT d.id, d.name, d.meal_routine, d.medication_requirements, d.allergies
+        FROM dogs d
+        JOIN stays s ON s.dog_id = d.id
+        WHERE s.organization_id = :org_id
+        AND LOWER(s.status::text) IN ('on_site', 'checked_in')
+        ORDER BY d.name
+    """), {"org_id": current_user.organization_id})
+    dogs = dogs_result.fetchall()
+    if not dogs:
+        return []
+
+    dog_ids = [d.id for d in dogs]
+
+    plans_result = await db.execute(
+        text("""
+            SELECT dog_id, food_name, amount, frequency, scheduled_times,
+                   preparation_instructions, supplements, food_supplied_by_owner
+            FROM feeding_plans
+            WHERE organization_id = :org_id AND is_active = TRUE AND dog_id IN :ids
+        """).bindparams(bindparam("ids", expanding=True)),
+        {"org_id": current_user.organization_id, "ids": dog_ids},
+    )
+    plans_by_dog = {}
+    for p in plans_result.fetchall():
+        plans_by_dog.setdefault(p.dog_id, []).append({
+            "food_name": p.food_name,
+            "amount": p.amount,
+            "frequency": p.frequency,
+            "scheduled_times": parse_json(p.scheduled_times),
+            "preparation_instructions": p.preparation_instructions,
+            "supplements": p.supplements,
+            "food_supplied_by_owner": p.food_supplied_by_owner,
+        })
+
+    meds_result = await db.execute(
+        text("""
+            SELECT dog_id, name, dose, route, frequency, scheduled_times,
+                   as_needed, administration_instructions
+            FROM medications
+            WHERE organization_id = :org_id AND is_active = TRUE AND dog_id IN :ids
+        """).bindparams(bindparam("ids", expanding=True)),
+        {"org_id": current_user.organization_id, "ids": dog_ids},
+    )
+    meds_by_dog = {}
+    for m in meds_result.fetchall():
+        meds_by_dog.setdefault(m.dog_id, []).append({
+            "name": m.name,
+            "dose": m.dose,
+            "route": m.route,
+            "frequency": m.frequency,
+            "scheduled_times": parse_json(m.scheduled_times),
+            "as_needed": m.as_needed,
+            "instructions": m.administration_instructions,
+        })
+
+    return [{
+        "dog_id": d.id,
+        "dog_name": d.name,
+        "meal_routine": d.meal_routine,
+        "medication_requirements": d.medication_requirements,
+        "allergies": d.allergies,
+        "feeding_plans": plans_by_dog.get(d.id, []),
+        "medications": meds_by_dog.get(d.id, []),
+    } for d in dogs]
