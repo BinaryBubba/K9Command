@@ -8,6 +8,7 @@ import uuid
 class UserRole(str, Enum):
     CUSTOMER = "customer"
     STAFF = "staff"
+    MANAGER = "manager"
     ADMIN = "admin"
 
 class BookingStatus(str, Enum):
