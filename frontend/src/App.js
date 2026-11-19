@@ -103,7 +103,7 @@ function App() {
           <Route
             path="/staff/dashboard"
             element={
-              <ProtectedRoute allowedRoles={['staff', 'admin']}>
+              <ProtectedRoute allowedRoles={['staff', 'admin', 'manager']}>
                 <StaffDashboard />
               </ProtectedRoute>
             }
@@ -111,7 +111,7 @@ function App() {
           <Route
             path="/staff/hub"
             element={
-              <ProtectedRoute allowedRoles={['staff', 'admin']}>
+              <ProtectedRoute allowedRoles={['staff', 'admin', 'manager']}>
                 <StaffHubPage />
               </ProtectedRoute>
             }
@@ -119,7 +119,7 @@ function App() {
           <Route
             path="/staff/bookings"
             element={
-              <ProtectedRoute allowedRoles={['staff', 'admin']}>
+              <ProtectedRoute allowedRoles={['staff', 'admin', 'manager']}>
                 <StaffBookingsPage />
               </ProtectedRoute>
             }
@@ -127,7 +127,7 @@ function App() {
           <Route
             path="/staff/tasks"
             element={
-              <ProtectedRoute allowedRoles={['staff', 'admin']}>
+              <ProtectedRoute allowedRoles={['staff', 'admin', 'manager']}>
                 <TaskDashboardPage />
               </ProtectedRoute>
             }
@@ -135,7 +135,7 @@ function App() {
           <Route
             path="/staff/check-in-out"
             element={
-              <ProtectedRoute allowedRoles={['staff', 'admin']}>
+              <ProtectedRoute allowedRoles={['staff', 'admin', 'manager']}>
                 <CheckInOutPage />
               </ProtectedRoute>
             }
@@ -143,7 +143,7 @@ function App() {
           <Route
             path="/admin/check-in-out"
             element={
-              <ProtectedRoute allowedRoles={['staff', 'admin']}>
+              <ProtectedRoute allowedRoles={['staff', 'admin', 'manager']}>
                 <CheckInOutPage />
               </ProtectedRoute>
             }
@@ -151,7 +151,7 @@ function App() {
           <Route
             path="/staff/daily-ops"
             element={
-              <ProtectedRoute allowedRoles={['staff', 'admin']}>
+              <ProtectedRoute allowedRoles={['staff', 'admin', 'manager']}>
                 <DailyOpsPage />
               </ProtectedRoute>
             }
@@ -159,7 +159,7 @@ function App() {
           <Route
             path="/staff/*"
             element={
-              <ProtectedRoute allowedRoles={['staff', 'admin']}>
+              <ProtectedRoute allowedRoles={['staff', 'admin', 'manager']}>
                 <StaffDashboard />
               </ProtectedRoute>
             }
@@ -209,7 +209,7 @@ function App() {
           <Route
             path="/admin/dogs/add"
             element={
-              <ProtectedRoute allowedRoles={['admin', 'staff']}>
+              <ProtectedRoute allowedRoles={['admin', 'staff', 'manager']}>
                 <AddDogPage />
               </ProtectedRoute>
             }
@@ -249,7 +249,7 @@ function App() {
           <Route
             path="/admin/kennels"
             element={
-              <ProtectedRoute allowedRoles={['admin', 'staff']}>
+              <ProtectedRoute allowedRoles={['admin', 'staff', 'manager']}>
                 <KennelManagementPage />
               </ProtectedRoute>
             }
@@ -290,7 +290,7 @@ function App() {
           <Route
             path="/admin/staff/:staffId"
             element={
-              <ProtectedRoute allowedRoles={['admin', 'staff']}>
+              <ProtectedRoute allowedRoles={['admin', 'staff', 'manager']}>
                 <StaffProfilePage />
               </ProtectedRoute>
             }
@@ -298,7 +298,7 @@ function App() {
           <Route
             path="/admin/incidents/:incidentId"
             element={
-              <ProtectedRoute allowedRoles={['admin', 'staff']}>
+              <ProtectedRoute allowedRoles={['admin', 'staff', 'manager']}>
                 <IncidentProfilePage />
               </ProtectedRoute>
             }
@@ -306,7 +306,7 @@ function App() {
           <Route
             path="/admin/playgroups"
             element={
-              <ProtectedRoute allowedRoles={['admin', 'staff']}>
+              <ProtectedRoute allowedRoles={['admin', 'staff', 'manager']}>
                 <PlaygroupsPage />
               </ProtectedRoute>
             }
@@ -314,7 +314,7 @@ function App() {
           <Route
             path="/admin/bookings/:bookingId"
             element={
-              <ProtectedRoute allowedRoles={['admin', 'staff']}>
+              <ProtectedRoute allowedRoles={['admin', 'staff', 'manager']}>
                 <BookingProfilePage />
               </ProtectedRoute>
             }
@@ -322,7 +322,7 @@ function App() {
           <Route
             path="/admin/playgroups/history"
             element={
-              <ProtectedRoute allowedRoles={['admin', 'staff']}>
+              <ProtectedRoute allowedRoles={['admin', 'staff', 'manager']}>
                 <PlaygroupHistoryPage />
               </ProtectedRoute>
             }
@@ -330,7 +330,7 @@ function App() {
           <Route
             path="/admin/playgroups/history"
             element={
-              <ProtectedRoute allowedRoles={['admin', 'staff']}>
+              <ProtectedRoute allowedRoles={['admin', 'staff', 'manager']}>
                 <PlaygroupHistoryPage />
               </ProtectedRoute>
             }
@@ -338,12 +338,12 @@ function App() {
           <Route
             path="/forms"
             element={
-              <ProtectedRoute allowedRoles={['admin', 'staff', 'customer']}>
+              <ProtectedRoute allowedRoles={['admin', 'staff', 'customer', 'manager']}>
                 <FormsPage />
               </ProtectedRoute>
             }
           />
-          <Route path="/admin/forms-fill" element={<ProtectedRoute allowedRoles={['admin','staff']}><FormsPage /></ProtectedRoute>} />
+          <Route path="/admin/forms-fill" element={<ProtectedRoute allowedRoles={['admin','staff', 'manager']}><FormsPage /></ProtectedRoute>} />
           <Route
             path="/admin/forms"
             element={
@@ -376,16 +376,16 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route path="/customer/stay/:bookingId" element={<ProtectedRoute allowedRoles={['customer','admin','staff']}><CustomerStayPage /></ProtectedRoute>} />
-          <Route path="/customer/dog/:dogId" element={<ProtectedRoute allowedRoles={['customer','admin','staff']}><CustomerDogPage /></ProtectedRoute>} />
-          <Route path="/customer/profile" element={<ProtectedRoute allowedRoles={['customer','admin','staff']}><CustomerProfilePage /></ProtectedRoute>} />
-          <Route path="/customer/stay/:bookingId" element={<ProtectedRoute allowedRoles={['customer','admin','staff']}><CustomerStayPage /></ProtectedRoute>} />
-          <Route path="/customer/dog/:dogId" element={<ProtectedRoute allowedRoles={['customer','admin','staff']}><CustomerDogPage /></ProtectedRoute>} />
+          <Route path="/customer/stay/:bookingId" element={<ProtectedRoute allowedRoles={['customer','admin','staff', 'manager']}><CustomerStayPage /></ProtectedRoute>} />
+          <Route path="/customer/dog/:dogId" element={<ProtectedRoute allowedRoles={['customer','admin','staff', 'manager']}><CustomerDogPage /></ProtectedRoute>} />
+          <Route path="/customer/profile" element={<ProtectedRoute allowedRoles={['customer','admin','staff', 'manager']}><CustomerProfilePage /></ProtectedRoute>} />
+          <Route path="/customer/stay/:bookingId" element={<ProtectedRoute allowedRoles={['customer','admin','staff', 'manager']}><CustomerStayPage /></ProtectedRoute>} />
+          <Route path="/customer/dog/:dogId" element={<ProtectedRoute allowedRoles={['customer','admin','staff', 'manager']}><CustomerDogPage /></ProtectedRoute>} />
           <Route path="/minio/*" element={null} />
           <Route
             path="/customer/dashboard"
             element={
-              <ProtectedRoute allowedRoles={["customer", "admin", "staff"]}>
+              <ProtectedRoute allowedRoles={["customer", "admin", "staff", "manager"]}>
                 <CustomerDashboard />
               </ProtectedRoute>
             }
@@ -393,7 +393,7 @@ function App() {
           <Route
             path="/admin/dogs/:dogId"
             element={
-              <ProtectedRoute allowedRoles={["admin", "staff"]}>
+              <ProtectedRoute allowedRoles={["admin", "staff", "manager"]}>
                 <DogProfilePage />
               </ProtectedRoute>
             }
@@ -409,7 +409,7 @@ function App() {
           <Route
             path="/admin/meet-and-greet"
             element={
-              <ProtectedRoute allowedRoles={["admin", "staff"]}>
+              <ProtectedRoute allowedRoles={["admin", "staff", "manager"]}>
                 <MeetAndGreetPage />
               </ProtectedRoute>
             }
@@ -417,12 +417,12 @@ function App() {
           <Route
             path="/admin/bookings/:bookingId"
             element={
-              <ProtectedRoute allowedRoles={["admin", "staff"]}>
+              <ProtectedRoute allowedRoles={["admin", "staff", "manager"]}>
                 <BookingProfilePage />
               </ProtectedRoute>
             }
           />
-          <Route path="/customer/add-dog" element={<ProtectedRoute allowedRoles={["customer","admin","staff"]}><CustomerAddDogPage /></ProtectedRoute>} />
+          <Route path="/customer/add-dog" element={<ProtectedRoute allowedRoles={["customer","admin","staff", "manager"]}><CustomerAddDogPage /></ProtectedRoute>} />
           <Route path="/customer/mag-request" element={<ProtectedRoute allowedRoles={["customer","admin","staff","manager"]}><CustomerMagRequestPage /></ProtectedRoute>} />
           <Route path="/customer/request" element={<ProtectedRoute allowedRoles={["customer","admin","staff","manager"]}><CustomerBookingRequestPage /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />

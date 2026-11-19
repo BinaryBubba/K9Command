@@ -31,7 +31,7 @@ const BookingModal = ({ isOpen, onClose, booking, onSuccess }) => {
     meet_greet_override: false,
   });
 
-  const isAdminOrStaff = user?.role === 'admin' || user?.role === 'staff';
+  const isAdminOrStaff = user?.role === 'admin' || user?.role === 'staff' || user?.role === 'manager';
 
   useEffect(() => {
     if (isOpen) {

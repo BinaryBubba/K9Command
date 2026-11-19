@@ -487,7 +487,7 @@ async def add_dog_note(
 async def delete_dog_note(
     dog_id: str,
     note_id: str,
-    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF)),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(

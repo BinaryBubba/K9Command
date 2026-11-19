@@ -785,7 +785,7 @@ async def update_staff_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    if user.role != UserRole.STAFF:
+    if user.role not in (UserRole.STAFF, UserRole.MANAGER):
         raise HTTPException(status_code=400, detail="Target user is not staff")
 
     if "email" in data and data["email"]:
@@ -1004,7 +1004,7 @@ async def deactivate_customer(
 @app.get("/api/locations")
 async def list_locations(
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.CUSTOMER, UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.CUSTOMER, UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     res = await db.execute(select(LocationORM))
     locations = res.scalars().all()
@@ -1080,7 +1080,7 @@ def _parse_accommodation_type(value: str) -> AccommodationType:
 async def create_booking_admin(
     data: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     dog_ids = data.get("dog_ids") or []
     location_id = data.get("location_id")
@@ -1159,7 +1159,7 @@ async def update_booking_items(
     booking_id: str,
     data: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     booking = (await db.execute(select(BookingORM).where(BookingORM.id == booking_id))).scalar_one_or_none()
     if not booking:
@@ -1182,7 +1182,7 @@ async def update_booking_items(
 async def delete_booking(
     booking_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     booking = (await db.execute(select(BookingORM).where(BookingORM.id == booking_id))).scalar_one_or_none()
     if not booking:
@@ -1227,7 +1227,7 @@ def _parse_task_status(value: str) -> TaskStatus:
 @app.get("/api/tasks")
 async def list_tasks(
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     stmt = select(TaskORM)
 
@@ -1245,7 +1245,7 @@ async def list_tasks(
 async def create_task(
     data: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     title = (data.get("title") or "").strip()
     location_id = (data.get("location_id") or "").strip() or getattr(current_user, "location_id", None)
@@ -1343,7 +1343,7 @@ def _serialize_shift(s: ShiftORM):
 @app.get("/api/shifts")
 async def list_shifts(
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     stmt = select(ShiftORM)
 
@@ -1375,7 +1375,7 @@ async def create_shift(
     if not staff_user:
         raise HTTPException(status_code=404, detail="Staff user not found")
 
-    if staff_user.role not in [UserRole.STAFF, UserRole.ADMIN]:
+    if staff_user.role not in [UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN]:
         raise HTTPException(status_code=400, detail="staff_id must reference a staff or admin user")
 
     location = (await db.execute(
@@ -1468,7 +1468,7 @@ async def delete_shift(
 @app.get("/api/dashboard/stats")
 async def dashboard_stats(
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.CUSTOMER, UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     def _scalar(value):
         return int(value or 0)
@@ -1568,7 +1568,7 @@ async def get_scheduling_shifts(
     start_date: Optional[datetime] = Query(None),
     end_date: Optional[datetime] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     """
     Compatibility alias for frontend ScheduleViewPage.
@@ -1634,7 +1634,7 @@ async def create_scheduling_shift(
     staff_user = (await db.execute(select(UserORM).where(UserORM.id == staff_id))).scalar_one_or_none()
     if not staff_user:
         raise HTTPException(status_code=404, detail="Staff user not found")
-    if staff_user.role != UserRole.STAFF:
+    if staff_user.role not in (UserRole.STAFF, UserRole.MANAGER):
         raise HTTPException(status_code=400, detail="Target user is not staff")
 
     location = (await db.execute(select(LocationORM).where(LocationORM.id == location_id))).scalar_one_or_none()
@@ -1686,7 +1686,7 @@ async def update_scheduling_shift(
         staff_user = (await db.execute(select(UserORM).where(UserORM.id == payload["staff_id"]))).scalar_one_or_none()
         if not staff_user:
             raise HTTPException(status_code=404, detail="Staff user not found")
-        if staff_user.role != UserRole.STAFF:
+        if staff_user.role not in (UserRole.STAFF, UserRole.MANAGER):
             raise HTTPException(status_code=400, detail="Target user is not staff")
         shift.staff_id = staff_user.id
         shift.staff_name = staff_user.full_name
@@ -1759,7 +1759,7 @@ async def delete_scheduling_shift(
 @app.get("/api/scheduling/swap-requests")
 async def get_shift_swap_requests(
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     """
     Minimal real implementation using audit_logs as storage.
@@ -1793,7 +1793,7 @@ async def get_shift_swap_requests(
 async def create_shift_swap_request(
     payload: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     """
     Minimal real implementation using audit_logs as storage.
@@ -1896,7 +1896,7 @@ def _parse_k9_ops_date(date_value: str | None):
 
 @app.get("/api/k9/kennels")
 async def get_k9_kennels(
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     return []
 
@@ -1906,7 +1906,7 @@ async def get_k9_operations_summary(
     location_id: str | None = Query(default=None),
     date: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     target_date = _parse_k9_ops_date(date)
 
@@ -1941,7 +1941,7 @@ async def get_k9_operations_dogs_on_site(
     location_id: str | None = Query(default=None),
     date: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     target_date = _parse_k9_ops_date(date)
 
@@ -1965,7 +1965,7 @@ async def get_k9_operations_check_ins(
     location_id: str | None = Query(default=None),
     date: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     target_date = _parse_k9_ops_date(date)
 
@@ -1989,7 +1989,7 @@ async def get_k9_operations_check_outs(
     location_id: str | None = Query(default=None),
     date: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     target_date = _parse_k9_ops_date(date)
 
@@ -2012,14 +2012,14 @@ async def get_k9_operations_check_outs(
 async def get_k9_operations_baths_due(
     location_id: str | None = Query(default=None),
     date: str | None = Query(default=None),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     return []
 
 
 @app.get("/api/k9/coupons")
 async def get_k9_coupons(
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     return []
 
@@ -2059,7 +2059,7 @@ async def patch_admin_settings_booking_requires_approval_compat(
 
 @app.get("/api/service-types")
 async def get_service_types_compat(
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     return []
 
@@ -2076,7 +2076,7 @@ async def get_users_compat(
     search: str | None = Query(default=None),
     role: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     stmt = select(UserORM)
 
@@ -2135,7 +2135,7 @@ def _serialize_time_off_request(a: AuditLogORM):
 @app.get("/api/hr/time-off-requests")
 async def get_hr_time_off_requests(
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     stmt = (
         select(AuditLogORM)
@@ -2155,7 +2155,7 @@ async def get_hr_time_off_requests(
 async def create_hr_time_off_request(
     payload: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     staff_id = payload.get("staff_id") or current_user.id
     start_date = payload.get("start_date")
@@ -2274,7 +2274,7 @@ async def delete_hr_time_off_request(
 
 @app.get("/api/time-off/policies")
 async def list_time_off_policies(
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     return []
 
@@ -2304,7 +2304,7 @@ async def delete_time_off_policy(
 
 @app.get("/api/hr/time-off-policies")
 async def get_hr_time_off_policies_compat(
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     return await list_time_off_policies(current_user=current_user)
 
@@ -2312,7 +2312,7 @@ async def get_hr_time_off_policies_compat(
 @app.get("/api/k9/inventory/products")
 async def get_k9_inventory_products_compat(
     active_only: bool | None = Query(default=None),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     return []
 
@@ -2350,7 +2350,7 @@ async def get_admin_revenue_trends_compat(
 
 @app.get("/api/incidents")
 async def get_incidents_compat(
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     return []
 
@@ -2358,7 +2358,7 @@ async def get_incidents_compat(
 @app.post("/api/incidents")
 async def create_incident_compat(
     payload: dict,
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     return {
         "status": "created",
@@ -2369,14 +2369,14 @@ async def create_incident_compat(
 @app.get("/api/schedules")
 async def get_schedules_compat(
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     return await list_shifts(db=db, current_user=current_user)
 
 
 @app.get("/api/chats")
 async def get_chats_compat(
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     return []
 
@@ -2386,7 +2386,7 @@ async def get_chat_users_compat(
     search: str | None = Query(default=None),
     role: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     return await get_users_compat(search=search, role=role, db=db, current_user=current_user)
 
@@ -2411,7 +2411,7 @@ async def update_form_submission(
     submission_id: str,
     updates: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     submission = await db.get(FormSubmissionORM, submission_id)
     if not submission:
@@ -2513,21 +2513,21 @@ async def review_form_submission(
 
 @app.get("/api/forms/analytics/submissions")
 async def get_forms_analytics_submissions_compat(
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     return []
 
 
 @app.get("/api/forms/task-templates")
 async def get_forms_task_templates_compat(
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     return []
 
 
 @app.get("/api/forms/analytics/tasks")
 async def get_forms_analytics_tasks_compat(
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     return []
 
@@ -2535,7 +2535,7 @@ async def get_forms_analytics_tasks_compat(
 @app.get("/api/k9/bookings/pending-approval")
 async def get_k9_bookings_pending_approval_compat(
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     stmt = select(BookingORM).where(BookingORM.status == BookingStatus.PENDING).order_by(BookingORM.created_at.desc())
     res = await db.execute(stmt)
@@ -2545,7 +2545,7 @@ async def get_k9_bookings_pending_approval_compat(
 
 @app.get("/api/k9/inventory/low-stock")
 async def get_k9_inventory_low_stock_compat(
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     return []
 
@@ -2553,7 +2553,7 @@ async def get_k9_inventory_low_stock_compat(
 @app.post("/api/hr/time-off-requests")
 async def post_hr_time_off_requests_compat(
     payload: dict,
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     return {
         "status": "accepted",
@@ -2586,7 +2586,7 @@ async def post_k9_inventory_products_compat(
 @app.get("/api/time-entries")
 async def get_time_entries(
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     stmt = select(TimeEntryORM)
 
@@ -2601,7 +2601,7 @@ async def get_time_entries(
 @app.get("/api/time-entries/current")
 async def get_current_time_entry(
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     stmt = select(TimeEntryORM).where(TimeEntryORM.staff_id == current_user.id).where(TimeEntryORM.clock_out.is_(None))
     res = await db.execute(stmt.order_by(TimeEntryORM.clock_in.desc()))
@@ -2643,7 +2643,7 @@ async def get_current_time_entry(
 async def clock_in_time_entry(
     payload: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     print("[DEBUG clock-in request]", {
         "payload": payload,
@@ -2699,7 +2699,7 @@ async def clock_in_time_entry(
 @app.post("/api/time-entries/clock-out")
 async def clock_out_time_entry(
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     print("[DEBUG clock-out request]", {
         "current_user_id": current_user.id,
@@ -2733,7 +2733,7 @@ async def clock_out_time_entry(
 @app.get("/api/timeclock/entries")
 async def get_timeclock_entries_alias(
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     return await get_time_entries(db=db, current_user=current_user)
 
@@ -2741,7 +2741,7 @@ async def get_timeclock_entries_alias(
 @app.get("/api/timeclock/entries/current")
 async def get_current_timeclock_entry_alias(
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     return await get_current_time_entry(db=db, current_user=current_user)
 
@@ -2750,7 +2750,7 @@ async def get_current_timeclock_entry_alias(
 async def clock_in_timeclock_alias(
     payload: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     return await clock_in_time_entry(payload=payload, db=db, current_user=current_user)
 
@@ -2758,7 +2758,7 @@ async def clock_in_timeclock_alias(
 @app.post("/api/timeclock/clock-out")
 async def clock_out_timeclock_alias(
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     return await clock_out_time_entry(db=db, current_user=current_user)
 
@@ -2857,7 +2857,7 @@ async def delete_time_entry(
 @app.get("/api/time-entries/modification-requests")
 async def get_time_modification_requests(
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     stmt = select(TimeModificationRequestORM)
 
@@ -2873,7 +2873,7 @@ async def get_time_modification_requests(
 async def create_time_modification_request(
     payload: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     time_entry_id = payload.get("time_entry_id")
     requested_clock_in = payload.get("requested_clock_in")
@@ -2998,7 +2998,7 @@ async def get_time_off_requests(
 @app.get("/api/time-off/my-requests")
 async def get_my_time_off_requests(
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER)),
 ):
     stmt = (
         select(AuditLogORM)
@@ -3019,7 +3019,7 @@ async def get_my_time_off_requests(
 
 @app.get("/api/time-off/balances")
 async def get_time_off_balances(
-    current_user: UserORM = Depends(require_role(UserRole.STAFF)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER)),
 ):
     return {}
 
@@ -3028,7 +3028,7 @@ async def get_time_off_balances(
 async def create_time_off_request(
     payload: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER)),
 ):
     leave_type = payload.get("leave_type", "vacation")
     start_date = payload.get("start_date")
@@ -3120,11 +3120,11 @@ async def reject_time_off_request(
 @app.get("/api/admin/staff")
 async def get_admin_staff(
     db: AsyncSession = Depends(get_db),
-    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.ADMIN)),
+    current_user: UserORM = Depends(require_role(UserRole.STAFF, UserRole.MANAGER, UserRole.ADMIN)),
 ):
     res = await db.execute(
         select(UserORM)
-        .where(UserORM.role == UserRole.STAFF)
+        .where(UserORM.role.in_([UserRole.STAFF, UserRole.MANAGER]))
         .where(UserORM.is_active == True)
         .order_by(UserORM.full_name.asc())
     )
