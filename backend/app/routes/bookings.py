@@ -639,6 +639,18 @@ from typing import Optional
 
 
 # ── Booking Notes ─────────────────────────────────────────────────────────────
+def _note_photo_urls(photo_keys):
+    from app.storage import get_public_url, BUCKET_DOGS
+    import json as _json2
+    keys = photo_keys
+    if isinstance(keys, str):
+        try:
+            keys = _json2.loads(keys)
+        except Exception:
+            keys = []
+    return [u for u in (get_public_url(BUCKET_DOGS, k) for k in (keys or [])) if u]
+
+
 @router.get("/{booking_id}/notes")
 async def get_booking_notes(
     booking_id: str,
@@ -649,7 +661,7 @@ async def get_booking_notes(
 
     from sqlalchemy import text
     result = await db.execute(text("""
-        SELECT bn.id, bn.note_text, bn.created_at, u.full_name as created_by_name
+        SELECT bn.id, bn.note_text, bn.photo_keys, bn.created_at, u.full_name as created_by_name
         FROM booking_notes bn
         LEFT JOIN users u ON bn.created_by = u.id
         WHERE bn.booking_id = :booking_id
@@ -657,7 +669,7 @@ async def get_booking_notes(
         ORDER BY bn.created_at DESC
     """), {"booking_id": booking_id, "org_id": current_user.organization_id})
     rows = result.fetchall()
-    return [{"id": r.id, "note_text": r.note_text, "created_by_name": r.created_by_name,
+    return [{"id": r.id, "note_text": r.note_text, "photo_urls": _note_photo_urls(r.photo_keys), "created_by_name": r.created_by_name,
              "created_at": r.created_at.isoformat() if r.created_at else None} for r in rows]
 
 
@@ -673,16 +685,21 @@ async def add_booking_note(
     from sqlalchemy import text
     import uuid
     note_text = data.get("note_text", "").strip()
-    if not note_text:
+    import json as _json
+    photo_keys = [k for k in (data.get("photo_keys") or []) if isinstance(k, str)]
+    if photo_keys and current_user.role == UserRole.CUSTOMER:
+        raise HTTPException(status_code=403, detail="Only staff can attach photos")
+    if not note_text and not photo_keys:
         raise HTTPException(status_code=400, detail="note_text required")
     await db.execute(text("""
-        INSERT INTO booking_notes (id, organization_id, booking_id, note_text, created_by)
-        VALUES (:id, :org_id, :booking_id, :note_text, :created_by)
+        INSERT INTO booking_notes (id, organization_id, booking_id, note_text, created_by, photo_keys)
+        VALUES (:id, :org_id, :booking_id, :note_text, :created_by, CAST(:photo_keys AS JSON))
     """), {
         "id": str(uuid.uuid4()),
         "org_id": current_user.organization_id,
         "booking_id": booking_id,
         "note_text": note_text,
+        "photo_keys": _json.dumps(photo_keys),
         "created_by": current_user.id,
     })
     await db.commit()

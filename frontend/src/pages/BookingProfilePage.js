@@ -8,7 +8,7 @@ import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
-import { CalendarIcon, PencilIcon, PlusIcon, ClockIcon, DogIcon } from 'lucide-react';
+import { CalendarIcon, PencilIcon, PlusIcon, ClockIcon, DogIcon, CameraIcon, XIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 const STATUS_COLORS = {
@@ -40,6 +40,9 @@ const BookingProfilePage = () => {
   const [editing, setEditing] = useState(false);
   const [showAddNote, setShowAddNote] = useState(false);
   const [noteText, setNoteText] = useState('');
+  const [photoKeys, setPhotoKeys] = useState([]);
+  const [photoPreviews, setPhotoPreviews] = useState([]);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [notes, setNotes] = useState([]);
   const [changes, setChanges] = useState([]);
 
@@ -89,10 +92,28 @@ const BookingProfilePage = () => {
     } catch (err) { toast.error(err.response?.data?.detail || err.message || 'Failed to decline'); }
   };
 
-  const handleAddNote = async () => {
-    if (!noteText.trim()) return;
+  const handlePhotoSelect = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setUploadingPhoto(true);
     try {
-      await api.post(`/bookings/${bookingId}/notes`, { note_text: noteText });
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await api.post('/uploads/avatar', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+        setPhotoKeys(prev => [...prev, res.data.key]);
+        setPhotoPreviews(prev => [...prev, URL.createObjectURL(file)]);
+      }
+    } catch { toast.error('Failed to upload photo'); }
+    finally { setUploadingPhoto(false); e.target.value = ''; }
+  };
+
+  const handleAddNote = async () => {
+    if (!noteText.trim() && photoKeys.length === 0) return;
+    try {
+      await api.post(`/bookings/${bookingId}/notes`, { note_text: noteText, photo_keys: photoKeys });
+      setPhotoKeys([]);
+      setPhotoPreviews([]);
       setNoteText('');
       setShowAddNote(false);
       toast.success('Note added');
@@ -256,9 +277,34 @@ const BookingProfilePage = () => {
               <CardContent className="pt-4 space-y-3">
                 <Textarea value={noteText} onChange={e => setNoteText(e.target.value)}
                   rows={3} placeholder="Note about this stay..." />
+                {user?.role !== 'customer' && (
+                  <div className="space-y-2">
+                    {photoPreviews.length > 0 && (
+                      <div className="grid grid-cols-4 gap-2">
+                        {photoPreviews.map((url, i) => (
+                          <div key={i} className="relative rounded-lg overflow-hidden aspect-square bg-muted">
+                            <img src={url} alt="" className="w-full h-full object-cover" />
+                            <button type="button" className="absolute top-1 right-1 bg-black/60 rounded-full p-1"
+                              onClick={() => {
+                                setPhotoKeys(prev => prev.filter((_, j) => j !== i));
+                                setPhotoPreviews(prev => prev.filter((_, j) => j !== i));
+                              }}>
+                              <XIcon size={10} className="text-white" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <label className="flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-lg p-3 cursor-pointer hover:bg-muted text-xs text-muted-foreground">
+                      <CameraIcon size={14} />
+                      {uploadingPhoto ? 'Uploading...' : 'Add Photo(s) for the customer'}
+                      <input type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoSelect} disabled={uploadingPhoto} />
+                    </label>
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={() => setShowAddNote(false)}>Cancel</Button>
-                  <Button size="sm" onClick={handleAddNote}>Save Note</Button>
+                  <Button size="sm" onClick={handleAddNote} disabled={uploadingPhoto}>Save Note</Button>
                 </div>
               </CardContent>
             </Card>
@@ -269,6 +315,15 @@ const BookingProfilePage = () => {
             <Card key={note.id} className="mb-2">
               <CardContent className="py-3 px-4">
                 <p className="text-sm">{note.note_text || note.text}</p>
+                {note.photo_urls?.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2 mt-2">
+                    {note.photo_urls.map((url, i) => (
+                      <a key={i} href={url} target="_blank" rel="noreferrer" className="block rounded-lg overflow-hidden aspect-square bg-muted">
+                        <img src={url} alt="" className="w-full h-full object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground mt-1">
                   {note.created_by_name || note.created_by} · {new Date(note.created_at).toLocaleString()}
                 </p>

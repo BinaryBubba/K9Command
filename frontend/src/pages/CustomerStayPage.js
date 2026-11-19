@@ -160,13 +160,22 @@ const CustomerStayPage = () => {
           </div>
         )}
         {/* Staff notes visible to customer */}
-        {notes.filter(n => n.note_text).length > 0 ? (
+        {notes.filter(n => n.note_text || n.photo_urls?.length > 0).length > 0 ? (
           <div>
             <h3 className="text-sm font-medium mb-2">Updates from Staff</h3>
             {notes.map(note => (
               <Card key={note.id} className="mb-2">
                 <CardContent className="py-3 px-4">
                   <p className="text-sm">{note.note_text}</p>
+                    {note.photo_urls?.length > 0 && (
+                  <div className="grid grid-cols-3 gap-2 mt-2">
+                    {note.photo_urls.map((url, i) => (
+                      <a key={i} href={url} target="_blank" rel="noreferrer" className="block rounded-lg overflow-hidden aspect-square bg-muted">
+                        <img src={url} alt="" className="w-full h-full object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                )}
                   <p className="text-xs text-muted-foreground mt-1">
                     {note.created_by_name} · {new Date(note.created_at).toLocaleString()}
                   </p>
