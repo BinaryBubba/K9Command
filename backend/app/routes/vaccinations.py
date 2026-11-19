@@ -308,17 +308,11 @@ async def send_expiry_reminders(
             if not u.email:
                 continue
             try:
-                await send_email(
-                    to_email=u.email,
-                    subject=f"{dog.name}'s {row.vaccination_type} vaccine is expiring soon",
-                    html_body=f"""
-                        <p>Hi {u.full_name or ''},</p>
-                        <p><strong>{dog.name}'s</strong> {row.vaccination_type} vaccination
-                        expires on <strong>{expiry_str}</strong>.</p>
-                        <p>Please update your dog's vaccination records with us before your next
-                        stay to avoid any delays at check-in.</p>
-                    """,
-                )
+                from app.routes.email_templates import load_template, fill_template
+                from email_service import email_button
+                _ts, _tb = await load_template(db, dog.organization_id, "vaccination_expiring")
+                _ts, _tb = fill_template("vaccination_expiring", _ts, _tb, {"first_name": ((u.full_name or "").split(" ")[0] or "there"), "dog_name": dog.name, "vaccine": row.vaccination_type, "expiry_date": expiry_str})
+                await send_email(to_email=u.email, subject=_ts, html_body=_tb)
                 sent_count += 1
             except Exception as e:
                 print(f"Failed to send vaccination reminder to {u.email}: {e}")

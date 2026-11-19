@@ -442,16 +442,11 @@ async def update_mag_status(
                     if not u.email:
                         continue
                     try:
-                        await send_email(
-                            to_email=u.email,
-                            subject="Your Meet & Greet is Confirmed!",
-                            html_body=f"""
-                                <p>Hi {u.full_name or ''},</p>
-                                <p>Your Meet & Greet for <strong>{dog_name}</strong> is confirmed for
-                                <strong>{when}</strong>{f' ({slot_label})' if slot_label else ''}.</p>
-                                <p>We look forward to meeting you!</p>
-                            """,
-                        )
+                        from app.routes.email_templates import load_template, fill_template
+                        from email_service import email_button
+                        _ts, _tb = await load_template(db, mag.organization_id, "mag_confirmed")
+                        _ts, _tb = fill_template("mag_confirmed", _ts, _tb, {"first_name": ((u.full_name or "").split(" ")[0] or "there"), "dog_name": dog_name, "when": when + (" (" + slot_label + ")" if slot_label else "")})
+                        await send_email(to_email=u.email, subject=_ts, html_body=_tb)
                     except Exception as e:
                         print(f"Failed to send M&G confirmation email to {u.email}: {e}")
         except Exception as e:
@@ -647,16 +642,11 @@ async def send_mag_reminders(
             if not u.email:
                 continue
             try:
-                await send_email(
-                    to_email=u.email,
-                    subject="Reminder: Your Meet & Greet is Coming Up!",
-                    html_body=f"""
-                        <p>Hi {u.full_name or ''},</p>
-                        <p>Just a reminder -- <strong>{dog.name}'s</strong> Meet & Greet is coming up on
-                        <strong>{when}</strong>{f' ({slot_label})' if slot_label else ''}.</p>
-                        <p>We look forward to seeing you!</p>
-                    """,
-                )
+                from app.routes.email_templates import load_template, fill_template
+                from email_service import email_button
+                _ts, _tb = await load_template(db, dog.organization_id, "mag_reminder")
+                _ts, _tb = fill_template("mag_reminder", _ts, _tb, {"first_name": ((u.full_name or "").split(" ")[0] or "there"), "dog_name": dog.name, "when": when + (" (" + slot_label + ")" if slot_label else "")})
+                await send_email(to_email=u.email, subject=_ts, html_body=_tb)
                 sent_count += 1
             except Exception as e:
                 print(f"Failed to send M&G reminder to {u.email}: {e}")
@@ -803,23 +793,25 @@ async def _send_post_mag_email(mag, outcome, db):
     )).scalars().all()
     recipients = [(u.email, u.full_name) for u in users if u.email]
 
-    if outcome == MeetAndGreetOutcome.PASS:
-        subject = f"{dog_name} passed their Meet & Greet!"
-        body = lambda name: f"""
-            <p>Hi {name or ''},</p>
-            <p>Thank you for bringing <strong>{dog_name}</strong> in for their Meet &amp; Greet -- it went great,
-            and they're all set to stay with us.</p>
-            <p>Ready to plan a stay? <a href="https://k9cmd.maniacranch.com/customer/request">Request a stay here</a>.</p>
-            <p>We can't wait to see you both again!</p>
-        """
-    else:
-        subject = f"Thanks for bringing {dog_name} in"
-        body = lambda name: f"""
-            <p>Hi {name or ''},</p>
-            <p>Thank you for bringing <strong>{dog_name}</strong> in for their Meet &amp; Greet.
-            We enjoyed meeting them, and we'll be reaching out shortly to talk through next steps for their stays.</p>
-            <p>If you have any questions in the meantime, just reply to this email or give us a call.</p>
-        """
+    try:
+        from app.routes.pricing import load_rate_groups
+        rate_groups = await load_rate_groups(db, dog.organization_id)
+    except Exception as e:
+        print(f"Could not load rates for the welcome email, using built-in defaults: {e}")
+        rate_groups = None
+
+    tkey = "welcome_pass" if outcome == MeetAndGreetOutcome.PASS else "mag_conditional"
+    from app.routes.email_templates import load_template, fill_template, build_rates_html
+    from email_service import email_button
+    tpl_subject, tpl_body = await load_template(db, dog.organization_id, tkey)
+    base_ctx = {
+        "dog_name": dog_name,
+        "rates": build_rates_html(rate_groups or SERVICE_RATES),
+        "intake_button": email_button("https://k9cmd.maniacranch.com/forms", "Fill Out the Intake Form"),
+        "upload_button": email_button("https://k9cmd.maniacranch.com/customer/dog/" + str(dog_id), "Upload Vaccination Records"),
+    }
+    subject = fill_template(tkey, tpl_subject, tpl_body, base_ctx)[0]
+    body = lambda name: fill_template(tkey, tpl_subject, tpl_body, dict(base_ctx, first_name=((name or "").split(" ")[0] or "there")))[1]
 
     sent_any = False
     for email, name in recipients:
@@ -835,3 +827,75 @@ async def _send_post_mag_email(mag, outcome, db):
             {"now": datetime.now(timezone.utc), "id": mag_id},
         )
         await db.commit()
+
+
+WELCOME_BRING = [
+    "Food packed in individual containers by meal (we suggest ziplocks)",
+    "A blanket or bed topper (we supply raised beds in each room)",
+    "A safety collar (just a standard collar is fine)",
+]
+DROPOFF_WINDOWS = ["8am – 10am", "12pm – 2pm", "4pm – 6pm"]
+SERVICE_RATES = [
+    ("Boarding", [
+        "Nightly Rate: $36",
+        "Holiday Rate: $44",
+        "Puppy Rate: $40",
+        "Pick-Up / Drop-Off: $25 one-way, $40 round-trip",
+        "One-On-One Playtime: +$6/day per family",
+        "Extra Playtime: $6 per 30 minutes",
+        "In-Room Camera Access: $6/day",
+        "Dog Shuttle: $25 round-trip",
+    ]),
+    ("Daycare", [
+        "Daily Rate: $36",
+        "Holiday Rate: $44",
+        "Puppy Rate: $40",
+        "Extra Playtime: $6 per 30 minutes",
+    ]),
+    ("Drop-In Visits", [
+        "Rate per visit: $16",
+        "Holiday Rate: $21",
+        "Puppy Rate: $16",
+        "Cat: $16",
+        "Each additional animal: +$5",
+    ]),
+]
+
+
+def _welcome_email_html(first_name, dog_name, dog_id, rate_groups=None):
+    """Welcome email sent after a dog passes their Meet & Greet."""
+    import html as _html
+    from email_service import email_button
+
+    green = "#179D4C"
+    first = _html.escape(first_name or "there")
+    dog = _html.escape(dog_name or "your pup")
+
+    def heading(text):
+        return f'<p style="font-weight:bold;color:{green};margin:20px 0 6px 0;">{text}</p>'
+
+    def bullets(items):
+        return '<ul style="padding-left:20px;margin:6px 0;">' + "".join(f"<li>{i}</li>" for i in items) + "</ul>"
+
+    rates = "".join(
+        f'<p style="margin:14px 0 4px 0;"><strong>{title}</strong></p>' + bullets(items)
+        for title, items in (rate_groups or SERVICE_RATES)
+    )
+
+    return f"""
+        <p><strong>Hi {first}! We heard you enjoyed your visit today!</strong> {dog} passed their Meet &amp; Greet
+        and is all set to stay with us. We wanted to make sure you have everything to make your pup's stay as easy as possible.</p>
+        {heading("First, here's what to bring:")}
+        {bullets(WELCOME_BRING)}
+        {heading("Our Pick-Up/Drop-Off Windows:")}
+        {bullets(DROPOFF_WINDOWS)}
+        <p>We follow this schedule every day of the week!</p>
+        {heading("Our Services &amp; Add-Ons")}
+        {rates}
+        <p><em>If you're ever unsure what's best for your pup, just ask — we're happy to help customize their stay!</em></p>
+        {heading("Help us help you!")}
+        <p>Please complete our Doggo Intake Form and upload your pup's vaccination records.</p>
+        {email_button("https://k9cmd.maniacranch.com/forms", "Fill Out the Intake Form")}<br />
+        {email_button("https://k9cmd.maniacranch.com/customer/dog/" + str(dog_id), "Upload Vaccination Records")}
+        <p>We can't wait to see you again!</p>
+    """

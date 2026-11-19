@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import api from '../utils/api';
@@ -52,10 +52,14 @@ const AdminSettingsPage = () => {
             <TabsTrigger value="rooms" className="flex-1">Rooms & Crates</TabsTrigger>
             <TabsTrigger value="closures" className="flex-1">Closures</TabsTrigger>
             <TabsTrigger value="org" className="flex-1">Organization</TabsTrigger>
+            <TabsTrigger value="pricing" className="flex-1">Pricing</TabsTrigger>
+            <TabsTrigger value="emails" className="flex-1">Emails</TabsTrigger>
           </TabsList>
           <TabsContent value="import"><ImportTab /></TabsContent>
           <TabsContent value="rooms"><RoomsTab /></TabsContent>
           <TabsContent value="closures"><ClosuresTab /></TabsContent>
+          <TabsContent value="pricing"><PricingTab /></TabsContent>
+          <TabsContent value="emails"><EmailTemplatesTab /></TabsContent>
           <TabsContent value="org"><OrgTab orgSettings={orgSettings} setOrgSettings={setOrgSettings} handleSaveOrg={handleSaveOrg} orgSaving={orgSaving} /></TabsContent>
         </Tabs>
         <ExportsSection />
@@ -365,6 +369,315 @@ const ClosuresTab = () => {
           </div>
         </CardContent></Card>
       ))}
+    </div>
+  );
+};
+
+const EmailTemplatesTab = () => {
+  const [templates, setTemplates] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selKey, setSelKey] = useState(null);
+  const [form, setForm] = useState({ name: '', subject: '', body_html: '' });
+  const [preview, setPreview] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [households, setHouseholds] = useState([]);
+  const [hhId, setHhId] = useState('');
+  const bodyRef = useRef(null);
+
+  const load = useCallback(async () => {
+    try {
+      const r = await api.get('/email-templates');
+      setTemplates(r.data);
+      return r.data;
+    } catch { toast.error('Failed to load email templates'); return []; }
+    finally { setLoading(false); }
+  }, []);
+
+  const select = (t) => {
+    setSelKey(t.key);
+    setForm({ name: t.name, subject: t.subject, body_html: t.body_html });
+    setPreview(null);
+  };
+
+  useEffect(() => {
+    load().then(list => { if (list.length) select(list[0]); });
+    api.get('/households').then(r => {
+      const d = r.data;
+      setHouseholds(Array.isArray(d) ? d : (d.items || d.households || []));
+    }).catch(() => {});
+  }, [load]);
+
+  const current = templates.find(t => t.key === selKey);
+  const dirty = current && (form.subject !== current.subject || form.body_html !== current.body_html || (!current.is_system && form.name !== current.name));
+
+  const insertVar = (v) => {
+    const token = '{{' + v + '}}';
+    const el = bodyRef.current;
+    if (!el) { setForm(f => ({ ...f, body_html: f.body_html + token })); return; }
+    const s = el.selectionStart, e = el.selectionEnd;
+    const next = form.body_html.slice(0, s) + token + form.body_html.slice(e);
+    setForm(f => ({ ...f, body_html: next }));
+    setTimeout(() => { el.focus(); el.setSelectionRange(s + token.length, s + token.length); }, 0);
+  };
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      await api.put('/email-templates/' + selKey, { subject: form.subject, body_html: form.body_html, name: form.name });
+      const list = await load();
+      const t = list.find(x => x.key === selKey);
+      if (t) select(t);
+      toast.success('Saved');
+    } catch (e) { toast.error(e.response?.data?.detail || 'Failed to save'); }
+    finally { setBusy(false); }
+  };
+
+  const resetOrDelete = async () => {
+    const msg = current.is_system ? 'Reset this email to the built-in default? Your edits will be lost.' : 'Delete this template?';
+    if (!window.confirm(msg)) return;
+    setBusy(true);
+    try {
+      await api.delete('/email-templates/' + selKey);
+      const list = await load();
+      const t = current.is_system ? list.find(x => x.key === selKey) : list[0];
+      if (t) select(t);
+      toast.success(current.is_system ? 'Reset to default' : 'Deleted');
+    } catch { toast.error('Failed'); }
+    finally { setBusy(false); }
+  };
+
+  const runPreview = async () => {
+    try {
+      const r = await api.post('/email-templates/preview', { key: selKey, subject: form.subject, body_html: form.body_html });
+      setPreview(r.data);
+    } catch { toast.error('Preview failed'); }
+  };
+
+  const sendTest = async () => {
+    try {
+      const r = await api.post('/email-templates/' + selKey + '/send-test', { subject: form.subject, body_html: form.body_html });
+      toast.success('Test sent to ' + r.data.sent_to);
+    } catch (e) { toast.error(e.response?.data?.detail || 'Failed to send test'); }
+  };
+
+  const createCustom = async () => {
+    try {
+      const r = await api.post('/email-templates', {
+        name: 'New template', subject: 'Subject here',
+        body_html: '<p>Hi {{first_name}}!</p>\n<p>Write your message here.</p>',
+      });
+      const list = await load();
+      const t = list.find(x => x.key === r.data.key);
+      if (t) select(t);
+    } catch (e) { toast.error(e.response?.data?.detail || 'Failed to create'); }
+  };
+
+  const sendToHousehold = async () => {
+    if (!hhId) { toast.error('Pick a household first'); return; }
+    if (dirty) { toast.error('Save your changes first'); return; }
+    if (!window.confirm('Send this email to the selected household now?')) return;
+    try {
+      const r = await api.post('/email-templates/' + selKey + '/send', { household_id: hhId });
+      toast.success('Sent to ' + r.data.sent + ' account(s)');
+    } catch (e) { toast.error(e.response?.data?.detail || 'Failed to send'); }
+  };
+
+  if (loading) return <div className="p-4 text-sm text-muted-foreground">Loading...</div>;
+
+  return (
+    <div className="grid md:grid-cols-3 gap-4">
+      <div className="space-y-2">
+        <Button size="sm" onClick={createCustom} className="w-full"><PlusIcon size={14} className="mr-1" /> New custom template</Button>
+        {templates.map(t => (
+          <Card key={t.key} onClick={() => select(t)}
+            className={'cursor-pointer ' + (t.key === selKey ? 'border-primary' : '')}>
+            <CardContent className="py-3 px-4">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-medium">{t.name}</span>
+                {t.is_system && t.is_customized && <Badge variant="outline" className="text-xs">Edited</Badge>}
+                {!t.is_system && <Badge variant="outline" className="text-xs">Custom</Badge>}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">{t.description}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="md:col-span-2 space-y-3">
+        {current && (
+          <>
+            {!current.is_system && (
+              <div>
+                <Label>Template name</Label>
+                <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="mt-1" />
+              </div>
+            )}
+            <div>
+              <Label>Subject</Label>
+              <Input value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} className="mt-1" />
+            </div>
+            <div>
+              <Label>Insert a placeholder</Label>
+              <div className="flex flex-wrap gap-1 mt-1">
+                {current.variables.map(v => (
+                  <button key={v} type="button" onClick={() => insertVar(v)}
+                    className="text-xs px-2 py-1 rounded border bg-white hover:bg-muted">{'{{' + v + '}}'}</button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Placeholders are filled in for each customer. Buttons, rates and photos are inserted as designed; everything else is text.
+                The K9 logo, sign-off and social links are added automatically.
+              </p>
+            </div>
+            <div>
+              <Label>Body (HTML)</Label>
+              <textarea ref={bodyRef} value={form.body_html}
+                onChange={e => setForm(f => ({ ...f, body_html: e.target.value }))}
+                rows={14} className="mt-1 w-full rounded-md border bg-white p-2 text-xs font-mono" />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" onClick={save} disabled={busy || !dirty}>Save</Button>
+              <Button size="sm" variant="outline" onClick={runPreview}>Preview</Button>
+              <Button size="sm" variant="outline" onClick={sendTest}>Send test to me</Button>
+              {current.is_system && current.is_customized && (
+                <Button size="sm" variant="outline" onClick={resetOrDelete} disabled={busy}>Reset to default</Button>
+              )}
+              {!current.is_system && (
+                <Button size="sm" variant="outline" className="text-red-600" onClick={resetOrDelete} disabled={busy}>Delete</Button>
+              )}
+            </div>
+            {!current.is_system && (
+              <Card>
+                <CardContent className="py-3 px-4 flex flex-wrap items-center gap-2">
+                  <span className="text-sm">Send to:</span>
+                  <select value={hhId} onChange={e => setHhId(e.target.value)} className="h-8 text-sm border rounded px-2 bg-white">
+                    <option value="">Choose a household</option>
+                    {households.map(h => <option key={h.id} value={h.id}>{h.display_name || h.name}</option>)}
+                  </select>
+                  <Button size="sm" onClick={sendToHousehold}>Send</Button>
+                </CardContent>
+              </Card>
+            )}
+            {preview && (
+              <div>
+                <p className="text-sm font-medium mb-1">Subject: {preview.subject}</p>
+                <iframe title="Email preview" sandbox="" srcDoc={preview.html}
+                  className="w-full border rounded bg-white" style={{ height: 560 }} />
+                <p className="text-xs text-muted-foreground mt-1">Preview uses sample names and dates.</p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const PricingTab = () => {
+  const [rates, setRates] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState(null);
+  const [draft, setDraft] = useState({ label: '', value: '' });
+  const [newRate, setNewRate] = useState({ category: '', label: '', value: '' });
+
+  const load = useCallback(async () => {
+    try {
+      const r = await api.get('/pricing');
+      setRates(r.data);
+    } catch { toast.error('Failed to load pricing'); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const categories = [];
+  rates.forEach(r => { if (!categories.includes(r.category)) categories.push(r.category); });
+
+  const saveEdit = async (id) => {
+    try {
+      await api.patch('/pricing/' + id, { label: draft.label, value: draft.value });
+      setEditingId(null);
+      toast.success('Saved');
+      load();
+    } catch (e) { toast.error(e.response?.data?.detail || 'Failed to save'); }
+  };
+
+  const toggleActive = async (r) => {
+    try {
+      await api.patch('/pricing/' + r.id, { is_active: !r.is_active });
+      load();
+    } catch { toast.error('Failed to update'); }
+  };
+
+  const remove = async (r) => {
+    if (!window.confirm('Delete "' + r.label + '"?')) return;
+    try {
+      await api.delete('/pricing/' + r.id);
+      toast.success('Deleted');
+      load();
+    } catch { toast.error('Failed to delete'); }
+  };
+
+  const addRate = async () => {
+    try {
+      await api.post('/pricing', newRate);
+      setNewRate({ category: newRate.category, label: '', value: '' });
+      toast.success('Added');
+      load();
+    } catch (e) { toast.error(e.response?.data?.detail || 'Failed to add'); }
+  };
+
+  if (loading) return <div className="p-4 text-sm text-muted-foreground">Loading...</div>;
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        These rates appear in the welcome email sent after a passed Meet &amp; Greet. Changes apply to the next email sent.
+        Turn a rate off to hide it from the email without deleting it.
+      </p>
+      {categories.map(cat => (
+        <Card key={cat}>
+          <CardHeader className="pb-2"><CardTitle className="text-base">{cat}</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            {rates.filter(r => r.category === cat).map(r => (
+              <div key={r.id} className={'flex items-center gap-2 ' + (r.is_active ? '' : 'opacity-50')}>
+                {editingId === r.id ? (
+                  <>
+                    <Input value={draft.label} onChange={e => setDraft(d => ({ ...d, label: e.target.value }))} className="h-8 text-sm flex-1" />
+                    <Input value={draft.value} onChange={e => setDraft(d => ({ ...d, value: e.target.value }))} className="h-8 text-sm flex-1" />
+                    <Button size="sm" variant="outline" onClick={() => saveEdit(r.id)}><CheckIcon size={14} /></Button>
+                    <Button size="sm" variant="outline" onClick={() => setEditingId(null)}><XIcon size={14} /></Button>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-sm flex-1">{r.label}</span>
+                    <span className="text-sm font-medium flex-1">{r.value}</span>
+                    {!r.is_active && <Badge variant="outline" className="text-xs">Hidden</Badge>}
+                    <Button size="sm" variant="outline" onClick={() => { setEditingId(r.id); setDraft({ label: r.label, value: r.value }); }}><PencilIcon size={14} /></Button>
+                    <Button size="sm" variant="outline" onClick={() => toggleActive(r)}>{r.is_active ? 'Hide' : 'Show'}</Button>
+                    <Button size="sm" variant="outline" className="text-red-600" onClick={() => remove(r)}>Delete</Button>
+                  </>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ))}
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-base">Add a rate</CardTitle></CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            <Input list="rate-categories" placeholder="Category (e.g. Boarding)" value={newRate.category}
+              onChange={e => setNewRate(n => ({ ...n, category: e.target.value }))} className="h-8 text-sm w-44" />
+            <datalist id="rate-categories">{categories.map(c => <option key={c} value={c} />)}</datalist>
+            <Input placeholder="Label" value={newRate.label}
+              onChange={e => setNewRate(n => ({ ...n, label: e.target.value }))} className="h-8 text-sm flex-1 min-w-[140px]" />
+            <Input placeholder="Price (e.g. $36)" value={newRate.value}
+              onChange={e => setNewRate(n => ({ ...n, value: e.target.value }))} className="h-8 text-sm w-40" />
+            <Button size="sm" onClick={addRate}><PlusIcon size={14} className="mr-1" /> Add</Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

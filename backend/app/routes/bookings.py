@@ -282,17 +282,11 @@ async def update_booking(
                     if not u.email:
                         continue
                     try:
-                        await send_email(
-                            to_email=u.email,
-                            subject="Your K9 Country Club Booking is Confirmed!",
-                            html_body=f"""
-                                <p>Hi {u.full_name or ''},</p>
-                                <p>Great news -- your boarding reservation for <strong>{dog_list}</strong> is confirmed!</p>
-                                <p><strong>Check-in:</strong> {check_in}<br>
-                                <strong>Check-out:</strong> {check_out}</p>
-                                <p>We look forward to seeing you!</p>
-                            """,
-                        )
+                        from app.routes.email_templates import load_template, fill_template
+                        from email_service import email_button
+                        _ts, _tb = await load_template(db, booking.organization_id, "booking_confirmed")
+                        _ts, _tb = fill_template("booking_confirmed", _ts, _tb, {"first_name": ((u.full_name or "").split(" ")[0] or "there"), "dog_list": dog_list, "check_in": check_in, "check_out": check_out})
+                        await send_email(to_email=u.email, subject=_ts, html_body=_tb)
                     except Exception as e:
                         print(f"Failed to send booking confirmation email to {u.email}: {e}")
         except Exception as e:
@@ -761,16 +755,11 @@ async def send_booking_reminders(
             if not u.email:
                 continue
             try:
-                await send_email(
-                    to_email=u.email,
-                    subject="Reminder: Your K9 Country Club Stay is Coming Up!",
-                    html_body=f"""
-                        <p>Hi {u.full_name or ''},</p>
-                        <p>Just a reminder -- <strong>{dog_list}'s</strong> stay with us starts on
-                        <strong>{check_in}</strong>.</p>
-                        <p>We look forward to seeing you!</p>
-                    """,
-                )
+                from app.routes.email_templates import load_template, fill_template
+                from email_service import email_button
+                _ts, _tb = await load_template(db, booking.organization_id, "booking_reminder")
+                _ts, _tb = fill_template("booking_reminder", _ts, _tb, {"first_name": ((u.full_name or "").split(" ")[0] or "there"), "dog_list": dog_list, "check_in": check_in})
+                await send_email(to_email=u.email, subject=_ts, html_body=_tb)
                 sent_count += 1
             except Exception as e:
                 print(f"Failed to send booking reminder to {u.email}: {e}")
@@ -839,18 +828,12 @@ async def send_post_stay_emails(
         dog_list = ", ".join(p["dogs"]) if p["dogs"] else "your pup"
         for email, name in p["recipients"]:
             try:
-                await send_email(
-                    to_email=email,
-                    subject=f"Thanks for staying with us, {dog_list}!",
-                    html_body=f"""
-                        <p>Hi {name or ''},</p>
-                        <p>Thank you for trusting us with <strong>{dog_list}</strong>. We loved having them,
-                        and we hope they're settling back in at home.</p>
-                        <p>If you have any feedback about the stay, just reply to this email.
-                        When you're ready for the next one, you can
-                        <a href="https://k9cmd.maniacranch.com/customer/request">request a stay here</a>.</p>
-                    """,
-                )
+                _org = (await db.execute(text("SELECT organization_id FROM bookings WHERE id = :id"), {"id": p["booking_id"]})).scalar()
+                from app.routes.email_templates import load_template, fill_template
+                from email_service import email_button
+                _ts, _tb = await load_template(db, _org, "post_stay")
+                _ts, _tb = fill_template("post_stay", _ts, _tb, {"first_name": ((name or "").split(" ")[0] or "there"), "dog_list": dog_list, "request_button": email_button("https://k9cmd.maniacranch.com/customer/request", "Request a Stay")})
+                await send_email(to_email=email, subject=_ts, html_body=_tb)
                 sent_count += 1
             except Exception as e:
                 print(f"Failed to send post-stay email to {email}: {e}")

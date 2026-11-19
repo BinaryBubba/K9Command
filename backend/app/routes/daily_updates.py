@@ -115,7 +115,7 @@ async def create_and_send_daily_update(
                     UserORM.role == UserRole.CUSTOMER,
                 )
             )).scalars().all()
-            notes_html = "".join(f"<p>{s}</p>" for s in staff_snippets)
+            notes_html = "".join("<p>" + __import__("html").escape(str(s)) + "</p>" for s in staff_snippets)
             photo_urls = [_media_url(k) for k in media_keys if _media_url(k)]
             photos_html = "".join(
                 f'<img src="{url}" style="max-width:300px;margin:4px;border-radius:8px;">'
@@ -125,16 +125,11 @@ async def create_and_send_daily_update(
                 if not u.email:
                     continue
                 try:
-                    await send_email(
-                        to_email=u.email,
-                        subject="A new update about your dog!",
-                        html_body=f"""
-                            <p>Hi {u.full_name or ''},</p>
-                            <p>Here's an update from your dog's stay with us:</p>
-                            {notes_html}
-                            {photos_html}
-                        """,
-                    )
+                    from app.routes.email_templates import load_template, fill_template
+                    from email_service import email_button
+                    _ts, _tb = await load_template(db, u.organization_id, "daily_update")
+                    _ts, _tb = fill_template("daily_update", _ts, _tb, {"first_name": ((u.full_name or "").split(" ")[0] or "there"), "notes": notes_html, "photos": photos_html})
+                    await send_email(to_email=u.email, subject=_ts, html_body=_tb)
                 except Exception as e:
                     print(f"Failed to send daily update email to {u.email}: {e}")
     except Exception as e:

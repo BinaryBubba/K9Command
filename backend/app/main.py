@@ -31,6 +31,8 @@ from app.routes.uploads import router as uploads_router
 from app.routes.users import router as users_router
 from app.routes.forms import router as forms_router
 from app.routes.task_forms import router as task_forms_router
+from app.routes.pricing import router as pricing_router
+from app.routes.email_templates import router as email_templates_router
 from app.routes.connecteam import router as connecteam_router
 from app.routes.playgroups import router as playgroups_router
 from app.routes.facility import router as facility_router
@@ -145,6 +147,8 @@ app.include_router(uploads_router)
 app.include_router(users_router)
 app.include_router(forms_router)
 app.include_router(task_forms_router)
+app.include_router(pricing_router)
+app.include_router(email_templates_router)
 app.include_router(connecteam_router)
 app.include_router(playgroups_router)
 
@@ -318,16 +322,11 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
         await db.commit()
         if is_configured():
             verify_link = f"https://k9cmd.maniacranch.com/verify-email?token={raw_token}"
-            await send_email(
-                to_email=user.email,
-                subject="Please verify your email address",
-                html_body=f"""
-                    <p>Hi {user.full_name or ''},</p>
-                    <p>Welcome to K9 Country Club! Please verify your email address by clicking the link below:</p>
-                    <p><a href="{verify_link}">Verify My Email</a></p>
-                    <p>This link expires in 48 hours.</p>
-                """,
-            )
+            from app.routes.email_templates import load_template, fill_template
+            from email_service import email_button
+            _ts, _tb = await load_template(db, user.organization_id, "email_verification")
+            _ts, _tb = fill_template("email_verification", _ts, _tb, {"first_name": ((user.full_name or "").split(" ")[0] or "there"), "verify_link": verify_link, "verify_button": email_button(verify_link, "Verify My Email")})
+            await send_email(to_email=user.email, subject=_ts, html_body=_tb)
     except Exception as e:
         print(f"Failed to send verification email: {e}")
 
@@ -413,17 +412,11 @@ async def forgot_password(data: dict, db: AsyncSession = Depends(get_db)):
     reset_url = f"https://k9cmd.maniacranch.com/reset-password?token={raw_token}"
     if is_configured():
         try:
-            await send_email(
-                to_email=user.email,
-                subject="Reset your K9 Country Club password",
-                html_body=f"""
-                    <p>Hi {user.full_name or ''},</p>
-                    <p>We received a request to reset your K9 Country Club account password.
-                    This link is valid for 1 hour:</p>
-                    <p><a href="{reset_url}">{reset_url}</a></p>
-                    <p>If you didn't request this, you can safely ignore this email.</p>
-                """,
-            )
+            from app.routes.email_templates import load_template, fill_template
+            from email_service import email_button
+            _ts, _tb = await load_template(db, user.organization_id, "password_reset")
+            _ts, _tb = fill_template("password_reset", _ts, _tb, {"first_name": ((user.full_name or "").split(" ")[0] or "there"), "reset_link": reset_url, "reset_button": email_button(reset_url, "Reset My Password")})
+            await send_email(to_email=user.email, subject=_ts, html_body=_tb)
         except Exception as e:
             print(f"Failed to send password reset email: {e}")
 
@@ -529,16 +522,11 @@ async def resend_verification(current_user: UserORM = Depends(get_current_user),
     await db.commit()
 
     verify_link = f"https://k9cmd.maniacranch.com/verify-email?token={raw_token}"
-    await send_email(
-        to_email=current_user.email,
-        subject="Please verify your email address",
-        html_body=f"""
-            <p>Hi {current_user.full_name or ''},</p>
-            <p>Please verify your email address by clicking the link below:</p>
-            <p><a href="{verify_link}">Verify My Email</a></p>
-            <p>This link expires in 48 hours.</p>
-        """,
-    )
+    from app.routes.email_templates import load_template, fill_template
+    from email_service import email_button
+    _ts, _tb = await load_template(db, current_user.organization_id, "email_verification")
+    _ts, _tb = fill_template("email_verification", _ts, _tb, {"first_name": ((current_user.full_name or "").split(" ")[0] or "there"), "verify_link": verify_link, "verify_button": email_button(verify_link, "Verify My Email")})
+    await send_email(to_email=current_user.email, subject=_ts, html_body=_tb)
     return {"message": "Verification email sent."}
 
 
