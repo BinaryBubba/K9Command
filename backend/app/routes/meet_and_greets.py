@@ -538,6 +538,10 @@ async def record_outcome(
 
     await db.commit()
     await db.refresh(mag)
+    try:
+        await _send_post_mag_email(mag, outcome, db)
+    except Exception as e:
+        print(f"Post-M&G email step failed: {e}")
     return _mag_dict(mag)
 
 
@@ -767,3 +771,67 @@ async def cancel_mag(
     """), {"hh_id": mag.household_id, "old_at": mag.scheduled_at, "old_slot": mag.slot})
     await db.commit()
     return {"cancelled": True}
+
+
+async def _send_post_mag_email(mag, outcome, db):
+    """After staff record a Meet & Greet outcome, email the household once.
+    Pass and conditional only -- a failed M&G should be a personal call."""
+    from sqlalchemy import text
+    from email_service import send_email, is_configured
+
+    if outcome not in (MeetAndGreetOutcome.PASS, MeetAndGreetOutcome.CONDITIONAL):
+        return
+    if not is_configured():
+        return
+
+    # Capture everything we need up front; ORM attributes can expire after a commit.
+    mag_id, dog_id, household_id = mag.id, mag.dog_id, mag.household_id
+
+    already = (await db.execute(
+        text("SELECT followup_sent_at FROM meet_and_greets WHERE id = :id"), {"id": mag_id}
+    )).scalar()
+    if already:
+        return
+
+    dog = (await db.execute(select(DogORM).where(DogORM.id == dog_id))).scalar_one_or_none()
+    if not dog:
+        return
+    dog_name = dog.name
+
+    users = (await db.execute(
+        select(UserORM).where(UserORM.household_id == household_id, UserORM.role == UserRole.CUSTOMER)
+    )).scalars().all()
+    recipients = [(u.email, u.full_name) for u in users if u.email]
+
+    if outcome == MeetAndGreetOutcome.PASS:
+        subject = f"{dog_name} passed their Meet & Greet!"
+        body = lambda name: f"""
+            <p>Hi {name or ''},</p>
+            <p>Thank you for bringing <strong>{dog_name}</strong> in for their Meet &amp; Greet -- it went great,
+            and they're all set to stay with us.</p>
+            <p>Ready to plan a stay? <a href="https://k9cmd.maniacranch.com/customer/request">Request a stay here</a>.</p>
+            <p>We can't wait to see you both again!</p>
+        """
+    else:
+        subject = f"Thanks for bringing {dog_name} in"
+        body = lambda name: f"""
+            <p>Hi {name or ''},</p>
+            <p>Thank you for bringing <strong>{dog_name}</strong> in for their Meet &amp; Greet.
+            We enjoyed meeting them, and we'll be reaching out shortly to talk through next steps for their stays.</p>
+            <p>If you have any questions in the meantime, just reply to this email or give us a call.</p>
+        """
+
+    sent_any = False
+    for email, name in recipients:
+        try:
+            await send_email(to_email=email, subject=subject, html_body=body(name))
+            sent_any = True
+        except Exception as e:
+            print(f"Failed to send post-M&G email to {email}: {e}")
+
+    if sent_any:
+        await db.execute(
+            text("UPDATE meet_and_greets SET followup_sent_at = :now WHERE id = :id"),
+            {"now": datetime.now(timezone.utc), "id": mag_id},
+        )
+        await db.commit()

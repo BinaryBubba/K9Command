@@ -779,3 +779,82 @@ async def send_booking_reminders(
 
     await db.commit()
     return {"records_processed": len(bookings_to_remind), "emails_sent": sent_count}
+
+
+@router.post("/send-post-stay-emails")
+async def send_post_stay_emails(
+    dry_run: bool = Query(False),
+    x_cron_secret: str = Header(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Daily job (see scripts/send_post_stay_emails.sh). Thanks households for
+    stays checked out between 12 hours and 7 days ago, once per booking.
+    With dry_run=true it only lists what it would send."""
+    import os
+    from sqlalchemy import text
+
+    expected_secret = os.environ.get("CRON_SECRET")
+    if not expected_secret or x_cron_secret != expected_secret:
+        raise HTTPException(status_code=403, detail="Invalid or missing cron secret")
+
+    from email_service import send_email, is_configured
+
+    now = datetime.now(timezone.utc)
+    rows = (await db.execute(text("""
+        SELECT b.id, b.household_id, b.checked_out_at
+        FROM bookings b
+        WHERE b.status::text = 'CHECKED_OUT'
+          AND b.followup_sent_at IS NULL
+          AND b.checked_out_at IS NOT NULL
+          AND b.checked_out_at <= :min_age
+          AND b.checked_out_at >= :max_age
+    """), {"min_age": now - timedelta(hours=12), "max_age": now - timedelta(days=7)})).fetchall()
+
+    plan = []
+    for r in rows:
+        users = (await db.execute(
+            select(UserORM).where(UserORM.household_id == r.household_id, UserORM.role == UserRole.CUSTOMER)
+        )).scalars().all()
+        dog_rows = (await db.execute(text("""
+            SELECT d.name FROM booking_dogs_v2 bd JOIN dogs d ON d.id = bd.dog_id
+            WHERE bd.booking_id = :id
+        """), {"id": r.id})).fetchall()
+        plan.append({
+            "booking_id": r.id,
+            "checked_out_at": r.checked_out_at.isoformat(),
+            "dogs": [d.name for d in dog_rows],
+            "recipients": [(u.email, u.full_name) for u in users if u.email],
+        })
+
+    if dry_run:
+        return {"dry_run": True, "would_process": len(plan), "bookings": [
+            {"booking_id": p["booking_id"], "checked_out_at": p["checked_out_at"],
+             "dogs": p["dogs"], "recipients": [e for e, _ in p["recipients"]]} for p in plan]}
+
+    if not is_configured():
+        return {"sent": 0, "reason": "Email is not configured"}
+
+    sent_count = 0
+    for p in plan:
+        dog_list = ", ".join(p["dogs"]) if p["dogs"] else "your pup"
+        for email, name in p["recipients"]:
+            try:
+                await send_email(
+                    to_email=email,
+                    subject=f"Thanks for staying with us, {dog_list}!",
+                    html_body=f"""
+                        <p>Hi {name or ''},</p>
+                        <p>Thank you for trusting us with <strong>{dog_list}</strong>. We loved having them,
+                        and we hope they're settling back in at home.</p>
+                        <p>If you have any feedback about the stay, just reply to this email.
+                        When you're ready for the next one, you can
+                        <a href="https://k9cmd.maniacranch.com/customer/request">request a stay here</a>.</p>
+                    """,
+                )
+                sent_count += 1
+            except Exception as e:
+                print(f"Failed to send post-stay email to {email}: {e}")
+        await db.execute(text("UPDATE bookings SET followup_sent_at = :now WHERE id = :id"),
+                         {"now": now, "id": p["booking_id"]})
+    await db.commit()
+    return {"bookings_processed": len(plan), "emails_sent": sent_count}
