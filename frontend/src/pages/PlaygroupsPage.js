@@ -230,7 +230,7 @@ const PlaygroupsPage = () => {
         {mode === 'suggest' && (
           <div className="space-y-3">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
-              <p className="font-medium">✨ AI-suggested groups — review and adjust before publishing</p>
+              <p className="font-medium">✨ Suggested groups — review and adjust before publishing</p>
               <p className="text-xs mt-1">Drag dogs between groups or use the move button. Changes are saved when you click "Publish Groups".</p>
             </div>
             {editGroups.map((group, i) => (

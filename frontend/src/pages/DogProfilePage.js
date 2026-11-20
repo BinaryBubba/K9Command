@@ -322,7 +322,7 @@ const VaccinationsTab = ({ dogId, vaccinations, onRefresh, isStaff }) => {
               <div><Label>Provider</Label><Input value={form.provider} onChange={e => setForm(f=>({...f,provider:e.target.value}))} className="mt-1" /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Admin Date</Label><Input type="date" value={form.administration_date}
+              <div><Label>Date Given</Label><Input type="date" value={form.administration_date}
                 onChange={e => {
                   const val = e.target.value;
                   const interval = VAX_INTERVALS[form.vaccination_type];
@@ -447,7 +447,7 @@ const VaccinationsTab = ({ dogId, vaccinations, onRefresh, isStaff }) => {
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <Label className="text-xs">Admin Date</Label>
+                    <Label className="text-xs">Date Given</Label>
                     <Input type="date" value={editForm.administration_date} onChange={e => setEditForm(f=>({...f,administration_date:e.target.value}))} className="mt-0.5 h-7 text-xs" />
                   </div>
                   <div>
