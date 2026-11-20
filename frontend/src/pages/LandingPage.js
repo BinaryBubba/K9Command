@@ -24,7 +24,7 @@ const LandingPage = () => {
             A Home Away From Home
           </h1>
           <p className="text-xl md:text-2xl font-sans mb-8 leading-relaxed opacity-95">
-            Premium boarding with daily photo updates, AI-powered summaries, and care that feels like family.
+            Premium boarding with daily photo updates and care that feels like family.
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
             <Button
@@ -73,9 +73,9 @@ const LandingPage = () => {
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-secondary/20 text-secondary-foreground mb-4">
                 <StarIcon size={32} />
               </div>
-              <h3 className="text-xl font-serif font-semibold mb-2">AI-Powered Summaries</h3>
+              <h3 className="text-xl font-serif font-semibold mb-2">Daily Updates</h3>
               <p className="text-muted-foreground">
-                Get warm, personalized daily summaries written just for you and your pup.
+                Read a note from our team about the day your dog had, right in your account.
               </p>
             </div>
 
@@ -109,7 +109,7 @@ const LandingPage = () => {
             Ready to Give Your Pup a Vacation?
           </h2>
           <p className="text-xl mb-8 opacity-90">
-            Join hundreds of happy dog families who trust us with their furry loved ones.
+            Join the families who trust us with their furry loved ones.
           </p>
           <Button
             data-testid="cta-get-started-button"
@@ -124,13 +124,13 @@ const LandingPage = () => {
       {/* Footer */}
       <footer className="bg-white py-12 px-4 border-t">
         <div className="max-w-7xl mx-auto text-center text-muted-foreground">
-          <p className="mb-4">© 2025 Kennel Operations Platform. All rights reserved.</p>
+          <p className="mb-4">© {new Date().getFullYear()} K9 Country Club. All rights reserved.</p>
           <div className="flex gap-6 justify-center">
             <Link to="/auth" className="hover:text-primary transition-colors">Login</Link>
             <span>•</span>
             <a href="#features" className="hover:text-primary transition-colors">Features</a>
             <span>•</span>
-            <a href="mailto:hello@kennelops.com" className="hover:text-primary transition-colors">Contact</a>
+            <a href="mailto:thehumans@k9countryclubkennel.com" className="hover:text-primary transition-colors">Contact</a>
           </div>
         </div>
       </footer>

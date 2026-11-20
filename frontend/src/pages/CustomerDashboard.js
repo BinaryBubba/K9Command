@@ -374,7 +374,7 @@ const CustomerDashboard = () => {
                         </p>
                         <div className="flex gap-1 mt-1">
                           {dog.meet_and_greet_status === 'completed' && (
-                            <Badge className="text-xs bg-green-100 text-green-700">M&G ✓</Badge>
+                            <Badge className="text-xs bg-green-100 text-green-700">Meet & Greet ✓</Badge>
                           )}
                         </div>
                       </div>

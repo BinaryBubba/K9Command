@@ -280,7 +280,7 @@ const CustomerBookingRequestPage = () => {
                 setShowMagPrompt(false);
                 navigate(`/customer/mag-request?dog_id=${magDog.id}&household_id=${meHouseholdId}&dog_name=${encodeURIComponent(magDog.name)}`);
               }}>
-                Schedule M&G →
+                Schedule Meet & Greet →
               </Button>
             </div>
           </div>

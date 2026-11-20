@@ -135,7 +135,7 @@ const CustomerStayPage = () => {
         {/* Daily updates from staff -- photos and notes sent during the stay */}
         {dailyUpdates.length > 0 && (
           <div>
-            <h3 className="text-sm font-medium mb-2">Updates From Your Dog's Stay</h3>
+            <h3 className="text-sm font-medium mb-2">Updates from Your Dog's Stay</h3>
             {dailyUpdates.map(update => (
               <Card key={update.id} className="mb-2">
                 <CardContent className="py-3 px-4 space-y-2">

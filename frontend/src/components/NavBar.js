@@ -68,7 +68,7 @@ const NavBar = () => {
       {/* Desktop sidebar */}
       <aside className="hidden md:flex flex-col fixed left-0 top-0 h-full w-52 bg-white border-r border-border/40 shadow-sm z-20">
         <div className="px-4 py-4 border-b border-border/40">
-          <h1 className="text-base font-serif font-bold text-primary">K9 Command</h1>
+          <h1 className="text-base font-serif font-bold text-primary">{isCustomer ? 'K9 Country Club' : 'K9 Command'}</h1>
           <p className="text-xs text-muted-foreground truncate">{user.full_name}</p>
         </div>
         <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
@@ -101,7 +101,7 @@ const NavBar = () => {
       {/* Mobile top bar */}
       <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-border/40 shadow-sm z-20 flex items-center justify-between px-4">
         <button onClick={() => navigate(dashboardPath)}>
-          <h1 className="text-base font-serif font-bold text-primary">K9 Command</h1>
+          <h1 className="text-base font-serif font-bold text-primary">{isCustomer ? 'K9 Country Club' : 'K9 Command'}</h1>
         </button>
         <div className="flex items-center gap-1">
           <button onClick={() => { logout(); navigate('/'); }} className="p-2 rounded-lg hover:bg-muted text-muted-foreground">
@@ -119,7 +119,7 @@ const NavBar = () => {
           <div className="absolute inset-0 bg-black/40" />
           <div className="absolute left-0 top-0 h-full w-64 bg-white shadow-xl" onClick={e => e.stopPropagation()}>
             <div className="px-4 py-4 border-b">
-              <h1 className="text-base font-serif font-bold text-primary">K9 Command</h1>
+              <h1 className="text-base font-serif font-bold text-primary">{isCustomer ? 'K9 Country Club' : 'K9 Command'}</h1>
               <p className="text-xs text-muted-foreground">{user.full_name}</p>
             </div>
             <nav className="px-2 py-3 space-y-0.5">
