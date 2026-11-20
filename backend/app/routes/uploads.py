@@ -14,6 +14,11 @@ ALLOWED_DOC_TYPES = {"application/pdf"} | ALLOWED_IMAGE_TYPES
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
 
+def _require_staff(user):
+    if str(user.role).lower().replace("userrole.", "") not in ("admin", "manager", "staff"):
+        raise HTTPException(status_code=403, detail="Staff only")
+
+
 @router.post("/vaccination")
 async def upload_vaccination(
     file: UploadFile = File(...),
@@ -49,6 +54,7 @@ async def upload_incident_photo(
     file: UploadFile = File(...),
     current_user: UserORM = Depends(get_current_user),
 ):
+    _require_staff(current_user)
     if file.content_type not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(status_code=400, detail="Only image files allowed")
     data = await file.read()
@@ -64,6 +70,7 @@ async def upload_mag_photo(
     file: UploadFile = File(...),
     current_user: UserORM = Depends(get_current_user),
 ):
+    _require_staff(current_user)
     if file.content_type not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(status_code=400, detail="Only image files allowed")
     data = await file.read()
@@ -80,7 +87,10 @@ async def get_file_url(
     key: str,
     current_user: UserORM = Depends(get_current_user),
 ):
-    """Get a fresh presigned URL for a stored file."""
+    """Get a fresh presigned URL for a stored file (staff only, known buckets only)."""
+    _require_staff(current_user)
+    if bucket not in (BUCKET_DOGS, BUCKET_VACCINATIONS, BUCKET_INCIDENTS, BUCKET_MAG):
+        raise HTTPException(status_code=404, detail="File not found")
     url = get_presigned_url(bucket, key, expires_in=3600)
     if not url:
         raise HTTPException(status_code=404, detail="File not found")
