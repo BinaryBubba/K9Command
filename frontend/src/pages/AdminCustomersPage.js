@@ -51,7 +51,7 @@ const AdminCustomersPage = () => {
             <h1 className="text-lg font-serif font-bold text-primary">Customers</h1>
           </div>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => setShowImport(true)}>Import</Button>
+            <Button size="sm" variant="outline" onClick={() => navigate('/admin/settings')}>Import</Button>
             <Button size="sm" onClick={() => setShowCreate(true)}>
             <PlusIcon size={16} className="mr-1" /> New
           </Button>

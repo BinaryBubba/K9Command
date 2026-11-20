@@ -92,7 +92,7 @@ const AdminDashboard = () => {
               <AlertCircleIcon size={18} />
               <span className="font-medium">Unacknowledged shift handoff requires review</span>
             </div>
-            <Button size="sm" variant="outline" onClick={() => navigate('/admin/operations')}>
+            <Button size="sm" variant="outline" onClick={() => navigate('/staff/handoff')}>
               Review
             </Button>
           </div>

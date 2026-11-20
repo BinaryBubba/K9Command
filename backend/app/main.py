@@ -626,8 +626,22 @@ async def approve_staff_request(
     req.status = StaffRequestStatus.APPROVED
     req.reviewed_by = admin_user.id
     req.reviewed_at = datetime.now(timezone.utc)
+    _to_email, _to_name = user.email, user.full_name
     await db.commit()
-    return {"status": "approved", "created_user_email": user.email}
+    try:
+        import html as _html
+        from email_service import send_email, email_button
+        _first = ((_to_name or "").split(" ")[0] or "there")
+        _body = (
+            f"<p>Hi {_html.escape(_first)},</p>"
+            "<p>Good news: your staff access request has been approved. "
+            "You can log in now using the email address and password you chose when you signed up.</p>"
+            + email_button("https://k9cmd.maniacranch.com/auth", "Log In")
+        )
+        await send_email(to_email=_to_email, subject="Your K9 Country Club staff account is approved", html_body=_body)
+    except Exception as e:
+        print(f"Failed to send staff approval email: {e}")
+    return {"status": "approved", "created_user_email": _to_email}
 
 
 @app.post("/api/admin/create-admin")
