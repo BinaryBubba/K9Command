@@ -261,12 +261,14 @@ async def _get_user_or_404(user_id: str, org_id: str, db: AsyncSession) -> UserO
 @router.post("/verify-pin")
 async def verify_manager_pin(
     data: dict,
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     """Verify a manager/admin PIN for override actions."""
-    pin = data.get("pin", "").strip()
+    pin = str(data.get("pin") or "").strip()
     user_id = data.get("user_id")  # optional - verify specific user's pin
+    if not pin:
+        raise HTTPException(status_code=403, detail="Invalid PIN")
     
     if user_id:
         result = await db.execute(
@@ -276,6 +278,13 @@ async def verify_manager_pin(
             )
         )
         user = result.scalar_one_or_none()
+        # The PIN must actually match, and belong to an active manager/admin.
+        if user is not None and (
+            user.manager_pin != pin
+            or not user.is_active
+            or str(getattr(user.role, "value", user.role)).lower() not in ("manager", "admin")
+        ):
+            user = None
     else:
         # Verify against any manager/admin in the org
         result = await db.execute(
