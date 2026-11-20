@@ -92,12 +92,12 @@ async def update_user(
     current_user: UserORM = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    user = await _get_user_or_404(user_id, current_user.organization_id, db)
     is_admin = current_user.role in [UserRole.ADMIN, 'admin', UserRole.ADMIN.value]
     is_self = current_user.id == user_id
 
     if not is_admin and not is_self:
         raise HTTPException(status_code=403, detail="Not authorized")
+    user = await _get_user_or_404(user_id, current_user.organization_id, db)
 
     # Fields anyone can update on themselves
     self_fields = ["full_name", "first_name", "last_name", "phone", "address", "birthday",
@@ -410,7 +410,7 @@ async def update_org_settings(
 
 @router.post("/shift/clock-in")
 async def clock_in(
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     """Mark current user as on shift."""
@@ -426,7 +426,7 @@ async def clock_in(
 
 @router.post("/shift/clock-out")
 async def clock_out(
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     """Mark current user as off shift."""

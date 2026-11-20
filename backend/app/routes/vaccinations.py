@@ -67,7 +67,7 @@ async def add_vaccination(
         notes=data.get("notes"),
     )
     # If staff is submitting on behalf of customer, auto-verify
-    if current_user.role in ["admin", "staff"] and data.get("auto_verify"):
+    if current_user.role in ["admin", "staff", "manager"] and data.get("auto_verify"):
         record.verification_status = VaccinationStatus.VERIFIED
         record.verified_by = current_user.id
         from datetime import datetime, timezone

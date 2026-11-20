@@ -259,6 +259,20 @@ async def submit_form(
     db: AsyncSession = Depends(get_db),
 ):
     """Writes to customer_form_submissions -- see list_submissions docstring."""
+    if str(current_user.role).lower().replace("userrole.", "") == "customer":
+        # Customers can only submit for their own household and their own dogs.
+        data = dict(data)
+        data["household_id"] = current_user.household_id
+        if data.get("dog_id"):
+            _own = (await db.execute(
+                select(DogORM.id).where(
+                    DogORM.id == data["dog_id"],
+                    DogORM.organization_id == current_user.organization_id,
+                    DogORM.household_id == current_user.household_id,
+                )
+            )).scalar_one_or_none()
+            if not _own:
+                raise HTTPException(status_code=404, detail="Dog not found")
     submission_id = str(uuid.uuid4())
     signed_name = data.get("signed_name")
     signed_at = datetime.now(timezone.utc) if signed_name else None

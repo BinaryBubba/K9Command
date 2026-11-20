@@ -407,6 +407,17 @@ async def check_conflicts(
     check_in_date = _parse_date(data.get("check_in_date"))
     check_out_date = _parse_date(data.get("check_out_date"))
     dog_ids = data.get("dog_ids", [])
+    if not check_in_date:
+        raise HTTPException(status_code=400, detail="check_in_date is required")
+    if not isinstance(dog_ids, list):
+        dog_ids = []
+    if str(current_user.role).lower().replace("userrole.", "") == "customer":
+        # Customers may only check their own household's dogs; otherwise the
+        # response reveals other households' dog names and bookings.
+        _own_ids = (await db.execute(
+            select(DogORM.id).where(DogORM.organization_id == org_id, DogORM.household_id == current_user.household_id)
+        )).scalars().all()
+        dog_ids = [d for d in dog_ids if d in _own_ids]
 
     conflicts = []
 
