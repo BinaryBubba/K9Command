@@ -273,6 +273,9 @@ async def submit_form(
             )).scalar_one_or_none()
             if not _own:
                 raise HTTPException(status_code=404, detail="Dog not found")
+    _form_ok = (await db.execute(text("SELECT 1 FROM forms WHERE id = :fid"), {"fid": form_id})).scalar_one_or_none()
+    if not _form_ok:
+        raise HTTPException(status_code=404, detail="Form not found")
     submission_id = str(uuid.uuid4())
     signed_name = data.get("signed_name")
     signed_at = datetime.now(timezone.utc) if signed_name else None
