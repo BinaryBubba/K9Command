@@ -34,11 +34,13 @@ const FormsPage = () => {
   const [forms, setForms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedForm, setSelectedForm] = useState(null);
+  const [mySubs, setMySubs] = useState([]);
 
   const fetchForms = useCallback(async () => {
     try {
       const res = await api.get('/forms');
       setForms(res.data);
+      try { const sres = await api.get('/forms/my-submissions'); setMySubs(sres.data || []); } catch { /* optional */ }
     } catch { toast.error('Failed to load forms'); }
     finally { setLoading(false); }
   }, []);
@@ -59,12 +61,19 @@ const FormsPage = () => {
       form={selectedForm}
       user={user}
       onBack={() => setSelectedForm(null)}
-      onSubmitted={() => { setSelectedForm(null); toast.success('Form submitted successfully'); }}
+      onSubmitted={() => { setSelectedForm(null); toast.success('Form submitted successfully'); fetchForms(); }}
     />
   );
 
+  const _subsFor = (f) => mySubs.filter(s => s.form_id === f.id);
+  const _hasSig = (f) => (f.fields || []).some(x => x.type === 'signature');
+  const isDone = (f) => f.form_type !== 'intake' && _hasSig(f) && _subsFor(f).some(s => s.signed_at && (f.version == null || s.form_version == null || s.form_version === f.version));
+  const latestSub = (f) => _subsFor(f)[0];
+  const doneDogs = (f) => [...new Set(_subsFor(f).map(s => s.dog_name).filter(Boolean))];
+  const doneForms = forms.filter(isDone);
+
   // Group by type
-  const grouped = forms.reduce((acc, f) => {
+  const grouped = forms.filter(f => !isDone(f)).reduce((acc, f) => {
     if (!acc[f.form_type]) acc[f.form_type] = [];
     acc[f.form_type].push(f);
     return acc;
@@ -95,6 +104,9 @@ const FormsPage = () => {
                         <span className="text-2xl">{TYPE_ICONS[form.form_type]}</span>
                         <div>
                           <p className="font-medium text-sm">{form.title}</p>
+                          {form.form_type === 'intake' && doneDogs(form).length > 0 && (
+                            <p className="text-xs text-green-700">✓ Completed for {doneDogs(form).join(', ')}</p>
+                          )}
                           {form.description && (
                             <p className="text-xs text-muted-foreground">{form.description}</p>
                           )}
@@ -113,6 +125,30 @@ const FormsPage = () => {
             </div>
           </div>
         ))}
+
+        {doneForms.length > 0 && (
+          <div>
+            <h2 className="text-sm font-medium text-muted-foreground mb-2">✅ Completed</h2>
+            <div className="space-y-2">
+              {doneForms.map(form => {
+                const s = latestSub(form);
+                return (
+                  <Card key={form.id}>
+                    <CardContent className="py-3 px-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-sm">{form.title}</p>
+                          <p className="text-xs text-green-700">Signed {s && s.signed_at ? new Date(s.signed_at).toLocaleDateString() : ''}</p>
+                        </div>
+                        <Badge className="text-xs bg-green-100 text-green-800">Completed</Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {forms.length === 0 && (
           <Card>

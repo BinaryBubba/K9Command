@@ -94,6 +94,29 @@ async def list_forms(
     return forms
 
 
+@router.get("/my-submissions")
+async def my_submissions(
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """The signed-in customer's own form submissions (for the completed indicator)."""
+    if not current_user.household_id:
+        return []
+    rows = (await db.execute(text("""
+        SELECT fs.id, fs.form_id, fs.dog_id, fs.signed_at, fs.created_at, fs.form_version, d.name AS dog_name
+        FROM customer_form_submissions fs
+        LEFT JOIN dogs d ON d.id = fs.dog_id
+        WHERE fs.organization_id = :o AND fs.household_id = :h
+        ORDER BY fs.created_at DESC
+    """), {"o": current_user.organization_id, "h": current_user.household_id})).fetchall()
+    return [{
+        "id": r.id, "form_id": r.form_id, "dog_id": r.dog_id, "dog_name": r.dog_name,
+        "form_version": r.form_version,
+        "signed_at": r.signed_at.isoformat() if r.signed_at else None,
+        "created_at": r.created_at.isoformat() if r.created_at else None,
+    } for r in rows]
+
+
 @router.get("/{form_id}")
 async def get_form(
     form_id: str,
@@ -231,6 +254,7 @@ async def list_submissions(
     result = await db.execute(text(f"""
         SELECT fs.id, fs.form_id, fs.submitted_by, fs.dog_id, fs.household_id,
                fs.data, fs.signed_name, fs.signed_at, fs.created_at,
+               fs.signed_ip, fs.form_version, fs.content_hash, fs.consent_text,
                u.full_name as submitted_by_name
         FROM customer_form_submissions fs
         LEFT JOIN users u ON fs.submitted_by = u.id
@@ -248,13 +272,25 @@ async def list_submissions(
         "signed_name": r.signed_name,
         "signed_at": r.signed_at.isoformat() if r.signed_at else None,
         "created_at": r.created_at.isoformat() if r.created_at else None,
+        "signed_ip": r.signed_ip,
+        "form_version": r.form_version,
+        "content_hash": r.content_hash,
+        "consent_text": r.consent_text,
     } for r in rows]
+
+
+import hashlib as _hashlib
+from fastapi import Request as _Request
+
+CONSENT_TEXT = ("I have read and agree to the terms above. I understand that typing my full name and "
+                "checking this box is my legal electronic signature, with the same effect as a handwritten signature.")
 
 
 @router.post("/{form_id}/submit")
 async def submit_form(
     form_id: str,
     data: dict,
+    request: _Request,
     current_user: UserORM = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -273,18 +309,38 @@ async def submit_form(
             )).scalar_one_or_none()
             if not _own:
                 raise HTTPException(status_code=404, detail="Dog not found")
-    _form_ok = (await db.execute(text("SELECT 1 FROM forms WHERE id = :fid"), {"fid": form_id})).scalar_one_or_none()
-    if not _form_ok:
+    _form_row = (await db.execute(text("SELECT title, fields, version FROM forms WHERE id = :fid"), {"fid": form_id})).first()
+    if not _form_row:
         raise HTTPException(status_code=404, detail="Form not found")
     submission_id = str(uuid.uuid4())
-    signed_name = data.get("signed_name")
+    signed_name = (data.get("signed_name") or "").strip() or None
     signed_at = datetime.now(timezone.utc) if signed_name else None
+    _fields = _form_row.fields
+    if isinstance(_fields, str):
+        _fields = json.loads(_fields)
+    _responses = data.get("responses", {})
+    _ip = (request.headers.get("cf-connecting-ip")
+           or (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+           or (request.client.host if request.client else None)) or None
+    _ua = (request.headers.get("user-agent") or "")[:500] or None
+    _consent_text = CONSENT_TEXT if (signed_name and data.get("consent") is True) else None
+    _snapshot = {"title": _form_row.title, "version": _form_row.version, "fields": _fields}
+    _hash = None
+    if signed_name:
+        _hash = _hashlib.sha256(json.dumps({
+            "submission_id": submission_id, "form_id": form_id, "form_version": _form_row.version,
+            "fields": _fields, "responses": _responses, "signed_name": signed_name,
+            "signed_at": signed_at.isoformat(), "submitted_by": current_user.id,
+            "consent_text": _consent_text, "ip": _ip,
+        }, sort_keys=True, default=str).encode()).hexdigest()
 
     await db.execute(text("""
         INSERT INTO customer_form_submissions
-            (id, organization_id, form_id, submitted_by, dog_id, household_id, stay_id, task_id, data, signed_name, signed_at)
+            (id, organization_id, form_id, submitted_by, dog_id, household_id, stay_id, task_id, data, signed_name, signed_at,
+             signed_ip, signed_user_agent, form_version, form_snapshot, consent_text, content_hash)
         VALUES
-            (:id, :org_id, :form_id, :submitted_by, :dog_id, :household_id, :stay_id, :task_id, :data, :signed_name, :signed_at)
+            (:id, :org_id, :form_id, :submitted_by, :dog_id, :household_id, :stay_id, :task_id, :data, :signed_name, :signed_at,
+             :signed_ip, :signed_ua, :form_version, :form_snapshot, :consent_text, :content_hash)
     """), {
         "id": submission_id,
         "org_id": current_user.organization_id,
@@ -297,6 +353,12 @@ async def submit_form(
         "data": json.dumps(data.get("responses", {})),
         "signed_name": signed_name,
         "signed_at": signed_at,
+        "signed_ip": _ip,
+        "signed_ua": _ua,
+        "form_version": _form_row.version,
+        "form_snapshot": json.dumps(_snapshot, default=str),
+        "consent_text": _consent_text,
+        "content_hash": _hash,
     })
     await db.commit()
 
