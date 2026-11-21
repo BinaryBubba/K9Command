@@ -2,7 +2,7 @@
 Stays API
 Handles check-in, check-out, stay alerts, feeding overrides, and room assignments.
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from typing import Optional
@@ -235,6 +235,75 @@ async def check_in(
 
 # ── Check out ────────────────────────────────────────────────────────────────
 
+@router.post("/auto-checkout")
+async def auto_checkout_overdue(
+    x_cron_secret: str = Header(None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Nightly cron (scripts/auto_checkout_stays.sh), not a user-facing endpoint.
+    Checks out stays still on site after their booking's end date, or whose
+    booking is already closed, then closes the booking once its last dog is out."""
+    import os
+    from zoneinfo import ZoneInfo
+    expected = os.environ.get("CRON_SECRET")
+    if not expected or x_cron_secret != expected:
+        raise HTTPException(status_code=403, detail="Invalid or missing cron secret")
+
+    now = datetime.now(timezone.utc)
+    today = datetime.now(ZoneInfo("America/Chicago")).date()
+    active = [StayStatus.ON_SITE, StayStatus.TEMPORARILY_OFF_SITE]
+    rows = (await db.execute(
+        select(Stay, Booking).join(Booking, Booking.id == Stay.booking_id).where(Stay.status.in_(active))
+    )).all()
+
+    closed = (BookingStatus.CHECKED_OUT, BookingStatus.CANCELLED)
+    overdue = []
+    for stay, booking in rows:
+        end = booking.check_out_date
+        if booking.status in closed or (end is not None and end.astimezone(timezone.utc).date() < today):
+            overdue.append((stay, booking))
+
+    done, failed, touched = [], 0, set()
+    for stay, booking in overdue:
+        try:
+            async with db.begin_nested():
+                stay.status = StayStatus.CHECKED_OUT
+                stay.checked_out_at = now
+                if not stay.checkout_summary:
+                    stay.checkout_summary = "Auto checked-out (stay ended)"
+                alerts = (await db.execute(
+                    select(StayAlert).where(StayAlert.stay_id == stay.id, StayAlert.cleared_at.is_(None))
+                )).scalars().all()
+                for alert in alerts:
+                    alert.cleared_at = now
+                    alert.cleared_reason = "Auto-cleared at auto check-out"
+                assignments = (await db.execute(
+                    select(RoomAssignment).where(RoomAssignment.stay_id == stay.id, RoomAssignment.ended_at.is_(None))
+                )).scalars().all()
+                for assignment in assignments:
+                    assignment.ended_at = now
+            touched.add(booking.id)
+            done.append(stay.id)
+        except Exception as e:
+            failed += 1
+            print(f"auto-checkout failed for stay {stay.id}: {e}")
+
+    await db.flush()
+    for booking_id in touched:
+        remaining = (await db.execute(
+            select(Stay.id).where(Stay.booking_id == booking_id, Stay.status.in_(active))
+        )).first()
+        if remaining:
+            continue
+        b = (await db.execute(select(Booking).where(Booking.id == booking_id))).scalar_one_or_none()
+        if b and b.status == BookingStatus.CHECKED_IN:
+            b.status = BookingStatus.CHECKED_OUT
+            b.checked_out_at = now
+
+    await db.commit()
+    return {"checked_out": len(done), "failed": failed, "stay_ids": done}
+
+
 @router.post("/{stay_id}/check-out")
 async def check_out(
     stay_id: str,
@@ -299,7 +368,15 @@ async def check_out(
     booking = (await db.execute(
         select(Booking).where(Booking.id == stay.booking_id)
     )).scalar_one_or_none()
-    if booking:
+    await db.flush()
+    _others_on_site = (await db.execute(
+        select(Stay.id).where(
+            Stay.booking_id == stay.booking_id,
+            Stay.id != stay_id,
+            Stay.status.in_([StayStatus.ON_SITE, StayStatus.TEMPORARILY_OFF_SITE]),
+        )
+    )).first()
+    if booking and not _others_on_site:
         booking.status = BookingStatus.CHECKED_OUT
         booking.checked_out_at = datetime.now(timezone.utc)
 
