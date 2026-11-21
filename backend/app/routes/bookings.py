@@ -204,12 +204,15 @@ async def update_booking_status(
     if not new_status:
         raise HTTPException(status_code=400, detail="status is required")
 
+    _old_status = str(getattr(booking.status, "value", booking.status))
     booking.status = new_status
     if data.get("notes"):
         booking.notes = data["notes"]
 
     await db.commit()
     await db.refresh(booking)
+    from audit_service import log_audit
+    await log_audit(db, current_user, "update", "booking", booking_id, f"Booking status changed from {_old_status} to {str(getattr(booking.status, 'value', booking.status))} by {current_user.full_name}")
     bd = await _get_booking_dogs(booking_id, db)
     return _booking_dict(booking, bd)
 
@@ -258,6 +261,9 @@ async def update_booking(
 
     await db.commit()
     await db.refresh(booking)
+    from audit_service import log_audit
+    _changed = [f for f in allowed if f in data and data[f] is not None]
+    await log_audit(db, current_user, "update", "booking", booking_id, f"Booking edited by {current_user.full_name} (fields: {', '.join(_changed) or 'none'})")
     bd = await _get_booking_dogs(booking_id, db)
 
     if old_status != BookingStatus.CONFIRMED and booking.status == BookingStatus.CONFIRMED:
@@ -312,6 +318,8 @@ async def cancel_booking(
 
     await db.commit()
     await db.refresh(booking)
+    from audit_service import log_audit
+    await log_audit(db, current_user, "update", "booking", booking_id, f"Booking cancelled by {current_user.full_name}", {"reason": data.get("reason")})
     bd = await _get_booking_dogs(booking_id, db)
     return _booking_dict(booking, bd)
 

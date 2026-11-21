@@ -774,10 +774,13 @@ async def create_staff_user(
         is_active=is_active,
         is_owner=False,
         household_id=None,
+        organization_id=admin_user.organization_id,
     )
     db.add(user)
     await db.commit()
     await db.refresh(user)
+    from audit_service import log_audit
+    await log_audit(db, admin_user, "create", "user", user.id, f"Staff account created: {user.full_name} ({user.email})")
 
     return {
         "id": user.id,
@@ -927,10 +930,13 @@ async def create_customer(
         is_active=bool(is_active),
         is_owner=False,
         household_id=household_id,
+        organization_id=admin_user.organization_id,
     )
     db.add(user)
     await db.commit()
     await db.refresh(user)
+    from audit_service import log_audit
+    await log_audit(db, admin_user, "create", "user", user.id, f"Customer account created: {user.full_name} ({user.email})")
 
     return {
         "id": user.id,

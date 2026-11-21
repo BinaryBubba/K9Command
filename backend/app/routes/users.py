@@ -370,6 +370,8 @@ async def create_portal_account(
             status_code=409,
             detail="This household already has a portal account linked.",
         )
+    from audit_service import log_audit
+    await log_audit(db, current_user, "create", "user", user_id, f"Portal account created for {email}", {"household_id": household_id})
     return {"user_id": user_id, "temp_password": temp_password, "email": email}
 
 
