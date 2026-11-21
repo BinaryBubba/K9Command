@@ -98,6 +98,8 @@ async def update_user(
     if not is_admin and not is_self:
         raise HTTPException(status_code=403, detail="Not authorized")
     user = await _get_user_or_404(user_id, current_user.organization_id, db)
+    from audit_service import log_audit
+    _before = {"role": str(getattr(user.role, "value", user.role)).lower(), "is_active": user.is_active}
 
     # Fields anyone can update on themselves
     self_fields = ["full_name", "first_name", "last_name", "phone", "address", "birthday",
@@ -119,6 +121,11 @@ async def update_user(
 
     await db.commit()
     await db.refresh(user)
+    _after_role = str(getattr(user.role, "value", user.role)).lower()
+    if _after_role != _before["role"]:
+        await log_audit(db, current_user, "update", "user", user.id, f"Role changed from {_before['role']} to {_after_role} for {user.full_name}")
+    if user.is_active != _before["is_active"]:
+        await log_audit(db, current_user, "update", "user", user.id, f"Account {'reactivated' if user.is_active else 'deactivated'} for {user.full_name}")
     return _user_dict(user)
 
 
@@ -137,6 +144,8 @@ async def reset_password(
 
     user.hashed_password = hash_password(temp_password)
     await db.commit()
+    from audit_service import log_audit
+    await log_audit(db, current_user, "update", "user", user.id, f"Password reset for {user.full_name}")
 
     return {
         "message": f"Password reset for {user.full_name}",
@@ -298,14 +307,20 @@ async def verify_manager_pin(
         )
         row = result.fetchone()
         if not row:
+            from audit_service import log_audit
+            await log_audit(db, current_user, "login", "manager_pin", None, f"Invalid manager PIN attempt by {current_user.full_name}")
             raise HTTPException(status_code=403, detail="Invalid PIN")
         user_result = await db.execute(select(UserORM).where(UserORM.id == row[0]))
         user = user_result.scalar_one_or_none()
     
     if not user:
+        from audit_service import log_audit
+        await log_audit(db, current_user, "login", "manager_pin", None, f"Invalid manager PIN attempt by {current_user.full_name}")
         raise HTTPException(status_code=403, detail="Invalid PIN")
     
     role = user.role.value if hasattr(user.role, "value") else str(user.role)
+    from audit_service import log_audit
+    await log_audit(db, current_user, "update", "manager_override", user.id, f"Manager PIN override approved by {user.full_name} ({role}) for {current_user.full_name}")
     return {"verified": True, "user_name": user.full_name, "role": role}
 
 

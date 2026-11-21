@@ -81,7 +81,7 @@ const AdminAuditPage = () => {
                         <span className="text-sm font-medium">{log.resource_type}</span>
                       </div>
                       <p className="text-xs text-muted-foreground">{log.description || log.resource_id}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">by {log.user_id}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">by {log.user_name || log.user_id}</p>
                     </div>
                     <p className="text-xs text-muted-foreground whitespace-nowrap">
                       {new Date(log.created_at).toLocaleString()}

@@ -621,6 +621,7 @@ async def approve_staff_request(
         is_owner=False,
         is_active=True,
         household_id=None,
+        organization_id=admin_user.organization_id,
     )
     db.add(user)
     req.status = StaffRequestStatus.APPROVED
@@ -628,6 +629,8 @@ async def approve_staff_request(
     req.reviewed_at = datetime.now(timezone.utc)
     _to_email, _to_name = user.email, user.full_name
     await db.commit()
+    from audit_service import log_audit
+    await log_audit(db, admin_user, "create", "user", None, f"Staff request approved: {_to_name} ({_to_email}) is now staff", {"request_id": request_id})
     try:
         import html as _html
         from email_service import send_email, email_button
@@ -861,14 +864,34 @@ async def delete_dog(
     current_user: UserORM = Depends(require_role(UserRole.CUSTOMER, UserRole.ADMIN)),
 ):
     dog = await db.get(DogORM, dog_id)
-    if not dog:
+    if not dog or dog.organization_id != current_user.organization_id:
         raise HTTPException(status_code=404, detail="Dog not found")
 
     if current_user.role == UserRole.CUSTOMER and dog.household_id != current_user.household_id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    await db.delete(dog)
-    await db.commit()
+    from sqlalchemy import text as _text
+    from sqlalchemy.exc import IntegrityError as _IntegrityError
+    _history = ("booking_dogs", "booking_dogs_v2", "stays", "incidents", "feeding_events",
+                "medication_administrations", "playgroup_members", "playgroup_changes",
+                "stay_alerts", "stay_feeding_overrides")
+    _setup = ("behavior_profiles", "dog_notes", "feeding_plans", "medications",
+              "vaccination_records", "customer_form_submissions", "meet_and_greets")
+    for _t in _history:
+        if (await db.execute(_text(f"SELECT 1 FROM {_t} WHERE dog_id = :d LIMIT 1"), {"d": dog_id})).first():
+            raise HTTPException(status_code=409, detail="This dog has stay history and cannot be deleted. Please contact us if you need it removed.")
+
+    _dog_name, _dog_hh = dog.name, dog.household_id
+    try:
+        for _t in _setup:
+            await db.execute(_text(f"DELETE FROM {_t} WHERE dog_id = :d"), {"d": dog_id})
+        await db.delete(dog)
+        await db.commit()
+    except _IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="This dog has records attached and cannot be deleted. Please contact us if you need it removed.")
+    from audit_service import log_audit
+    await log_audit(db, current_user, "delete", "dog", dog_id, f"Dog deleted: {_dog_name}", {"household_id": _dog_hh})
     return {"ok": True}
 
 
@@ -1573,7 +1596,12 @@ async def list_audit_logs(
 
     res = await db.execute(stmt)
     items = res.scalars().all()
-    return [_serialize_audit_log(a) for a in items]
+    _ids = {a.user_id for a in items}
+    _names = {}
+    if _ids:
+        _rows = (await db.execute(select(UserORM.id, UserORM.full_name).where(UserORM.id.in_(_ids)))).all()
+        _names = {r[0]: r[1] for r in _rows}
+    return [{**_serialize_audit_log(a), "user_name": _names.get(a.user_id), "description": (a.details or {}).get("description")} for a in items]
 
 # ==================== SCHEDULING COMPAT ROUTES ====================
 
