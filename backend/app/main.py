@@ -1587,6 +1587,7 @@ def _serialize_audit_log(a: AuditLogORM):
 async def list_audit_logs(
     action: Optional[str] = Query(default=None),
     limit: int = Query(default=200, ge=1, le=1000),
+    skip: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: UserORM = Depends(require_role(UserRole.ADMIN)),
 ):
@@ -1598,7 +1599,7 @@ async def list_audit_logs(
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid action")
 
-    stmt = stmt.order_by(AuditLogORM.created_at.desc()).limit(limit)
+    stmt = stmt.order_by(AuditLogORM.created_at.desc()).offset(skip).limit(limit)
 
     res = await db.execute(stmt)
     items = res.scalars().all()

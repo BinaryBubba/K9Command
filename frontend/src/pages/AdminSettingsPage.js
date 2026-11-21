@@ -693,13 +693,13 @@ const OrgTab = ({ orgSettings, setOrgSettings, handleSaveOrg, orgSaving }) => (
     <div>
       <Label>Contact Email</Label>
       <Input value={orgSettings.contact_email || ''} className="mt-1"
-        placeholder="info@k9countryclubkennel.com"
+        placeholder="thehumans@k9countryclubkennel.com"
         onChange={e => setOrgSettings(s => ({...s, contact_email: e.target.value}))} />
     </div>
     <div>
       <Label>Address</Label>
       <Input value={orgSettings.contact_address || ''} className="mt-1"
-        placeholder="123 Main St, Elk River MN 55330"
+        placeholder="18753 Cleveland St NW, Elk River MN 55330"
         onChange={e => setOrgSettings(s => ({...s, contact_address: e.target.value}))} />
     </div>
     <Button onClick={handleSaveOrg} disabled={orgSaving}>

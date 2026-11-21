@@ -200,12 +200,14 @@ async def update_booking_status(
     db: AsyncSession = Depends(get_db),
 ):
     booking = await _get_booking_or_404(booking_id, current_user.organization_id, db, current_user)
-    new_status = data.get("status")
+    new_status = str(data.get("status") or "").strip().lower()
     if not new_status:
         raise HTTPException(status_code=400, detail="status is required")
+    if new_status not in {s.value for s in BookingStatus}:
+        raise HTTPException(status_code=400, detail="Invalid status. Allowed: " + ", ".join(s.value for s in BookingStatus))
 
     _old_status = str(getattr(booking.status, "value", booking.status))
-    booking.status = new_status
+    booking.status = BookingStatus(new_status)
     if data.get("notes"):
         booking.notes = data["notes"]
 

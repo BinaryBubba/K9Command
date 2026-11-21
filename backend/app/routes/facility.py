@@ -174,7 +174,7 @@ def _status_dict(s: FacilityStatus) -> dict:
 
 @router.get("/rooms")
 async def list_rooms(
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     from db_models import Room
@@ -264,7 +264,7 @@ def _room_dict(r) -> dict:
 
 @router.get("/rooms")
 async def list_rooms(
-    current_user: UserORM = Depends(get_current_user),
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.STAFF, UserRole.MANAGER)),
     db: AsyncSession = Depends(get_db),
 ):
     from db_models import Room
