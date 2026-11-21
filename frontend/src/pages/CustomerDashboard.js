@@ -373,7 +373,7 @@ const CustomerDashboard = () => {
                           {[dog.breed, dog.age ? `${dog.age} yrs` : null, dog.weight ? `${dog.weight} lbs` : null].filter(Boolean).join(' · ')}
                         </p>
                         <div className="flex gap-1 mt-1">
-                          {dog.meet_and_greet_status === 'completed' && (
+                          {['completed', 'waived'].includes(dog.meet_and_greet_status) && (
                             <Badge className="text-xs bg-green-100 text-green-700">Meet & Greet ✓</Badge>
                           )}
                         </div>

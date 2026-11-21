@@ -124,7 +124,7 @@ const CustomerDogPage = () => {
                   {[dog.breed, dog.age ? `${dog.age} yrs` : null, dog.weight ? `${dog.weight} lbs` : null, dog.color].filter(Boolean).join(' · ')}
                 </p>
                 <div className="flex gap-1 mt-1 flex-wrap">
-                  {dog.meet_and_greet_status === 'completed' && <Badge className="text-xs bg-green-100 text-green-700">Meet & Greet ✓</Badge>}
+                  {['completed', 'waived'].includes(dog.meet_and_greet_status) && <Badge className="text-xs bg-green-100 text-green-700">Meet & Greet ✓</Badge>}
                   {dog.spay_neuter_status && <Badge variant="outline" className="text-xs">{dog.spay_neuter_status}</Badge>}
                   {dog.boarding_eligible && <Badge className="text-xs bg-green-100 text-green-700">✓ Boarding</Badge>}
                   {dog.escape_risk && <Badge className="text-xs bg-red-100 text-red-700">⚠️ Escape Risk</Badge>}

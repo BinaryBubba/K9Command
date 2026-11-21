@@ -231,13 +231,14 @@ const AdminDashboard = () => {
         )}
 
         {/* Upcoming Meet & Greets */}
-        {upcomingMags.length > 0 && (
-          <div className="bg-white rounded-xl border shadow-sm p-4">
+        {(
+          <div className="bg-white rounded-xl border shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/admin/meet-and-greet')}>
             <h2 className="font-serif font-semibold text-primary mb-3 text-sm flex items-center justify-between">
               Upcoming Meet & Greets
               <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{upcomingMags.length}</span>
             </h2>
             <div className="space-y-2">
+              {upcomingMags.length === 0 && <p className="text-sm text-muted-foreground">No upcoming meet & greets. Tap to open the meet & greet page.</p>}
               {upcomingMags.map(m => (
                 <div key={m.id} className="flex items-center justify-between py-1.5 border-b last:border-0">
                   <div>

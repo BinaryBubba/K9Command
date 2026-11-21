@@ -457,6 +457,115 @@ async def update_mag_status(
     return {"updated": True}
 
 
+@router.post("/existing-customer-request")
+async def request_existing_customer_waiver(
+    data: dict,
+    current_user: UserORM = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Customer says 'we have boarded here before' for one or more dogs; an admin approves or denies."""
+    import uuid as _uuid
+    dog_ids = data.get("dog_ids") or []
+    if not isinstance(dog_ids, list) or not dog_ids:
+        raise HTTPException(status_code=400, detail="dog_ids is required")
+    note = (data.get("note") or "").strip() or None
+    is_customer = str(current_user.role).lower().replace("userrole.", "") == "customer"
+    requested = 0
+    for dog_id in dog_ids[:20]:
+        dog = (await db.execute(
+            select(DogORM).where(DogORM.id == str(dog_id), DogORM.organization_id == current_user.organization_id)
+        )).scalar_one_or_none()
+        if not dog or (is_customer and dog.household_id != current_user.household_id):
+            raise HTTPException(status_code=404, detail="Dog not found")
+        status = str(getattr(dog.meet_and_greet_status, "value", dog.meet_and_greet_status) or "").lower()
+        if status in ("completed", "waived"):
+            continue
+        already = (await db.execute(
+            select(MeetAndGreet.id).where(MeetAndGreet.dog_id == dog.id, MeetAndGreet.status == "waiver_requested")
+        )).first()
+        if already:
+            continue
+        db.add(MeetAndGreet(
+            id=str(_uuid.uuid4()),
+            organization_id=current_user.organization_id,
+            dog_id=dog.id,
+            household_id=dog.household_id,
+            status="waiver_requested",
+            requested_by=current_user.id,
+            created_by=current_user.id,
+            notes=note,
+        ))
+        requested += 1
+    await db.commit()
+    return {"requested": requested}
+
+
+@router.get("/waiver-requests")
+async def list_waiver_requests(
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN, UserRole.MANAGER)),
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import text
+    result = await db.execute(text("""
+        SELECT m.id, m.dog_id, m.household_id, m.notes, m.created_at,
+               d.name AS dog_name, h.display_name AS household_name, u.full_name AS requested_by_name
+        FROM meet_and_greets m
+        JOIN dogs d ON d.id = m.dog_id
+        JOIN households h ON h.id = m.household_id
+        LEFT JOIN users u ON u.id = m.requested_by
+        WHERE m.organization_id = :org AND m.status = 'waiver_requested'
+        ORDER BY m.created_at ASC
+    """), {"org": current_user.organization_id})
+    return [{
+        "id": r.id, "dog_id": r.dog_id, "dog_name": r.dog_name,
+        "household_id": r.household_id, "household_name": r.household_name,
+        "requested_by_name": r.requested_by_name, "note": r.notes,
+        "requested_at": r.created_at.isoformat() if r.created_at else None,
+    } for r in result.fetchall()]
+
+
+@router.post("/{mag_id}/waiver-decision")
+async def decide_waiver(
+    mag_id: str,
+    data: dict,
+    current_user: UserORM = Depends(require_role(UserRole.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    mag = await _get_mag_or_404(mag_id, current_user.organization_id, db)
+    if mag.status != "waiver_requested":
+        raise HTTPException(status_code=409, detail="This request has already been decided")
+    approve = bool(data.get("approve"))
+    reason = (data.get("reason") or "").strip()
+    dog = (await db.execute(select(DogORM).where(DogORM.id == mag.dog_id))).scalar_one_or_none()
+    if not dog:
+        raise HTTPException(status_code=404, detail="Dog not found")
+    dog_id, dog_name = dog.id, dog.name
+    now = datetime.now(timezone.utc)
+    mag.conducted_by = current_user.id
+    mag.completed_at = now
+    if reason:
+        mag.notes = ((mag.notes + " | ") if mag.notes else "") + reason
+    if approve:
+        mag.status = "waived"
+        mag.boarding_eligible_granted = True
+        mag.daycare_eligible_granted = True
+        dog.meet_and_greet_status = "waived"
+        dog.meet_and_greet_outcome = "waived"
+        dog.boarding_eligible = True
+        dog.daycare_eligible = True
+    else:
+        mag.status = "waiver_denied"
+    await db.commit()
+    from audit_service import log_audit
+    await log_audit(db, current_user, "update", "meet_and_greet", mag_id,
+                    f"Meet & greet {'waived (existing customer)' if approve else 'waiver denied'} for {dog_name}")
+    confirmed = []
+    if approve:
+        from booking_gate import auto_confirm_ready_bookings
+        confirmed = await auto_confirm_ready_bookings(db, [dog_id], current_user)
+    return {"decided": True, "approved": approve, "bookings_confirmed": len(confirmed)}
+
+
 @router.post("/{mag_id}/outcome")
 async def record_outcome(
     mag_id: str,
@@ -539,6 +648,9 @@ async def record_outcome(
         await _send_post_mag_email(mag, outcome, db)
     except Exception as e:
         print(f"Post-M&G email step failed: {e}")
+    if outcome in (MeetAndGreetOutcome.PASS, MeetAndGreetOutcome.CONDITIONAL):
+        from booking_gate import auto_confirm_ready_bookings
+        await auto_confirm_ready_bookings(db, [mag.dog_id], current_user)
     return _mag_dict(mag)
 
 

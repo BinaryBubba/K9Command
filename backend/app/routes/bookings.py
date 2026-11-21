@@ -120,6 +120,7 @@ async def create_booking(
 
     # Verify all dogs belong to org and check eligibility
     warnings = []
+    _uncleared = []
     for dog_id in dog_ids:
         dog = (await db.execute(
             select(DogORM).where(DogORM.id == dog_id, DogORM.organization_id == org_id)
@@ -130,7 +131,9 @@ async def create_booking(
             raise HTTPException(status_code=403, detail=f"{dog.name} does not belong to your household")
 
         # Meet and greet check
-        if dog.meet_and_greet_status != "completed":
+        from booking_gate import dog_is_cleared
+        if not dog_is_cleared(dog):
+            _uncleared.append(dog.name)
             warnings.append({"type": "meet_and_greet", "dog_id": dog_id, "dog_name": dog.name,
                             "message": f"{dog.name} has not completed a meet-and-greet",
                             "severity": "blocking" if str(current_user.role).lower().replace("userrole.","") == "customer" else "warning"})
@@ -138,6 +141,11 @@ async def create_booking(
         # Vaccination check
         vax_issues = await _check_vaccinations(dog_id, org_id, db)
         warnings.extend(vax_issues)
+
+    _is_customer = str(current_user.role).lower().replace("userrole.", "") == "customer"
+    _requested_status = None if _is_customer else (str(data.get("status") or "").strip().lower() or None)
+    if _uncleared and (_is_customer or _requested_status == "confirmed"):
+        raise HTTPException(status_code=409, detail="Cannot confirm: M&G (meet & greet) is not complete or waived for: " + ", ".join(_uncleared))
 
     # Facility closure check
     closure = await _check_facility_closure(org_id, check_in_date, check_out_date, db)
@@ -160,7 +168,7 @@ async def create_booking(
         location_id=data.get("location_id") or await _get_default_location(org_id, db),
         check_in_date=check_in_date,
         check_out_date=check_out_date,
-        status=BookingStatus(data.get("status", "confirmed").lower()) if data.get("status") else BookingStatus.CONFIRMED,
+        status=(BookingStatus.PENDING if _uncleared else (BookingStatus(_requested_status) if _requested_status else BookingStatus.CONFIRMED)),
         total_price=data.get("total_price", 0.0),
         notes=data.get("notes"),
         special_request=data.get("special_request"),
@@ -206,6 +214,11 @@ async def update_booking_status(
     if new_status not in {s.value for s in BookingStatus}:
         raise HTTPException(status_code=400, detail="Invalid status. Allowed: " + ", ".join(s.value for s in BookingStatus))
 
+    if new_status == "confirmed" and str(getattr(booking.status, "value", booking.status)) != "confirmed":
+        from booking_gate import blocking_dogs
+        _blocked = await blocking_dogs(db, booking_id)
+        if _blocked:
+            raise HTTPException(status_code=409, detail="Cannot confirm: M&G (meet & greet) is not complete or waived for: " + ", ".join(_blocked))
     _old_status = str(getattr(booking.status, "value", booking.status))
     booking.status = BookingStatus(new_status)
     if data.get("notes"):
@@ -242,6 +255,11 @@ async def update_booking(
         raise HTTPException(status_code=404, detail="Booking not found")
 
     old_status = booking.status
+    if str(data.get("status") or "").lower() == "confirmed" and old_status != BookingStatus.CONFIRMED:
+        from booking_gate import blocking_dogs
+        _blocked = await blocking_dogs(db, booking_id)
+        if _blocked:
+            raise HTTPException(status_code=409, detail="Cannot confirm: M&G (meet & greet) is not complete or waived for: " + ", ".join(_blocked))
 
     allowed = ["check_in_date", "check_out_date", "special_request", "notes", "status"]
     for field in allowed:

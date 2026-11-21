@@ -72,7 +72,7 @@ const CustomerBookingRequestPage = () => {
       return;
     }
     // Check if any selected dog needs M&G
-    const dogNeedingMag = dogs.find(d => form.dog_ids.includes(d.id) && d.meet_and_greet_status !== 'completed');
+    const dogNeedingMag = dogs.find(d => form.dog_ids.includes(d.id) && !['completed', 'waived'].includes(d.meet_and_greet_status));
     if (dogNeedingMag) {
       setMagDog(dogNeedingMag);
       setShowMagPrompt(true);
@@ -102,7 +102,7 @@ const CustomerBookingRequestPage = () => {
       const detail = err.response?.data?.detail || '';
       if (detail.includes('meet-and-greet') || detail.includes('M&G')) {
         // Find which dog needs M&G
-        const dogWithoutMag = dogs.find(d => form.dog_ids.includes(d.id) && d.meet_and_greet_status !== 'completed');
+        const dogWithoutMag = dogs.find(d => form.dog_ids.includes(d.id) && !['completed', 'waived'].includes(d.meet_and_greet_status));
         if (dogWithoutMag) {
           setMagDog(dogWithoutMag);
           setShowMagPrompt(true);

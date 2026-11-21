@@ -112,11 +112,28 @@ const CustomerAddDogPage = () => {
         ) : (
           <>
             <p className="text-muted-foreground text-sm">
-              All dogs need a Meet & Greet with our staff before their first stay. Would you like to schedule one now?
+              {newDog?.name || 'Your dog'} has been added! Before a first stay, our team meets every dog in person so we can make sure they feel at home with us. Would you like to schedule that meet & greet now?
             </p>
             <Button className="w-full bg-primary" onClick={() => navigate(`/customer/mag-request?dog_id=${newDog?.id}&household_id=${newDog?.householdId}&dog_name=${encodeURIComponent(newDog?.name || '')}`)}>
               Schedule Meet & Greet →
             </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={async () => {
+                try {
+                  const res = await api.post('/meet-and-greets/existing-customer-request', { dog_ids: [newDog.id] });
+                  toast.success(res.data?.requested ? 'Request sent. We will confirm with you shortly.' : 'We already have your request and will confirm shortly.');
+                } catch (e) {
+                  toast.error(e.response?.data?.detail || 'Could not send request');
+                }
+              }}
+            >
+              We've boarded here before
+            </Button>
+            <p className="text-xs text-muted-foreground text-center">
+              Already stayed with K9 Country Club? Let us know and we will confirm instead of scheduling a meet & greet.
+            </p>
           </>
         )}
 

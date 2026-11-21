@@ -34,6 +34,7 @@ const MeetAndGreetPage = () => {
   const preselectedHouseholdId = params.get('household_id');
   const [dogs, setDogs] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
+  const [waiverRequests, setWaiverRequests] = useState([]);
   const [mags, setMags] = useState({});
   const [loading, setLoading] = useState(true);
   const [showSchedule, setShowSchedule] = useState(!!new URLSearchParams(window.location.search).get('household_id'));
@@ -49,6 +50,7 @@ const MeetAndGreetPage = () => {
 
       // Load pending customer M&G requests
       api.get('/meet-and-greets/upcoming').then(r => setPendingRequests(r.data || [])).catch(() => {});
+      api.get('/meet-and-greets/waiver-requests').then(r => setWaiverRequests(r.data || [])).catch(() => {});
 
       // Load MAG records for each pending dog
       const magData = {};
@@ -70,6 +72,20 @@ const MeetAndGreetPage = () => {
     if (!user) { navigate('/auth'); return; }
     fetchData();
   }, [user, navigate, fetchData]);
+
+  const decideWaiver = async (w, approve) => {
+    if (!approve && !window.confirm('Deny this request? The dog will still need a meet & greet.')) return;
+    try {
+      const res = await api.post(`/meet-and-greets/${w.id}/waiver-decision`, { approve });
+      toast.success(approve
+        ? (res.data?.bookings_confirmed ? `Approved. ${res.data.bookings_confirmed} booking(s) confirmed and customer emailed.` : 'Approved. Meet & greet waived.')
+        : 'Request denied');
+      setWaiverRequests(prev => prev.filter(x => x.id !== w.id));
+      fetchData();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Failed');
+    }
+  };
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
@@ -102,6 +118,9 @@ const MeetAndGreetPage = () => {
             </TabsTrigger>
             <TabsTrigger value="required" className="flex-1">
               Needs M&G ({required.length})
+            </TabsTrigger>
+            <TabsTrigger value="existing" className="flex-1">
+              Existing ({waiverRequests.length})
             </TabsTrigger>
           </TabsList>
 
@@ -157,6 +176,31 @@ const MeetAndGreetPage = () => {
                             } catch { toast.error('Failed'); }
                           }}>Cancel</Button>
                       </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </TabsContent>
+
+          <TabsContent value="existing">
+            {waiverRequests.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-sm">No existing-customer requests</div>
+            ) : waiverRequests.map(w => (
+              <Card key={w.id} className="mb-3">
+                <CardContent className="py-3 px-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-sm">{w.dog_name} <span className="text-muted-foreground font-normal">— {w.household_name}</span></p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Says they have boarded here before{w.requested_by_name ? ` (requested by ${w.requested_by_name})` : ''}
+                        {w.requested_at ? ` · ${new Date(w.requested_at).toLocaleDateString([], {month:'short',day:'numeric'})}` : ''}
+                      </p>
+                      {w.note && <p className="text-xs mt-1">"{w.note}"</p>}
+                    </div>
+                    <div className="flex gap-1">
+                      <Button size="sm" className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white" onClick={() => decideWaiver(w, true)}>Approve</Button>
+                      <Button size="sm" variant="outline" className="h-7 text-xs text-red-500 border-red-200" onClick={() => decideWaiver(w, false)}>Deny</Button>
                     </div>
                   </div>
                 </CardContent>
