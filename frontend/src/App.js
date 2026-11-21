@@ -19,10 +19,7 @@ import AdminStaffPage from './pages/AdminStaffPage';
 import AdminIncidentsPage from './pages/AdminIncidentsPage';
 import AdminAuditPage from './pages/AdminAuditPage';
 import AdminSettingsPage from './pages/AdminSettingsPage';
-import AdminOperationsHubPage from './pages/AdminOperationsHubPage';
-import AdminCustomerManagementHubPage from './pages/AdminCustomerManagementHubPage';
 import AdminHouseholdPage from './pages/AdminHouseholdPage';
-import AdminAdministrationHubPage from './pages/AdminAdministrationHubPage';
 
 // Pages - Shared Admin+Staff
 import KennelManagementPage from './pages/KennelManagementPage';
@@ -171,30 +168,6 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <AdminDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/operations"
-            element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <AdminOperationsHubPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/customer-management"
-            element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <AdminCustomerManagementHubPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin/administration"
-            element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <AdminAdministrationHubPage />
               </ProtectedRoute>
             }
           />

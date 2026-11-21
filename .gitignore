@@ -213,3 +213,4 @@ infra/docker/PY
 *.txt
 infra/docker/snapshots/
 /tatus --short
+*.bak*
