@@ -36,6 +36,7 @@ const CustomerDashboard = () => {
   const [rescheduleMag, setRescheduleMag] = useState(null);
   const [resendingVerification, setResendingVerification] = useState(false);
   const [dismissedNudges, setDismissedNudges] = useState({});
+  const [waiverSent, setWaiverSent] = useState({});
 
   const fetchData = useCallback(async () => {
     try {
@@ -76,6 +77,16 @@ const CustomerDashboard = () => {
   }, [loading, dogs]);
 
   const handleLogout = () => { logout(); navigate('/'); };
+
+  const requestWaiver = async (dog) => {
+    try {
+      const res = await api.post('/meet-and-greets/existing-customer-request', { dog_ids: [dog.id] });
+      toast.success(res.data?.requested ? 'Request sent. We will confirm with you shortly.' : 'We already have your request and will confirm shortly.');
+      setWaiverSent(prev => ({ ...prev, [dog.id]: true }));
+    } catch (e) {
+      toast.error(e.response?.data?.detail || 'Could not send request');
+    }
+  };
 
   const currentStay = bookings.find(b => ['checked_in','on_site','CHECKED_IN','ON_SITE'].includes(b.status));
   const pendingStays = bookings.filter(b => ['pending','PENDING'].includes(b.status));
@@ -132,6 +143,38 @@ const CustomerDashboard = () => {
           </Button>
         </div>
       </header>
+
+      {(() => {
+        const needMag = dogs.filter(d => !['completed', 'waived', 'scheduled'].includes(d.meet_and_greet_status) && !waiverSent[d.id]);
+        if (needMag.length === 0) return null;
+        return (
+          <div className="max-w-2xl mx-auto px-4 pt-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
+              <div>
+                <p className="text-sm font-semibold text-amber-900">
+                  {needMag.length === 1 ? `${needMag[0].name} still needs a Meet & Greet` : `${needMag.length} of your dogs still need a Meet & Greet`}
+                </p>
+                <p className="text-xs text-amber-800 mt-1">
+                  Every dog meets our team in person before a first stay. Once it is done, your booking can be confirmed.
+                </p>
+              </div>
+              {needMag.map(d => (
+                <div key={d.id} className="flex items-center justify-between gap-2 flex-wrap">
+                  {needMag.length > 1 && <span className="text-sm font-medium text-amber-900">{d.name}</span>}
+                  <div className="flex gap-2 flex-wrap">
+                    <Button size="sm" onClick={() => navigate(`/customer/mag-request?dog_id=${d.id}&household_id=${d.household_id}&dog_name=${encodeURIComponent(d.name || '')}`)}>
+                      Schedule Meet & Greet →
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => requestWaiver(d)}>
+                      We've boarded here before
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       <main className="max-w-2xl mx-auto px-4 py-4">
         {user && user.email_verified === false && (
