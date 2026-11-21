@@ -170,6 +170,7 @@ const FormRenderer = ({ form, user, onBack, onSubmitted }) => {
   const [dogs, setDogs] = useState([]);
   const [selectedDogId, setSelectedDogId] = useState('');
   const printRef = useRef();
+  const [consent, setConsent] = useState(false);
 
   useEffect(() => {
     if (form.form_type === 'intake' && user?.household_id) {
@@ -188,6 +189,10 @@ const FormRenderer = ({ form, user, onBack, onSubmitted }) => {
       toast.error('Please select which dog this is for');
       return false;
     }
+    if (form.fields.some(f => f.type === 'signature') && !consent) {
+      toast.error('Please tick the box to confirm your electronic signature');
+      return false;
+    }
     for (const field of form.fields) {
       if (field.required && !responses[field.id] && field.type !== 'agreement') {
         toast.error(`"${field.label}" is required`);
@@ -203,7 +208,8 @@ const FormRenderer = ({ form, user, onBack, onSubmitted }) => {
     try {
       await api.post(`/forms/${form.id}/submit`, {
         responses,
-        signed_name: responses['sig'] || null,
+        signed_name: (responses[(form.fields.find(f => f.type === 'signature') || { id: 'sig' }).id] || '').trim() || null,
+        consent: consent,
         dog_id: form.form_type === 'intake' ? selectedDogId : undefined,
         household_id: user?.household_id,
       });
@@ -284,6 +290,13 @@ const FormRenderer = ({ form, user, onBack, onSubmitted }) => {
             onChange={val => updateResponse(field.id, val)}
           />
         ))}
+
+        {form.fields.some(f => f.type === 'signature') && (
+          <label className="flex items-start gap-3 cursor-pointer p-3 rounded-lg border border-amber-200 bg-amber-50/50">
+            <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} className="mt-0.5 w-4 h-4 shrink-0" />
+            <span className="text-xs text-amber-900 leading-relaxed">I have read and agree to the terms above. I understand that typing my full name and checking this box is my legal electronic signature, with the same effect as a handwritten signature.</span>
+          </label>
+        )}
 
         <div className="pt-4 pb-8">
           <Button className="w-full" onClick={handleSubmit} disabled={submitting}>

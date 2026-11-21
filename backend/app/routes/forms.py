@@ -323,6 +323,11 @@ async def submit_form(
            or (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
            or (request.client.host if request.client else None)) or None
     _ua = (request.headers.get("user-agent") or "")[:500] or None
+    if any(isinstance(_f, dict) and _f.get("type") == "signature" for _f in _fields):
+        if not signed_name:
+            raise HTTPException(status_code=400, detail="Please type your full name to sign this form")
+        if data.get("consent") is not True:
+            raise HTTPException(status_code=400, detail="You must confirm your electronic signature to submit this form")
     _consent_text = CONSENT_TEXT if (signed_name and data.get("consent") is True) else None
     _snapshot = {"title": _form_row.title, "version": _form_row.version, "fields": _fields}
     _hash = None
