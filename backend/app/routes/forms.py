@@ -372,10 +372,52 @@ async def submit_form(
             if dog:
                 _apply_intake_responses_to_dog(dog, data.get("responses", {}))
                 await db.commit()
+                await _apply_intake_to_behavior_profile(db, current_user.organization_id, dog.id, data.get("responses", {}))
         except Exception as e:
             print(f"Failed to apply intake responses to dog profile: {e}")
 
     return {"submission_id": submission_id, "submitted": True}
+
+
+async def _apply_intake_to_behavior_profile(db, org_id, dog_id, responses):
+    """Copy the behaviour answers from the intake form into the dog's behavior profile.
+    Only fields the customer actually answered are written."""
+    def _yn(v):
+        return True if v == "Yes" else (False if v == "No" else None)
+    def _lvl(v):
+        try:
+            n = int(str(v).strip()[0])
+            return n if 1 <= n <= 5 else None
+        except (ValueError, IndexError):
+            return None
+    vals = {}
+    for k in ("energy_level", "anxiety_level"):
+        if responses.get(k):
+            n = _lvl(responses[k])
+            if n is not None:
+                vals[k] = n
+    for k in ("food_guarding", "toy_guarding", "is_humper", "is_wrestler"):
+        b = _yn(responses.get(k))
+        if b is not None:
+            vals[k] = b
+    for k in ("known_triggers", "handling_restrictions"):
+        if (responses.get(k) or "").strip():
+            vals[k] = responses[k].strip()
+    if not vals:
+        return
+    try:
+        sets = ", ".join(f"{k} = :{k}" for k in vals)
+        res = await db.execute(text(f"UPDATE behavior_profiles SET {sets}, updated_at = now() WHERE dog_id = :dog_id AND organization_id = :org_id"),
+                               {**vals, "dog_id": dog_id, "org_id": org_id})
+        if res.rowcount == 0:
+            cols = ", ".join(vals)
+            ph = ", ".join(f":{k}" for k in vals)
+            await db.execute(text(f"INSERT INTO behavior_profiles (id, organization_id, dog_id, {cols}) VALUES (:id, :org_id, :dog_id, {ph})"),
+                             {**vals, "id": str(uuid.uuid4()), "dog_id": dog_id, "org_id": org_id})
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        print(f"Failed to apply intake answers to behavior profile: {e}")
 
 
 def _apply_intake_responses_to_dog(dog: DogORM, responses: dict):
